@@ -1,0 +1,46 @@
+            <p class="subtitle">Monitor platform performance, manage providers, review verifications, and oversee scholarship activity.</p>
+          </div>
+          <div class="admin-header-actions">
+            <button id="headerRefreshBtn" class="icon-btn" title="Refresh dashboard">⟳</button>
+            <button class="icon-btn notification-btn" title="Notifications">
+              🔔
+              <span id="notificationCount" class="notification-count hidden">3</span>
+            </button>
+            <div class="profile-pill">
+              <div class="profile-avatar">A</div>
+              <div>
+                <div class="profile-name">Administrator</div>
+                <div id="lastUpdated" class="profile-meta">Updated just now</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div class="dashboard-layout">
+        <aside class="dashboard-sidebar card">
+          <div class="sidebar-title">
+            <div class="brand-mark">✦</div>
+            <div>
+              <div class="brand-name">Iskolar Admin</div>
+              <div class="brand-subtitle">Command Center</div>
+            </div>
+          </div>
+          <nav class="sidebar-nav">
+            <button class="tab-btn active" data-tab="overviewSection">📊 Overview</button>
+            <button class="tab-btn" data-tab="providersSection">🏢 Providers</button>
+            <button class="tab-btn" data-tab="verificationsSection">✔️ Verifications</button>
+            <button class="tab-btn" data-tab="usersSection">👥 Users</button>
+            <button class="tab-btn" data-tab="scholarshipsSection">🎓 Scholarships</button>
+            <button class="tab-btn" data-tab="analyticsSection">📈 Analytics</button>
+            <button class="tab-btn" data-tab="systemActivitySection">⚡ System Activity</button>
+            <button class="tab-btn" data-tab="settingsSection">⚙️ Settings</button>
+          </nav>
+          <div class="sidebar-footer">
+            <button id="logoutBtn" class="logout-btn">Logout</button>
+          </div>
+        </aside>
+
+        <main class="dashboard-content">
+          <section id="overviewSection" class="dashboard-section">
+            <div class="section-header">
