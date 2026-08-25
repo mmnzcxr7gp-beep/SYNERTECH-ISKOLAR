@@ -1,0 +1,17 @@
+name = "iskolar-api"
+main = "backend/src/cloudflareWorker.js"
+compatibility_date = "2024-09-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+ENVIRONMENT = "production"
+NODE_ENV = "production"
+
+# Cloudflare Pages build configuration for Admin Web
+[site]
+bucket = "./iskolar_admin_web/dist"
+
+# Optional Cloudflare KV Namespace for ultrafast Edge Caching
+# [[kv_namespaces]]
+# binding = "ISKOLAR_CACHE"
+# id = "<YOUR_KV_NAMESPACE_ID>"

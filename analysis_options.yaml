@@ -1,0 +1,6 @@
+analyzer:
+  exclude:
+    - tools/**
+    - cleanup_quarantine/**
+    - iskolar_mobile/windows/**
+

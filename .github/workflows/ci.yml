@@ -1,0 +1,65 @@
+name: ISKOLAR CI/CD & Security Audit Pipeline
+
+on:
+  push:
+    branches: [ main, master, dev ]
+  pull_request:
+    branches: [ main, master, dev ]
+
+jobs:
+  backend-test:
+    name: Backend API & Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'web/server/package-lock.json'
+      - name: Install Backend Dependencies
+        run: cd web/server && npm ci || npm install
+      - name: Verify Backend Server Startup & Health Check
+        run: |
+          cd web/server
+          node server.js &
+          sleep 3
+          curl -f http://localhost:4000/api/health || exit 1
+
+  admin-web-build:
+    name: Admin Web Client Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Build Web Admin Client
+        run: |
+          cd web/client
+          npm ci || npm install
+          npm run build
+
+  mobile-flutter-test:
+    name: Flutter Mobile App Analysis & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+      - name: Run Flutter Analyze & Test
+        run: |
+          cd mobile
+          flutter pub get
+          flutter analyze
+          flutter test
+

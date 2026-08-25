@@ -1,0 +1,14 @@
+{
+  "name": "iskolar-monorepo",
+  "private": true,
+  "scripts": {
+    "server": "cross-env PORT=4000 npm --prefix backend run dev",
+    "client": "npm --prefix iskolar_admin_web run dev",
+    "dev": "concurrently \"npm:server\" \"npm:client\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.0.1",
+    "cross-env": "^10.1.0",
+    "puppeteer": "^25.4.0"
+  }
+}

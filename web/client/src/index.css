@@ -1,0 +1,637 @@
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+/* ==========================================================================
+   ISKOLAR 2.0 ENTERPRISE DESIGN SYSTEM
+   Typography System:
+     - Primary / Headings: Manrope (800 ExtraBold, 700 Bold, 600 SemiBold, 500 Medium)
+     - Secondary / Body: Source Sans 3 (400 Regular, 500 Medium, 600 SemiBold)
+     - Technical / Mono: IBM Plex Mono (400 Regular, 500 Medium, 600 SemiBold)
+   Scale:
+     - Display / Hero: clamp(44px, 6vw, 64px) / 800 / line-height: 1.1
+     - H1 / Page Title: clamp(36px, 4vw, 48px) / 700 / line-height: 1.17
+     - H2 / Main Section: clamp(30px, 3vw, 40px) / 700 / line-height: 1.2
+     - H3 / Subsection: clamp(24px, 2.5vw, 32px) / 600 / line-height: 1.25
+     - H4 / Card Heading: clamp(20px, 2vw, 24px) / 600 / line-height: 1.33
+     - Body Large: 18px / 400 / line-height: 28px
+     - Body: 16px / 400 / line-height: 24px
+     - Secondary: 15px / 400 / line-height: 22px
+     - Caption: 14px / 400 / line-height: 20px
+     - Button: 15–16px / 600 / line-height: 20–24px
+     - Navigation: 15–16px / 500 / line-height: 22px
+     - Table Header: 14px / 600 / line-height: 20px
+     - Table Body: 14–15px / 400 / line-height: 20–22px
+   Palette: Solid neutral surfaces with restrained warm orange accent (#FF6D29)
+   ========================================================================== */
+
+:root {
+  /* Safe Area Insets */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+
+  /* Unified Font Families */
+  --font-heading: 'Manrope', 'Segoe UI', Arial, sans-serif;
+  --font-body: 'Source Sans 3', 'Segoe UI', Arial, sans-serif;
+  --font-technical: 'IBM Plex Mono', Consolas, monospace;
+
+  /* Backward Compatibility Aliases */
+  --font-primary: var(--font-body);
+  --font-mono: var(--font-technical);
+
+  /* Standard Weight Tokens */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --weight-extrabold: 800;
+
+  /* Brand Colors */
+  --color-brand-primary: #FF6D29;
+  --color-brand-hover: #E85B19;
+  --color-brand-subtle: rgba(255, 109, 41, 0.08);
+  --color-brand-border: rgba(255, 109, 41, 0.25);
+
+  /* Light Theme Surfaces */
+  --color-bg-primary: #FFFFFF;
+  --color-bg-elevated: #FFFFFF;
+  --color-bg-panel: #F8FAFC;
+  --color-bg-warm: #FAF9F6;
+  --color-bg-orange-tint: #FFF8F4;
+  --color-bg-dark-section: #0F172A;
+  --color-bg-modal: #FFFFFF;
+  --color-bg-overlay: rgba(15, 23, 42, 0.65);
+  --color-nav-bg: #FFFFFF;
+
+  /* Light Theme Typography */
+  --color-text-heading: #0F172A;
+  --color-text-primary: #1E293B;
+  --color-text-secondary: #475569;
+  --color-text-muted: #64748B;
+  --color-text-inverse: #FFFFFF;
+
+  /* Light Theme Borders */
+  --color-border: #E2E8F0;
+  --color-border-strong: #CBD5E1;
+  --color-focus: #FF6D29;
+
+  /* Semantic Aliases */
+  --bg-primary: var(--color-bg-primary);
+  --bg-elevated: var(--color-bg-elevated);
+  --bg-panel: var(--color-bg-panel);
+  --bg-warm: var(--color-bg-warm);
+  --bg-card: var(--color-bg-elevated);
+  --bg-modal: var(--color-bg-modal);
+  --bg-input: #FFFFFF;
+  --bg-overlay: var(--color-bg-overlay);
+  --nav-bg: var(--color-nav-bg);
+
+  --text-heading: var(--color-text-heading);
+  --text-primary: var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
+  --text-muted: var(--color-text-muted);
+
+  --border: var(--color-border);
+  --border-strong: var(--color-border-strong);
+  --border-hover: var(--color-brand-primary);
+  --focus-ring: var(--color-focus);
+
+  --primary: var(--color-brand-primary);
+  --primary-hover: var(--color-brand-hover);
+
+  /* Restrained Shadows */
+  --shadow-xs: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.07), 0 2px 4px -2px rgba(15, 23, 42, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.03);
+}
+
+[data-theme="dark"] {
+  /* Dark Theme Surfaces */
+  --color-bg-primary: #0B1120;
+  --color-bg-elevated: #151E2E;
+  --color-bg-panel: #111827;
+  --color-bg-warm: #131D2E;
+  --color-bg-orange-tint: #1C1A22;
+  --color-bg-dark-section: #050811;
+  --color-bg-modal: #151E2E;
+  --color-bg-overlay: rgba(3, 7, 18, 0.85);
+  --color-nav-bg: #151E2E;
+
+  /* Dark Theme Typography */
+  --color-text-heading: #F8FAFC;
+  --color-text-primary: #E2E8F0;
+  --color-text-secondary: #94A3B8;
+  --color-text-muted: #64748B;
+  --color-text-inverse: #0F172A;
+
+  /* Dark Theme Borders */
+  --color-border: #1E293B;
+  --color-border-strong: #334155;
+  --color-focus: #FF6D29;
+
+  /* Semantic Aliases */
+  --bg-primary: var(--color-bg-primary);
+  --bg-elevated: var(--color-bg-elevated);
+  --bg-panel: var(--color-bg-panel);
+  --bg-warm: var(--color-bg-warm);
+  --bg-card: var(--color-bg-elevated);
+  --bg-modal: var(--color-bg-modal);
+  --bg-input: #0F172A;
+  --bg-overlay: var(--color-bg-overlay);
+  --nav-bg: var(--color-nav-bg);
+
+  --text-heading: var(--color-text-heading);
+  --text-primary: var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
+  --text-muted: var(--color-text-muted);
+
+  --border: var(--color-border);
+  --border-strong: var(--color-border-strong);
+  --border-hover: var(--color-brand-primary);
+  --focus-ring: var(--color-focus);
+
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6);
+}
+
+/* ==========================================================================
+   BASE & TYPOGRAPHY RULES
+   ========================================================================== */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-body);
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-weight: var(--weight-regular);
+  line-height: 1.55;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Standard HTML Heading Elements */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  color: var(--color-text-heading);
+  letter-spacing: -0.02em;
+}
+
+h1 {
+  font-size: clamp(36px, 4vw, 48px);
+  font-weight: var(--weight-bold);
+  line-height: 1.17;
+  letter-spacing: -0.025em;
+}
+
+h2 {
+  font-size: clamp(30px, 3vw, 40px);
+  font-weight: var(--weight-bold);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+h3 {
+  font-size: clamp(24px, 2.5vw, 32px);
+  font-weight: var(--weight-semibold);
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+}
+
+h4 {
+  font-size: clamp(20px, 2vw, 24px);
+  font-weight: var(--weight-semibold);
+  line-height: 1.33;
+}
+
+h5 {
+  font-size: 18px;
+  font-weight: var(--weight-semibold);
+  line-height: 1.35;
+}
+
+h6 {
+  font-size: 16px;
+  font-weight: var(--weight-semibold);
+  line-height: 1.4;
+}
+
+p, li, dd {
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--color-text-secondary);
+}
+
+/* ==========================================================================
+   SEMANTIC TYPOGRAPHY HIERARCHY CLASSES
+   ========================================================================== */
+
+/* Display / Hero: Manrope ExtraBold, clamp(44px, 6vw, 64px), line-height: 1.1, 800 */
+.text-display, .hero-heading {
+  font-family: var(--font-heading);
+  font-size: clamp(44px, 6vw, 64px);
+  font-weight: var(--weight-extrabold);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: var(--color-text-heading);
+}
+
+/* H1 / Page Title: Manrope Bold, clamp(36px, 4vw, 48px), line-height: 1.17, 700 */
+.text-page-title, .page-heading {
+  font-family: var(--font-heading);
+  font-size: clamp(36px, 4vw, 48px);
+  font-weight: var(--weight-bold);
+  line-height: 1.17;
+  letter-spacing: -0.025em;
+  color: var(--color-text-heading);
+}
+
+/* H2 / Main Section: Manrope Bold, clamp(30px, 3vw, 40px), line-height: 1.2, 700 */
+.text-section-title, .section-heading {
+  font-family: var(--font-heading);
+  font-size: clamp(30px, 3vw, 40px);
+  font-weight: var(--weight-bold);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--color-text-heading);
+}
+
+/* H3 / Subsection: Manrope SemiBold, clamp(24px, 2.5vw, 32px), line-height: 1.25, 600 */
+.text-subsection-title, .subsection-heading {
+  font-family: var(--font-heading);
+  font-size: clamp(24px, 2.5vw, 32px);
+  font-weight: var(--weight-semibold);
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  color: var(--color-text-heading);
+}
+
+/* H4 / Card Heading: Manrope SemiBold, 20–24px, line-height: 1.33, 600 */
+.text-card-title, .card-heading {
+  font-family: var(--font-heading);
+  font-size: clamp(20px, 2vw, 24px);
+  font-weight: var(--weight-semibold);
+  line-height: 1.33;
+  color: var(--color-text-heading);
+}
+
+/* Body Large: Source Sans 3 Regular, 18px, line-height: 28px, 400 */
+.text-body-large, .body-text-lg {
+  font-family: var(--font-body);
+  font-size: 18px;
+  font-weight: var(--weight-regular);
+  line-height: 28px;
+  color: var(--color-text-secondary);
+}
+
+/* Body: Source Sans 3 Regular, 16px, line-height: 24px, 400 */
+.text-body, .body-text {
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: var(--weight-regular);
+  line-height: 24px;
+  color: var(--color-text-secondary);
+}
+
+/* Secondary Text: Source Sans 3 Regular, 15px, line-height: 22px, 400 */
+.text-secondary, .secondary-text {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: var(--weight-regular);
+  line-height: 22px;
+  color: var(--color-text-secondary);
+}
+
+/* Caption / Metadata: Source Sans 3 Regular, 14px, line-height: 20px, 400 */
+.text-caption, .caption-text, .meta-text {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: var(--weight-regular);
+  line-height: 20px;
+  color: var(--color-text-muted);
+}
+
+/* Button: Manrope SemiBold, 15–16px, line-height: 20–24px, 600 */
+.text-button, .button-font {
+  font-family: var(--font-heading);
+  font-size: 15px;
+  font-weight: var(--weight-semibold);
+  line-height: 22px;
+  letter-spacing: -0.01em;
+}
+
+/* Navigation: Manrope Medium, 15–16px, line-height: 22px, 500 */
+.text-navigation, .nav-text {
+  font-family: var(--font-heading);
+  font-size: 15px;
+  font-weight: var(--weight-medium);
+  line-height: 22px;
+  letter-spacing: -0.01em;
+}
+
+/* Table Header: Manrope SemiBold, 14px, line-height: 20px, 600 */
+.text-table-header, th {
+  font-family: var(--font-heading);
+  font-size: 14px;
+  font-weight: var(--weight-semibold);
+  line-height: 20px;
+}
+
+/* Table Body: Source Sans 3 Regular, 14–15px, line-height: 20–22px, 400 */
+.text-table-body, td {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: var(--weight-regular);
+  line-height: 22px;
+}
+
+/* Monospace Font exclusively for Technical IDs, Code, and Logs */
+.text-technical, .font-mono, .code-ref, .audit-id, .app-ref, .doc-ref {
+  font-family: var(--font-technical) !important;
+  font-feature-settings: "tnum";
+  letter-spacing: -0.02em;
+}
+
+/* ==========================================================================
+   MODULAR SECTION TONES & RHYTHM
+   ========================================================================== */
+
+.section-white {
+  background-color: var(--color-bg-elevated);
+}
+
+.section-warm {
+  background-color: var(--color-bg-warm);
+}
+
+.section-orange-tint {
+  background-color: var(--color-bg-orange-tint);
+}
+
+.section-dark {
+  background-color: var(--color-bg-dark-section);
+  color: #F8FAFC;
+}
+
+.section-dark .section-heading,
+.section-dark .card-heading,
+.section-dark h1,
+.section-dark h2,
+.section-dark h3 {
+  color: #FFFFFF;
+}
+
+.section-dark .body-text,
+.section-dark p {
+  color: #94A3B8;
+}
+
+/* ==========================================================================
+   MODULAR CONTAINER SURFACES & CARDS
+   ========================================================================== */
+
+.modular-card {
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.modular-card:hover {
+  border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-md);
+}
+
+.modular-card-highlight {
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+}
+
+.modular-card-highlight::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background-color: var(--primary);
+}
+
+.modular-card-dark {
+  background-color: #1E293B;
+  border: 1px solid #334155;
+  border-radius: 16px;
+  color: #F8FAFC;
+}
+
+/* Legacy Alias compatibility */
+.spotlight-card, .glass-card, .glass-frame {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* ==========================================================================
+   BUTTONS & ACCESSIBLE CONTROLS
+   ========================================================================== */
+
+.btn-primary {
+  background-color: var(--primary);
+  color: #FFFFFF;
+  font-family: var(--font-heading);
+  font-weight: var(--weight-semibold);
+  font-size: 15px;
+  line-height: 1.2;
+  border-radius: 10px;
+  padding: 10px 20px;
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-hover);
+  color: #FFFFFF;
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
+}
+
+.btn-secondary {
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text-heading);
+  font-family: var(--font-heading);
+  font-weight: var(--weight-semibold);
+  font-size: 15px;
+  line-height: 1.2;
+  border-radius: 10px;
+  padding: 10px 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+.btn-secondary:hover {
+  background-color: var(--color-bg-panel);
+  border-color: var(--color-text-secondary);
+}
+
+.btn-secondary:active {
+  transform: scale(0.98);
+}
+
+.btn-ghost {
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  font-family: var(--font-heading);
+  font-weight: var(--weight-semibold);
+  font-size: 15px;
+  line-height: 1.2;
+  border-radius: 10px;
+  padding: 8px 16px;
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.btn-ghost:hover {
+  color: var(--color-text-heading);
+  background-color: var(--color-bg-panel);
+}
+
+/* Form Inputs */
+.input-field {
+  background-color: var(--bg-input);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+  font-family: var(--font-primary);
+  font-size: 15px;
+  border-radius: 10px;
+  padding: 10px 14px;
+  width: 100%;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.input-field:focus {
+  border-color: var(--color-focus);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 109, 41, 0.15);
+}
+
+/* Accessible Focus Outlines */
+*:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* Skip to Content Accessibility Link */
+.skip-to-content {
+  position: absolute;
+  top: -100px;
+  left: 16px;
+  background-color: var(--primary);
+  color: #FFFFFF;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 10px 18px;
+  border-radius: 8px;
+  z-index: 99999;
+  text-decoration: none;
+  box-shadow: var(--shadow-lg);
+  transition: top 0.2s ease;
+}
+
+.skip-to-content:focus {
+  top: 16px;
+}
+
+/* Navigation Pill Container */
+.nav-pill-container {
+  background-color: var(--color-nav-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Skeleton Loading State */
+.skeleton {
+  background: linear-gradient(90deg, var(--color-bg-panel) 25%, var(--color-border) 50%, var(--color-bg-panel) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s infinite;
+  border-radius: 8px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.25s ease-out forwards;
+}
+
+/* Print Styles */
+@media print {
+  .no-print, aside, header, nav, footer {
+    display: none !important;
+  }
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}
+
+/* Accessible Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

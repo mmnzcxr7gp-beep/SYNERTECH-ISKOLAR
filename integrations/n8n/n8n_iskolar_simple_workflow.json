@@ -1,0 +1,80 @@
+{
+  "name": "ISKOLAR - Student & Provider Automated Events (Zero Credentials Needed)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "iskolar-events",
+        "options": {}
+      },
+      "name": "ISKOLAR Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "webhookId": "iskolar-events-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.body.event_type }}",
+              "value2": "student_accepted"
+            }
+          ]
+        }
+      },
+      "name": "Is Student Accepted?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        500,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"SUCCESS\",\n  \"event_received\": \"{{ $json.body.event_type }}\",\n  \"student\": \"{{ $json.body.data.student_name }}\",\n  \"email\": \"{{ $json.body.data.email }}\",\n  \"message\": \"Student acceptance processed by n8n!\"\n}",
+        "options": {}
+      },
+      "name": "Respond to ISKOLAR System",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        750,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "ISKOLAR Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Is Student Accepted?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Student Accepted?": {
+      "main": [
+        [
+          {
+            "node": "Respond to ISKOLAR System",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

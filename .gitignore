@@ -26,3 +26,5 @@ yarn-debug.log*
 # User & Storage Uploads
 uploads/
 cleanup_quarantine/
+.cleanup-quarantine/
+tools/

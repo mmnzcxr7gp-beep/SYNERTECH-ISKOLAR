@@ -1,0 +1,133 @@
+{
+  "name": "ISKOLAR - Student & Provider Automated Email Workflows",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "iskolar-events",
+        "options": {}
+      },
+      "name": "ISKOLAR Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "webhookId": "iskolar-events-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.body.event_type }}",
+              "value2": "student_accepted"
+            }
+          ]
+        }
+      },
+      "name": "Is Student Accepted?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        500,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.body.event_type }}",
+              "value2": "student_rejected"
+            }
+          ]
+        }
+      },
+      "name": "Is Student Rejected?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        500,
+        450
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@iskolar.ph",
+        "toEmail": "={{ $json.body.data.email }}",
+        "subject": "=🎉 CONGRATULATIONS! You have been accepted for \"{{ $json.body.data.scholarship_title }}\"",
+        "html": "=<div style=\"font-family: Arial, sans-serif; padding: 24px; background: #0D1E3B; color: #FFFFFF; border-radius: 16px;\"><h2>Congratulations {{ $json.body.data.student_name }}!</h2><p>Your application for <strong>{{ $json.body.data.scholarship_title }}</strong> has been officially APPROVED!</p><p>Grant Amount: ₱{{ $json.body.data.max_amount }}</p><p>Open your ISKOLAR mobile app to accept your award.</p></div>",
+        "options": {}
+      },
+      "name": "Send Student Accepted Email (SMTP/SendGrid)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        750,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@iskolar.ph",
+        "toEmail": "={{ $json.body.data.email }}",
+        "subject": "=Application Update for \"{{ $json.body.data.scholarship_title }}\" - ISKOLAR",
+        "html": "=<div style=\"font-family: Arial, sans-serif; padding: 24px; background: #0D1E3B; color: #FFFFFF; border-radius: 16px;\"><h2>Application Status Update</h2><p>Dear {{ $json.body.data.student_name }},</p><p>Your application for {{ $json.body.data.scholarship_title }} was not selected for this cycle.</p><p>Reason: {{ $json.body.data.reason }}</p></div>",
+        "options": {}
+      },
+      "name": "Send Student Rejected Email (SMTP/SendGrid)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        750,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "ISKOLAR Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Is Student Accepted?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Is Student Rejected?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Student Accepted?": {
+      "main": [
+        [
+          {
+            "node": "Send Student Accepted Email (SMTP/SendGrid)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Student Rejected?": {
+      "main": [
+        [
+          {
+            "node": "Send Student Rejected Email (SMTP/SendGrid)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

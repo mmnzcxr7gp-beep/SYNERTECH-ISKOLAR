@@ -1,0 +1,18 @@
+# This file configures the analyzer, which statically analyzes Dart code to
+# check for errors, warnings, and lints.
+#
+# The issues identified by the analyzer are surfaced in the UI of Dart-enabled
+# IDEs (such as VS Code, IntelliJ IDEA, and Android Studio).
+
+analyzer:
+  exclude:
+    - windows/**
+    - build/**
+    - .dart_tool/**
+
+# Linter rules configure coding style recommendations
+linter:
+  rules:
+    - avoid_print
+    - prefer_const_constructors
+    - prefer_const_declarations
