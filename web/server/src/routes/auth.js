@@ -171,7 +171,9 @@ router.post(
 // Student Profile Routes
 // Student verification: accept up to 6 verification documents (IDs, selfie, COR, etc.)
 router.post('/student/verify', authMiddleware, upload.array('verification_documents', 6), submitVerification);
-router.put('/student/profile', authMiddleware, upload.single('profilePicture'), updateStudentProfile);
+router.put(['/student/profile', '/profile'], authMiddleware, upload.single('profilePicture'), updateStudentProfile);
+router.post(['/student/profile', '/profile'], authMiddleware, upload.single('profilePicture'), updateStudentProfile);
+router.patch(['/student/profile', '/profile'], authMiddleware, upload.single('profilePicture'), updateStudentProfile);
 
 router.post('/logout', authMiddleware, logout);
 

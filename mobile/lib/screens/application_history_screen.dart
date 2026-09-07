@@ -160,9 +160,10 @@ class _ApplicationHistoryScreenState extends State<ApplicationHistoryScreen> {
                                       ? Icons.cancel_rounded
                                       : Icons.hourglass_top_rounded;
 
-                              return Material(
-                                color: Colors.transparent,
-                                child: InkWell(
+                              return RepaintBoundary(
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
                                   borderRadius: BorderRadius.circular(20),
                                   onTap: () {
                                     Navigator.push(
@@ -235,10 +236,11 @@ class _ApplicationHistoryScreenState extends State<ApplicationHistoryScreen> {
                                     ),
                                   ),
                                 ),
-                              );
-                            },
-                          ),
+                              ),
+                            );
+                          },
                         ),
+                      ),
                         const SizedBox(height: 12),
 
                         // ─── PAGINATION INDICATOR (REF SCREEN #8) ─────────────

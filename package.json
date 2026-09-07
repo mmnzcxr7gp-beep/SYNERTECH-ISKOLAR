@@ -1,10 +1,17 @@
 {
   "name": "iskolar-monorepo",
   "private": true,
+  "engines": {
+    "node": ">=24.0.0 <25.0.0"
+  },
   "scripts": {
-    "server": "cross-env PORT=4000 npm --prefix backend run dev",
-    "client": "npm --prefix iskolar_admin_web run dev",
-    "dev": "concurrently \"npm:server\" \"npm:client\""
+    "server": "npm --prefix web/server start",
+    "server:dev": "npm --prefix web/server run dev",
+    "client": "npm --prefix web/client run dev",
+    "client:build": "npm --prefix web/client run build",
+    "dev": "concurrently \"npm:server:dev\" \"npm:client\"",
+    "test:server": "npm --prefix web/server test",
+    "test:mobile": "cd mobile && flutter test"
   },
   "devDependencies": {
     "concurrently": "^8.0.1",

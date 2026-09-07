@@ -279,6 +279,7 @@ const buildApp = () => {
 
   // Mount routes
   app.use('/api/auth', authRoutes);
+  app.use('/api/student', authRoutes);
   app.use('/api/scholarships', scholarshipRoutes);
   app.use('/api/applications', applicationRoutes);
   app.use('/api/verification', verificationRoutes);
@@ -301,6 +302,7 @@ const buildApp = () => {
 
   // Versioned v1 route aliases
   app.use('/api/v1/auth', authRoutes);
+  app.use('/api/v1/student', authRoutes);
   app.use('/api/v1/profiles', authRoutes);
   app.use('/api/v1/scholarships', scholarshipRoutes);
   app.use('/api/v1/applications', applicationRoutes);

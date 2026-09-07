@@ -181,10 +181,10 @@ class AppTypography {
   }
 
   /// Technical / Monospace for IDs and Timestamps
-  static TextStyle technical({Color? color}) {
+  static TextStyle technical({Color? color, double? fontSize}) {
     return TextStyle(
       fontFamily: 'monospace',
-      fontSize: 13,
+      fontSize: fontSize ?? 13,
       fontWeight: FontWeight.w400,
       height: 18 / 13,
       color: color ?? AppColors.textMuted,

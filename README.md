@@ -1,7 +1,13 @@
-# SYNERTECH ISKOLAR - Scholarship Management System
+# ISKOLAR - Scholarship Management System
+
+ISKOLAR is designed for Filipino college students seeking accessible scholarship opportunities. It helps students discover scholarships, submit applications, manage requirements, and track their application progress in one convenient platform.
+
+**Created, designed, developed, and sponsored by Sam Irian Villaluna and SYNERTECH.**
+
+---
 
 ## Platform Overview
-**SYNERTECH ISKOLAR** is a centralized scholarship application and management system. It connects student applicants with scholarship sponsors and administrators through a unified, real-time platform.
+**ISKOLAR** is a centralized scholarship application and management system. It connects student applicants with scholarship sponsors and administrators through a unified, real-time platform.
 
 ## Architectural Role Separation
 - **Flutter Mobile Application (`isko-mobile`)**: Exclusively for **Students**.

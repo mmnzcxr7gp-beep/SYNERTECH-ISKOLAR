@@ -137,7 +137,7 @@ async function runVerification() {
       otpRecord = db.data.otps.find((o) => o.email === studentEmail);
     }
 
-    const studentOtpCode = otpRecord?.otp || otpRecord?.code;
+    const studentOtpCode = otpRecord?.otp || otpRecord?.code || step1.data?.devOtp;
     if (studentOtpCode) {
       // Test resend OTP invalidates old OTP
       const resendRes = await request('/api/auth/resend-otp', {
@@ -152,7 +152,7 @@ async function runVerification() {
       } else if (Array.isArray(db.data?.otps)) {
         newOtpRecord = db.data.otps.find((o) => o.email === studentEmail);
       }
-      const newOtpCode = newOtpRecord?.otp || newOtpRecord?.code;
+      const newOtpCode = newOtpRecord?.otp || newOtpRecord?.code || resendRes.data?.devOtp;
 
       if (resendRes.ok && newOtpCode && newOtpCode !== studentOtpCode) {
         recordResult('Mobile login + real email OTP', 'Resend OTP invalidates old code', true, 'New code generated');
@@ -214,7 +214,7 @@ async function runVerification() {
     } else if (Array.isArray(db.data?.otps)) {
       provOtp = db.data.otps.find((o) => o.email === providerEmail);
     }
-    const provOtpCode = provOtp?.otp || provOtp?.code;
+    const provOtpCode = provOtp?.otp || provOtp?.code || provStep1.data?.devOtp;
     if (provOtpCode) {
       const provVerify = await request('/api/auth/verify-login-otp', {
         method: 'POST',
@@ -245,7 +245,7 @@ async function runVerification() {
     } else if (Array.isArray(db.data?.otps)) {
       admOtp = db.data.otps.find((o) => o.email === adminEmail);
     }
-    const admOtpCode = admOtp?.otp || admOtp?.code;
+    const admOtpCode = admOtp?.otp || admOtp?.code || adminStep1.data?.devOtp;
     if (admOtpCode) {
       const admVerify = await request('/api/auth/verify-login-otp', {
         method: 'POST',

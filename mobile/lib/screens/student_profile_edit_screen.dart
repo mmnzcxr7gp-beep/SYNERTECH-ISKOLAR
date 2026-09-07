@@ -89,6 +89,7 @@ class _StudentProfileEditScreenState extends State<StudentProfileEditScreen> {
         school: _schoolController.text.trim(),
         course: _courseController.text.trim(),
         yearLevel: _yearLevelController.text.trim(),
+        achievements: _achievementsController.text.trim(),
         profilePicture: profilePic,
       );
 

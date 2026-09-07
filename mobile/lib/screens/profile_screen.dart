@@ -270,6 +270,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                                           ? user.profilePicture
                                           : '${AppConstants.backendBaseUrl}${user.profilePicture}',
                                       key: ValueKey(user.profilePicture),
+                                      cacheWidth: 168,
+                                      cacheHeight: 168,
                                       fit: BoxFit.cover,
                                       errorBuilder: (_, __, ___) => _buildInitialAvatar(context, user),
                                     )

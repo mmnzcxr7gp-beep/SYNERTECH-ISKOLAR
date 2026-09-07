@@ -27,6 +27,7 @@ class _MfaVerificationScreenState extends State<MfaVerificationScreen> {
   final _focusNodes = List.generate(6, (_) => FocusNode());
 
   bool _isLoading = false;
+  bool _isResending = false;
   int _secondsRemaining = 300; // 5 minutes
   late Timer _timer;
 
@@ -134,6 +135,36 @@ class _MfaVerificationScreenState extends State<MfaVerificationScreen> {
     }
   }
 
+  Future<void> _resendOTP() async {
+    setState(() => _isResending = true);
+    try {
+      await AuthService.resendOtp(widget.email);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('A new 6-digit verification code has been sent to your email.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      for (var controller in _otpControllers) {
+        controller.clear();
+      }
+      _timer.cancel();
+      _secondsRemaining = 300;
+      _startTimer();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isResending = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -224,6 +255,20 @@ class _MfaVerificationScreenState extends State<MfaVerificationScreen> {
                 isLoading: _isLoading,
                 disabled: _isLoading || _secondsRemaining <= 0,
                 onPressed: _verifyOTP,
+              ),
+              const SizedBox(height: 16),
+              Center(
+                child: TextButton(
+                  onPressed: _isResending || _isLoading ? null : _resendOTP,
+                  child: Text(
+                    _isResending ? 'Resending Code...' : 'Resend Code',
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),

@@ -264,9 +264,10 @@ class _ScholarshipCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
+    return RepaintBoundary(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: () {
           Navigator.of(context).push(
@@ -390,8 +391,9 @@ class _ScholarshipCard extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 class _StatusChip extends StatelessWidget {

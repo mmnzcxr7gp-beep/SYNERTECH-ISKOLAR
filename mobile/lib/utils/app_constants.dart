@@ -10,12 +10,26 @@ class AppConstants {
 
   static String _buildBackendUrl() {
     const envUrl = String.fromEnvironment('BACKEND_BASE_URL');
+
+    // Production release guard: Release builds MUST NEVER contain or default to 10.0.2.2 or localhost
+    if (kReleaseMode) {
+      final releaseUrl = envUrl.isNotEmpty ? envUrl : 'https://iskolar-api.onrender.com/api';
+      if (releaseUrl.contains('10.0.2.2') ||
+          releaseUrl.contains('localhost') ||
+          releaseUrl.contains('127.0.0.1')) {
+        throw StateError(
+          'RELEASE BUILD CONFIGURATION ERROR: Release application cannot target emulator or local host ("$releaseUrl"). '
+          'Provide a valid deployed HTTPS backend via --dart-define=BACKEND_BASE_URL=https://your-api.onrender.com/api',
+        );
+      }
+      return releaseUrl;
+    }
+
     if (envUrl.isNotEmpty) {
       return envUrl;
     }
 
-    // Flutter web must default to the deployed backend.
-    // If BACKEND_BASE_URL is not provided at build/runtime, fall back to Vercel backend.
+    // Flutter web development fallback
     if (kIsWeb) {
       return 'http://localhost:4000/api';
     }

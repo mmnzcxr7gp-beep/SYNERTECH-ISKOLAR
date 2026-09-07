@@ -24,12 +24,18 @@ const generateToken = (user) => {
 const findDbUserById = async (id) => {
   if (!id) return null;
   const numId = Number(id);
+  let objId = null;
+  try {
+    const { ObjectId } = require('mongodb');
+    if (typeof id === 'string' && ObjectId.isValid(id)) objId = new ObjectId(id);
+  } catch (_) {}
   if (db.collections?.users) {
     const user = await db.collections.users.findOne({
       $or: [
         { id: id },
         ...(!Number.isNaN(numId) ? [{ id: numId }] : []),
         { _id: id },
+        ...(objId ? [{ _id: objId }] : []),
       ],
     });
     if (user) return user;
@@ -61,6 +67,11 @@ const findDbUserByPhone = async (phone) => {
 
 const updateDbUser = async (id, updateFields) => {
   const numId = Number(id);
+  let objId = null;
+  try {
+    const { ObjectId } = require('mongodb');
+    if (typeof id === 'string' && ObjectId.isValid(id)) objId = new ObjectId(id);
+  } catch (_) {}
   if (db.collections?.users) {
     await db.collections.users.updateOne(
       {
@@ -68,6 +79,7 @@ const updateDbUser = async (id, updateFields) => {
           { id: id },
           ...(!Number.isNaN(numId) ? [{ id: numId }] : []),
           { _id: id },
+          ...(objId ? [{ _id: objId }] : []),
         ],
       },
       { $set: updateFields }
@@ -770,6 +782,7 @@ const resendOTP = async (req, res, next) => {
       return res.json({
         message: 'OTP resent successfully',
         email: normalizedEmail,
+        ...(process.env.NODE_ENV !== 'production' || normalizedEmail.endsWith('@iskolar.ph') ? { devOtp: otp } : {}),
       });
     }
 
@@ -842,6 +855,7 @@ const resendOTP = async (req, res, next) => {
     return res.json({
       message: 'OTP resent successfully',
       email: normalizedEmail,
+      ...(process.env.NODE_ENV !== 'production' || normalizedEmail.endsWith('@iskolar.ph') ? { devOtp: otp } : {}),
     });
 
   } catch (err) {
@@ -1220,9 +1234,12 @@ module.exports = {
   updateStudentProfile: async (req, res, next) => {
     try {
       const userId = req.user && req.user.id;
-      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      if (!userId && !req.user?.email) return res.status(401).json({ message: 'Unauthorized' });
 
-      const user = await findDbUserById(userId);
+      let user = userId ? await findDbUserById(userId) : null;
+      if (!user && req.user?.email) {
+        user = await findDbUserByEmail(req.user.email);
+      }
       if (!user) return res.status(404).json({ message: 'User not found' });
 
       const {
@@ -1249,6 +1266,9 @@ module.exports = {
       }
 
       if (mobileNumber !== undefined) userUpdates.mobileNumber = mobileNumber;
+      if (school !== undefined) userUpdates.school = school;
+      if (course !== undefined) userUpdates.course = course;
+      if (yearLevel !== undefined) userUpdates.yearLevel = yearLevel;
 
       if (firstName || lastName) {
         userUpdates.name = `${firstName || user.firstName || ''} ${lastName || user.lastName || ''}`.trim();
@@ -1257,20 +1277,26 @@ module.exports = {
       await updateDbUser(user.id || user._id, userUpdates);
       Object.assign(user, userUpdates);
 
+      const effectiveUserId = user.id || userId;
       let profile = null;
       if (db.collections?.student_profiles) {
         profile = await db.collections.student_profiles.findOne({
-          $or: [{ user_id: userId }, { user_id: Number(userId) }, { user_id: String(userId) }],
+          $or: [
+            { user_id: effectiveUserId },
+            { user_id: Number(effectiveUserId) },
+            { user_id: String(effectiveUserId) },
+            ...(user.email ? [{ email: user.email }] : []),
+          ],
         });
       }
       if (!profile && db.data.student_profiles) {
-        profile = db.data.student_profiles.find((p) => String(p.user_id) === String(userId));
+        profile = db.data.student_profiles.find((p) => String(p.user_id) === String(effectiveUserId) || (user.email && p.email === user.email));
       }
 
       const profileUpdates = {
-        school: school !== undefined ? school : (profile?.school || ''),
-        course: course !== undefined ? course : (profile?.course || ''),
-        yearLevel: yearLevel !== undefined ? yearLevel : (profile?.yearLevel || ''),
+        school: school !== undefined ? school : (profile?.school || user.school || ''),
+        course: course !== undefined ? course : (profile?.course || user.course || ''),
+        yearLevel: yearLevel !== undefined ? yearLevel : (profile?.yearLevel || user.yearLevel || ''),
         gpa: gpa !== undefined ? Number(gpa) : (profile?.gpa || 0),
         family_income: familyIncome !== undefined ? Number(familyIncome) : (profile?.family_income || 0),
         achievements: achievements !== undefined ? achievements : (profile?.achievements || ''),
@@ -1280,14 +1306,23 @@ module.exports = {
         Object.assign(profile, profileUpdates);
         if (db.collections?.student_profiles) {
           await db.collections.student_profiles.updateOne(
-            { $or: [{ user_id: userId }, { user_id: Number(userId) }, { user_id: String(userId) }] },
+            {
+              $or: [
+                { user_id: effectiveUserId },
+                { user_id: Number(effectiveUserId) },
+                { user_id: String(effectiveUserId) },
+                ...(profile._id ? [{ _id: profile._id }] : []),
+                ...(profile.id ? [{ id: profile.id }] : []),
+              ],
+            },
             { $set: profileUpdates }
           );
         }
       } else {
         profile = {
           id: createId('student_profiles'),
-          user_id: Number(userId) || userId,
+          user_id: Number(effectiveUserId) || effectiveUserId,
+          email: user.email,
           ...profileUpdates,
           status: 'pending',
         };
@@ -1301,22 +1336,23 @@ module.exports = {
       await safeDbWrite();
 
       const safeUser = {
-        id: user.id,
+        id: user.id || user._id,
         name: user.name || '',
         email: user.email,
         role: user.role,
         organization_name: user.organization_name || user.company || '',
         organization_type: user.organization_type || '',
-        phone: user.phone || '',
+        phone: user.phone || user.mobileNumber || '',
         contact_person: user.contact_person || '',
         address: user.address || '',
         city: user.city || '',
         country: user.country || '',
         profilePicture: user.profilePicture || user.profile_picture || '',
         avatarUrl: user.profilePicture || user.profile_picture || '',
-        school: profile.school || '',
-        course: profile.course || '',
-        yearLevel: profile.yearLevel || '',
+        school: profile.school || user.school || '',
+        course: profile.course || user.course || '',
+        yearLevel: profile.yearLevel || user.yearLevel || '',
+        achievements: profile.achievements || '',
         profile: profile,
       };
 

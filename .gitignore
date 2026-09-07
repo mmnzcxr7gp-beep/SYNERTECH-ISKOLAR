@@ -7,8 +7,13 @@ node_modules/
 *.env
 *.pem
 *.key
+*.jks
+*.keystore
+key.properties
+**/key.properties
 firebase-credentials.json
 service-account.json
+
 
 # Build Outputs
 dist/

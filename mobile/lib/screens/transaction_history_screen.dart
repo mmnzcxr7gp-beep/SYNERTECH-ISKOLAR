@@ -120,7 +120,9 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                                 itemCount: _transactions.length,
                                 itemBuilder: (context, index) {
                                   final transaction = _transactions[index];
-                                  return _buildTransactionTile(transaction);
+                                  return RepaintBoundary(
+                                    child: _buildTransactionTile(transaction),
+                                  );
                                 },
                               ),
                   ),

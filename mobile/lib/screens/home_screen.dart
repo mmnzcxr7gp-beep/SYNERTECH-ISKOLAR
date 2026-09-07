@@ -4,6 +4,7 @@ import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import '../services/verification_service.dart';
 import '../utils/app_colors.dart';
+import '../utils/app_constants.dart';
 import '../widgets/verification_badge.dart';
 import '../widgets/verification_status_widget.dart';
 import 'student_identity_verification_screen.dart';
@@ -225,44 +226,49 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(height: 20),
 
                       // ─── 2. USER GREETING & PROFILE HERO CARD ────────────────────
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF141118),
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0x33000000),
-                              blurRadius: 20,
-                              offset: Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          children: [
-                            Row(
-                              children: [
-                                if (_currentUser.profilePicture.isNotEmpty)
-                                  Container(
-                                    width: 60,
-                                    height: 60,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      border: Border.all(color: AppColors.primaryOrange, width: 2),
-                                    ),
-                                    child: ClipOval(
-                                      child: Image.network(
-                                        '${_currentUser.profilePicture}?v=${DateTime.now().millisecondsSinceEpoch}',
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => _buildAvatarCircle(firstName),
+                      RepaintBoundary(
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF141118),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x33000000),
+                                blurRadius: 20,
+                                offset: Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              Row(
+                                children: [
+                                  if (_currentUser.profilePicture.isNotEmpty)
+                                    Container(
+                                      width: 60,
+                                      height: 60,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: AppColors.primaryOrange, width: 2),
                                       ),
-                                    ),
-                                  )
-                                else
-                                  _buildAvatarCircle(firstName),
-                                const SizedBox(width: 16),
+                                      child: ClipOval(
+                                        child: Image.network(
+                                          _currentUser.profilePicture.startsWith('http')
+                                              ? _currentUser.profilePicture
+                                              : '${AppConstants.backendBaseUrl}${_currentUser.profilePicture}',
+                                          cacheWidth: 120,
+                                          cacheHeight: 120,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) => _buildAvatarCircle(firstName),
+                                        ),
+                                      ),
+                                    )
+                                  else
+                                    _buildAvatarCircle(firstName),
+                                  const SizedBox(width: 16),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -317,6 +323,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ],
                         ),
                       ),
+                    ),
 
                       const SizedBox(height: 22),
 

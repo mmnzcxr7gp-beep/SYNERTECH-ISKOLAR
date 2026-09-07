@@ -1,0 +1,11 @@
+# Android Release Keystore Configuration Template
+# Copy this file to mobile/android/key.properties and fill in your production credentials:
+# DO NOT commit the actual key.properties or .jks file to source control.
+#
+# Generate keystore command:
+# keytool -genkey -v -keystore app/upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+#
+storePassword=YourKeystorePasswordHere
+keyPassword=YourKeyPasswordHere
+keyAlias=upload
+storeFile=upload-keystore.jks

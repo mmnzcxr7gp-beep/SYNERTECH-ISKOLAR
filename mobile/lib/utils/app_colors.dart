@@ -85,6 +85,15 @@ class AppColors {
   static const Color warmBlack = Color(0xFF191C1F);
 
   /// Subtle Gradients
+  static const LinearGradient primaryGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      Color(0xFFE85D04),
+      Color(0xFFF97316),
+    ],
+  );
+
   static const LinearGradient liquidHeroGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,

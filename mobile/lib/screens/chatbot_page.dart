@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../services/api_service.dart';
 import '../utils/app_colors.dart';
 
 class ChatbotPage extends StatefulWidget {
@@ -38,18 +39,47 @@ class _ChatbotPageState extends State<ChatbotPage> {
       _controller.clear();
     });
 
-    // Placeholder assistant response (wire to backend/socket later).
-    await Future.delayed(const Duration(milliseconds: 650));
+    String reply;
+    try {
+      final res = await ApiService.post(
+        '/chatbot/query',
+        body: {'query': text},
+        timeout: const Duration(seconds: 8),
+      );
+      if (res['answer'] != null) {
+        reply = res['answer'].toString();
+      } else {
+        reply = _fallbackReply(text);
+      }
+    } catch (_) {
+      reply = _fallbackReply(text);
+    }
 
     if (!mounted) return;
     setState(() {
       _messages.add(_ChatMessage(
         from: MessageFrom.assistant,
-        text:
-            'Got it. I can help you find scholarships and explain requirements. (Demo response)',
+        text: reply,
       ));
       _isSending = false;
     });
+  }
+
+  String _fallbackReply(String text) {
+    final lower = text.toLowerCase();
+    if (lower.contains('gwa') || lower.contains('gpa') || lower.contains('grade')) {
+      return 'GWA/GPA requirements are set by individual scholarship providers. Typically, merit programs require a GWA of 1.75 or higher, while assistance grants require passing marks.';
+    }
+    if (lower.contains('document') || lower.contains('requirement') || lower.contains('cor') || lower.contains('cog')) {
+      return 'Common requirements include: Certificate of Registration (COR), Certificate of Grades (COG), Valid Student ID, and Proof of Income / Indigency.';
+    }
+    if (lower.contains('scholarship') || lower.contains('available') || lower.contains('open')) {
+      return 'You can view and apply for all active scholarship opportunities in the Browse tab.';
+    }
+    if (lower.contains('ocr') || lower.contains('scan')) {
+      return 'ISKOLAR automated OCR assists by extracting key details from your uploaded documents. You can review and confirm the extracted values before submission.';
+    }
+    return 'I can answer questions regarding open scholarships, document requirements, GWA criteria, and the application process.';
   }
 
   @override

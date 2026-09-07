@@ -238,6 +238,7 @@ class ApiService {
   ///   - A `Map` with `bytes` (Uint8List) and `filename` keys (for web)
   static Future<Map<String, dynamic>> multipartUpload(
     String path, {
+    String method = 'POST',
     Map<String, String> fields = const {},
     Map<String, dynamic> filePaths = const {},
     String? token,
@@ -245,9 +246,9 @@ class ApiService {
   }) async {
     try {
       final uri = _uri(path);
-      debugPrint('[ApiService.multipartUpload] $uri');
+      debugPrint('[ApiService.multipartUpload] $method $uri');
 
-      final request = http.MultipartRequest('POST', uri);
+      final request = http.MultipartRequest(method, uri);
 
       // Auth header
       if (token != null && token.isNotEmpty) {
@@ -310,7 +311,12 @@ class ApiService {
         decoded = {'data': parsed};
       }
     } catch (_) {
-      decoded = {'rawBody': body};
+      String? htmlError;
+      final preMatch = RegExp(r'<pre>(.*?)</pre>', caseSensitive: false, dotAll: true).firstMatch(body);
+      if (preMatch != null) {
+        htmlError = preMatch.group(1)?.trim();
+      }
+      decoded = {'rawBody': body, if (htmlError != null) 'message': htmlError};
     }
 
     if (statusCode >= 200 && statusCode < 300) {

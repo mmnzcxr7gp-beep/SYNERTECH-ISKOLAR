@@ -85,6 +85,14 @@ class AuthService {
     return authResponse;
   }
 
+  /// Resend OTP to user's email
+  static Future<Map<String, dynamic>> resendOtp(String email) async {
+    return await ApiService.post(
+      '/auth/resend-otp',
+      body: {'email': email},
+    );
+  }
+
   // ─── Logout ───────────────────────────────────────────────────────────────
 
   /// Clear all saved session data.
@@ -197,6 +205,7 @@ class AuthService {
     String? school,
     String? course,
     String? yearLevel,
+    String? achievements,
     String? mobileNumber,
     dynamic profilePicture,
   }) async {
@@ -209,10 +218,12 @@ class AuthService {
       if (school != null) fields['school'] = school;
       if (course != null) fields['course'] = course;
       if (yearLevel != null) fields['yearLevel'] = yearLevel;
+      if (achievements != null) fields['achievements'] = achievements;
       if (mobileNumber != null) fields['mobileNumber'] = mobileNumber;
 
       final response = await ApiService.multipartUpload(
         '/auth/student/profile',
+        method: 'PUT',
         fields: fields,
         filePaths: {'profilePicture': profilePicture},
         token: token,
@@ -232,6 +243,7 @@ class AuthService {
     if (school != null) body['school'] = school;
     if (course != null) body['course'] = course;
     if (yearLevel != null) body['yearLevel'] = yearLevel;
+    if (achievements != null) body['achievements'] = achievements;
     if (mobileNumber != null) body['mobileNumber'] = mobileNumber;
 
     final response = await ApiService.put(

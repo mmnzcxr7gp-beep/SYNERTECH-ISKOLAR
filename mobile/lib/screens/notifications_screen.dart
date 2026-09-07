@@ -126,52 +126,54 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             final isRead = notif['read'] == true;
                             final type = notif['type'] as String? ?? 'general';
 
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              color: isRead ? AppColors.surface.withValues(alpha: 0.5) : AppColors.surface,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                side: BorderSide(
-                                  color: isRead ? Colors.transparent : AppColors.primary.withValues(alpha: 0.3),
-                                ),
-                              ),
-                              child: ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: _getColor(type).withValues(alpha: 0.12),
-                                  child: Icon(_getIcon(type), color: _getColor(type)),
-                                ),
-                                title: Text(
-                                  notif['title'] as String? ?? 'Notification',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
+                            return RepaintBoundary(
+                              child: Card(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                color: isRead ? AppColors.surface.withValues(alpha: 0.5) : AppColors.surface,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  side: BorderSide(
+                                    color: isRead ? Colors.transparent : AppColors.primary.withValues(alpha: 0.3),
                                   ),
                                 ),
-                                subtitle: Padding(
-                                  padding: const EdgeInsets.only(top: 4),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        notif['message'] as String? ?? '',
-                                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        notif['createdAt'] != null
-                                            ? DateTime.parse(notif['createdAt']).toLocal().toString().substring(0, 16)
-                                            : '',
-                                        style: const TextStyle(color: Colors.white30, fontSize: 10),
-                                      ),
-                                    ],
+                                child: ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundColor: _getColor(type).withValues(alpha: 0.12),
+                                    child: Icon(_getIcon(type), color: _getColor(type)),
                                   ),
+                                  title: Text(
+                                    notif['title'] as String? ?? 'Notification',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
+                                    ),
+                                  ),
+                                  subtitle: Padding(
+                                    padding: const EdgeInsets.only(top: 4),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          notif['message'] as String? ?? '',
+                                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          notif['createdAt'] != null
+                                              ? DateTime.parse(notif['createdAt']).toLocal().toString().substring(0, 16)
+                                              : '',
+                                          style: const TextStyle(color: Colors.white30, fontSize: 10),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  trailing: !isRead
+                                      ? IconButton(
+                                          icon: const Icon(Icons.mark_chat_read_outlined, size: 20, color: AppColors.primary),
+                                          onPressed: () => _markRead(notif['_id'] as String),
+                                        )
+                                      : null,
                                 ),
-                                trailing: !isRead
-                                    ? IconButton(
-                                        icon: const Icon(Icons.mark_chat_read_outlined, size: 20, color: AppColors.primary),
-                                        onPressed: () => _markRead(notif['_id'] as String),
-                                      )
-                                    : null,
                               ),
                             );
                           },

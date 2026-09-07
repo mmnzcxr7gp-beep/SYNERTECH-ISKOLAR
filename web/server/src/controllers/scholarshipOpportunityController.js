@@ -308,6 +308,11 @@ const browseOpportunities = async (req, res, next) => {
       total = await ScholarshipOpportunity.countDocuments(query);
     }
 
+    if (opportunities.length === 0) {
+      const { browseScholarships } = require('./scholarshipController');
+      return browseScholarships(req, res, next);
+    }
+
     // Map to the JSON shape expected by the Flutter app's Scholarship.fromJson
     const mapped = await Promise.all(
       opportunities.map(async (opp) => {
@@ -394,7 +399,8 @@ const getOpportunityById = async (req, res, next) => {
       opportunity = await ScholarshipOpportunity.findById(id);
     }
     if (!opportunity) {
-      return res.status(404).json({ message: 'Scholarship opportunity not found' });
+      const { getScholarshipById } = require('./scholarshipController');
+      return getScholarshipById(req, res, next);
     }
 
     // Get requirements
@@ -426,7 +432,8 @@ const getOpportunityDetails = async (req, res, next) => {
       opportunity = await ScholarshipOpportunity.findById(id);
     }
     if (!opportunity) {
-      return res.status(404).json({ message: 'Scholarship opportunity not found' });
+      const { getScholarshipDetails } = require('./scholarshipController');
+      return getScholarshipDetails(req, res, next);
     }
 
     if (opportunity.status !== 'Open') {

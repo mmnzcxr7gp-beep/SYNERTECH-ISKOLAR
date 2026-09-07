@@ -50,18 +50,29 @@ const getScholarshipById = async (req, res, next) => {
   try {
     const targetIdStr = String(req.params.id);
     let scholarship = null;
+    let objId = null;
+    try {
+      const { ObjectId } = require('mongodb');
+      if (ObjectId.isValid(targetIdStr)) objId = new ObjectId(targetIdStr);
+    } catch (_) {}
     if (db.collections?.scholarships) {
       scholarship = await db.collections.scholarships.findOne({
-        $or: [{ id: targetIdStr }, { id: Number(targetIdStr) }, { _id: targetIdStr }],
+        $or: [
+          { id: targetIdStr },
+          ...(!Number.isNaN(Number(targetIdStr)) ? [{ id: Number(targetIdStr) }] : []),
+          { _id: targetIdStr },
+          ...(objId ? [{ _id: objId }] : []),
+        ],
       });
     }
     if (!scholarship && db.data.scholarships) {
-      scholarship = db.data.scholarships.find((item) => String(item.id) === targetIdStr);
+      scholarship = db.data.scholarships.find((item) => String(item.id) === targetIdStr || String(item._id) === targetIdStr);
     }
     if (!scholarship) {
       return res.status(404).json({ message: 'Scholarship not found' });
     }
-    return res.json({ scholarship: { ...scholarship, criteria: JSON.parse(scholarship.criteria_json || '{}') } });
+    const formatted = { ...scholarship, criteria: JSON.parse(scholarship.criteria_json || '{}') };
+    return res.json({ scholarship: formatted, opportunity: formatted });
   } catch (error) {
     next(error);
   }
@@ -261,24 +272,67 @@ const getScholarshipApplications = (req, res, next) => {
   }
 };
 
-const browseScholarships = (req, res, next) => {
+const browseScholarships = async (req, res, next) => {
   try {
     const cacheKey = 'scholarships:browse';
     const cached = cacheService.get(cacheKey);
-    if (cached) return res.json({ scholarships: cached });
+    if (cached) return res.json({ scholarships: cached, opportunities: cached });
 
-    const scholarships = db.data.scholarships
-      .filter((scholarship) => scholarship.status === 'open')
-      .map((scholarship) => ({
-        ...scholarship,
-        criteria: JSON.parse(scholarship.criteria_json || '{}'),
-        sponsor_name: db.data.users.find((u) => u.id === scholarship.sponsor_id)?.name || null,
-        sponsor_verified: !!db.data.users.find((u) => u.id === scholarship.sponsor_id)?.sponsor_verified,
-        organization_verified: !!db.data.users.find((u) => u.id === scholarship.sponsor_id)?.organization_verified,
-      }));
+    let rawScholarships = [];
+    if (db.collections?.scholarships) {
+      rawScholarships = await db.collections.scholarships.find({ status: 'open' }).toArray();
+    } else {
+      rawScholarships = (db.data.scholarships || []).filter((scholarship) => scholarship.status === 'open');
+    }
+
+    const scholarships = await Promise.all(
+      rawScholarships.map(async (scholarship) => {
+        let sponsor = null;
+        const sponsorId = scholarship.sponsor_id ?? scholarship.providerId;
+        if (db.collections?.users && sponsorId) {
+          sponsor = await db.collections.users.findOne({
+            $or: [
+              { id: sponsorId },
+              { id: Number(sponsorId) },
+              { id: String(sponsorId) },
+              { _id: String(sponsorId) },
+            ],
+          });
+        } else if (sponsorId) {
+          sponsor = (db.data.users || []).find((u) => String(u.id) === String(sponsorId) || String(u._id) === String(sponsorId));
+        }
+
+        let criteria = {};
+        try {
+          criteria = typeof scholarship.criteria_json === 'string'
+            ? JSON.parse(scholarship.criteria_json)
+            : (scholarship.criteria || {});
+        } catch (_) {}
+
+        return {
+          ...scholarship,
+          _id: scholarship._id ? String(scholarship._id) : String(scholarship.id),
+          id: String(scholarship.id || scholarship._id),
+          opportunityId: String(scholarship.id || scholarship._id),
+          slots: scholarship.slots ?? scholarship.totalSlots ?? 0,
+          totalSlots: scholarship.totalSlots ?? scholarship.slots ?? 0,
+          deadline: scholarship.deadline || scholarship.applicationDeadline || '',
+          applicationDeadline: scholarship.applicationDeadline || scholarship.deadline || '',
+          requirements: Array.isArray(scholarship.requirements) ? scholarship.requirements : [],
+          criteria,
+          sponsor_id: Number(sponsorId) || 0,
+          providerId: Number(sponsorId) || 0,
+          sponsor_name: sponsor?.organization_name || sponsor?.name || scholarship.sponsor_name || '',
+          sponsor_verified: !!(sponsor?.sponsor_verified || sponsor?.organization_verified || scholarship.sponsor_verified),
+          organization_verified: !!(sponsor?.organization_verified || sponsor?.sponsor_verified || scholarship.organization_verified),
+          createdAt: scholarship.createdAt || scholarship.created_at || new Date().toISOString(),
+          created_at: scholarship.created_at || scholarship.createdAt || new Date().toISOString(),
+        };
+      })
+    );
 
     cacheService.set(cacheKey, scholarships, SCHOLARSHIP_CACHE_TTL);
-    return res.json({ scholarships });
+    return res.json({ scholarships, opportunities: scholarships });
   } catch (error) {
     next(error);
   }
@@ -303,20 +357,38 @@ const deleteScholarship = async (req, res, next) => {
   }
 };
 
-const getProviderScholarships = (req, res, next) => {
+const getProviderScholarships = async (req, res, next) => {
   try {
     const isAdmin = req.user && req.user.role === 'admin';
     const userId = Number(req.user?.id);
-    const rawList = Array.isArray(db.data.scholarships) ? db.data.scholarships : [];
+    let rawList = [];
+    if (db.collections?.scholarships) {
+      rawList = await db.collections.scholarships.find(isAdmin ? {} : {
+        $or: [
+          { sponsor_id: userId },
+          { sponsor_id: String(userId) },
+          { providerId: userId },
+          { providerId: String(userId) },
+          { provider_id: userId },
+          { provider_id: String(userId) },
+        ],
+      }).toArray();
+    } else {
+      const all = Array.isArray(db.data.scholarships) ? db.data.scholarships : [];
+      rawList = all.filter((s) => {
+        if (isAdmin) return true;
+        return Number(s.sponsor_id ?? s.provider_id ?? s.providerId) === userId;
+      });
+    }
 
-    const filtered = rawList.filter((s) => {
-      if (isAdmin) return true;
-      return Number(s.sponsor_id ?? s.provider_id) === userId;
-    });
+    let applications = [];
+    if (db.collections?.applications) {
+      applications = await db.collections.applications.find({}).toArray();
+    } else {
+      applications = Array.isArray(db.data.applications) ? db.data.applications : [];
+    }
 
-    const applications = Array.isArray(db.data.applications) ? db.data.applications : [];
-
-    const mapped = filtered.map((scholarship) => {
+    const mapped = rawList.map((scholarship) => {
       const schId = scholarship.id ?? scholarship._id;
       const apps = applications.filter((a) => String(a.scholarship_id || a.scholarshipId) === String(schId));
       const approvedCount = apps.filter((a) => String(a.status || '').toLowerCase() === 'approved').length;
@@ -348,17 +420,68 @@ const getProviderScholarships = (req, res, next) => {
   }
 };
 
-const getScholarshipDetails = (req, res, next) => {
+const getScholarshipDetails = async (req, res, next) => {
   try {
-    const scholarship = db.data.scholarships.find((item) => item.id === Number(req.params.id));
+    const targetIdStr = String(req.params.id);
+    let objId = null;
+    try {
+      const { ObjectId } = require('mongodb');
+      if (ObjectId.isValid(targetIdStr)) objId = new ObjectId(targetIdStr);
+    } catch (_) {}
+
+    let scholarship = null;
+    if (db.collections?.scholarships) {
+      scholarship = await db.collections.scholarships.findOne({
+        $or: [
+          { id: targetIdStr },
+          ...(!Number.isNaN(Number(targetIdStr)) ? [{ id: Number(targetIdStr) }] : []),
+          { _id: targetIdStr },
+          ...(objId ? [{ _id: objId }] : []),
+        ],
+      });
+    }
+    if (!scholarship && db.data.scholarships) {
+      scholarship = db.data.scholarships.find((item) => String(item.id) === targetIdStr || String(item._id) === targetIdStr);
+    }
     if (!scholarship) {
       return res.status(404).json({ message: 'Scholarship not found' });
     }
-    const applications = db.data.applications.filter((a) => a.scholarship_id === scholarship.id);
+
+    const schId = scholarship.id ?? scholarship._id;
+    let applications = [];
+    if (db.collections?.applications) {
+      applications = await db.collections.applications.find({
+        $or: [
+          { scholarship_id: schId },
+          { scholarship_id: Number(schId) },
+          { scholarship_id: String(schId) },
+          { scholarshipId: schId },
+          { scholarshipId: Number(schId) },
+          { scholarshipId: String(schId) },
+        ],
+      }).toArray();
+    } else {
+      applications = (db.data.applications || []).filter((a) => String(a.scholarship_id || a.scholarshipId) === String(schId));
+    }
+
+    const approvedCount = applications.filter((a) => String(a.status || '').toLowerCase() === 'approved').length;
+    let criteria = {};
+    try {
+      criteria = typeof scholarship.criteria_json === 'string' ? JSON.parse(scholarship.criteria_json) : (scholarship.criteria || {});
+    } catch (_) {}
+
+    const formatted = {
+      ...scholarship,
+      criteria,
+      totalSlots: scholarship.totalSlots || scholarship.slots || 0,
+      slots: scholarship.slots || scholarship.totalSlots || 0,
+    };
+
     return res.json({
-      scholarship: { ...scholarship, criteria: JSON.parse(scholarship.criteria_json || '{}') },
+      scholarship: formatted,
+      opportunity: formatted,
       totalApplicants: applications.length,
-      approvedCount: applications.filter((a) => String(a.status || '').toLowerCase() === 'approved').length,
+      approvedCount,
     });
   } catch (error) {
     next(error);
