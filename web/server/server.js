@@ -56,8 +56,8 @@ const server = http.createServer(app);
 // Setup Socket.IO for real-time notifications
 setupSocketIO(server);
 
-server.listen(PORT, () => {
-  console.log(`🚀 Iskolar backend running on http://localhost:${PORT}`);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Iskolar backend running on http://0.0.0.0:${PORT}`);
 });
 
 // Comprehensive Graceful shutdown handler
