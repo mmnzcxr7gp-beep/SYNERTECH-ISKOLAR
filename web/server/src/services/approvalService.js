@@ -55,14 +55,17 @@ async function approveApplication({
 
   // 1. Fetch current application
   let application = null;
-  const appFilter = {
-    $or: [
-      { id: applicationId },
-      { id: Number(applicationId) },
-      { id: String(applicationId) },
-      { _id: applicationId },
-    ],
-  };
+  const mongoose = require('mongoose');
+  const appFilterQueries = [
+    { id: applicationId },
+    { id: Number(applicationId) },
+    { id: String(applicationId) },
+    { _id: applicationId },
+  ];
+  if (mongoose.Types.ObjectId.isValid(String(applicationId))) {
+    appFilterQueries.push({ _id: new mongoose.Types.ObjectId(String(applicationId)) });
+  }
+  const appFilter = { $or: appFilterQueries };
 
   if (db.collections?.applications) {
     application = await db.collections.applications.findOne(appFilter);
@@ -106,14 +109,16 @@ async function approveApplication({
     throw err;
   }
 
-  const scholFilterExact = {
-    $or: [
-      { id: targetScholarId },
-      { id: Number(targetScholarId) },
-      { id: String(targetScholarId) },
-      { _id: targetScholarId },
-    ],
-  };
+  const scholFilterQueries = [
+    { id: targetScholarId },
+    { id: Number(targetScholarId) },
+    { id: String(targetScholarId) },
+    { _id: targetScholarId },
+  ];
+  if (mongoose.Types.ObjectId.isValid(String(targetScholarId))) {
+    scholFilterQueries.push({ _id: new mongoose.Types.ObjectId(String(targetScholarId)) });
+  }
+  const scholFilterExact = { $or: scholFilterQueries };
 
   let scholarship = null;
   if (db.collections?.scholarships) {
@@ -202,7 +207,7 @@ async function approveApplication({
       // Verify the updated document belongs to the exact target scholarship
       const matchId = String(matchedDoc.id ?? matchedDoc._id);
       const targetIdStr = String(targetScholarId);
-      if (matchId !== targetIdStr && String(matchedDoc._id) !== targetIdStr) {
+      if (matchId !== targetIdStr && String(matchedDoc._id) !== targetIdStr && String(matchedDoc.id) !== targetIdStr) {
         const mismatchErr = new Error(`Critical capacity allocation mismatch: updated scholarship ${matchId} does not match target ${targetIdStr}`);
         mismatchErr.statusCode = 500;
         throw mismatchErr;

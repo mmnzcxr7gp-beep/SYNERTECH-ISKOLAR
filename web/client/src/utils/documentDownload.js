@@ -47,7 +47,7 @@ export async function downloadAuthenticatedDocument({
     const objectUrl = URL.createObjectURL(blob);
 
     if (typeof onPreview === 'function') {
-      onPreview(objectUrl);
+      onPreview(objectUrl, blob);
     } else {
       const a = document.createElement('a');
       a.href = objectUrl;

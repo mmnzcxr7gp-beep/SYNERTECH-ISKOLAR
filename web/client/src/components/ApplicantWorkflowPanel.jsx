@@ -679,30 +679,31 @@ export default function ApplicantWorkflowPanel({ applicant, token, onApplication
               </div>
             </div>
 
+            {errorMsg && (
+              <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-2.5 text-xs text-rose-500 font-semibold flex items-center justify-between">
+                <span>{errorMsg}</span>
+                <button type="button" onClick={() => setErrorMsg('')} className="text-xs font-bold opacity-70 hover:opacity-100 cursor-pointer">✕</button>
+              </div>
+            )}
+
             <div className="flex justify-end gap-2 pt-3 border-t" style={{ borderColor: 'var(--border)' }}>
               <button type="button" onClick={() => setActiveModal(null)} className="btn-secondary px-3 py-1.5 text-xs font-semibold cursor-pointer">Cancel</button>
               <button
                 type="button"
-                disabled={!approvalApplicantMessage.trim()}
-                onClick={() => {
-                  setConfirmationConfig({
-                    title: 'Confirm Final Award Decision',
-                    message: `Are you sure you want to approve and award the scholarship grant to ${applicant.student_name || 'this candidate'}? An official acceptance notification will be dispatched.`,
-                    confirmText: 'Yes, Confirm Award',
-                    isDestructive: false,
-                    onConfirm: () => submitWorkflowAction('APPROVE_APPLICATION', {
-                      approvalNote: approvalApplicantMessage,
-                      internalNote: approvalInternalNote,
-                      effectiveDate: approvalEffectiveDate,
-                      acceptanceDeadline: approvalDeadline,
-                      scholarshipInstructions: approvalInstructions,
-                      nextStepChecklist: approvalChecklist,
-                    })
+                disabled={!approvalApplicantMessage.trim() || actionLoading}
+                onClick={async () => {
+                  await submitWorkflowAction('APPROVE_APPLICATION', {
+                    approvalNote: approvalApplicantMessage,
+                    internalNote: approvalInternalNote,
+                    effectiveDate: approvalEffectiveDate,
+                    acceptanceDeadline: approvalDeadline,
+                    scholarshipInstructions: approvalInstructions,
+                    nextStepChecklist: approvalChecklist,
                   })
                 }}
-                className="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1.5 text-xs font-bold disabled:opacity-50 cursor-pointer"
+                className="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1.5 text-xs font-bold disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
               >
-                Proceed to Award
+                {actionLoading ? 'Awarding…' : 'Proceed to Award'}
               </button>
             </div>
           </div>
@@ -766,28 +767,29 @@ export default function ApplicantWorkflowPanel({ applicant, token, onApplication
               </div>
             </div>
 
+            {errorMsg && (
+              <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-2.5 text-xs text-rose-500 font-semibold flex items-center justify-between">
+                <span>{errorMsg}</span>
+                <button type="button" onClick={() => setErrorMsg('')} className="text-xs font-bold opacity-70 hover:opacity-100 cursor-pointer">✕</button>
+              </div>
+            )}
+
             <div className="flex justify-end gap-2 pt-3 border-t" style={{ borderColor: 'var(--border)' }}>
               <button type="button" onClick={() => setActiveModal(null)} className="btn-secondary px-3 py-1.5 text-xs font-semibold cursor-pointer">Cancel</button>
               <button
                 type="button"
-                disabled={!rejectionApplicantMessage.trim()}
-                onClick={() => {
-                  setConfirmationConfig({
-                    title: 'Confirm Rejection Decision',
-                    message: `Are you sure you want to decline the application of ${applicant.student_name || 'this candidate'}? This decision will be logged and the student will be notified.`,
-                    confirmText: 'Yes, Confirm Rejection',
-                    isDestructive: true,
-                    onConfirm: () => submitWorkflowAction('REJECT_APPLICATION', {
-                      category: rejectionCategory,
-                      reason: rejectionApplicantMessage,
-                      applicantMessage: rejectionApplicantMessage,
-                      internalNote: rejectionInternalNote,
-                    })
+                disabled={!rejectionApplicantMessage.trim() || actionLoading}
+                onClick={async () => {
+                  await submitWorkflowAction('REJECT_APPLICATION', {
+                    category: rejectionCategory,
+                    reason: rejectionApplicantMessage,
+                    applicantMessage: rejectionApplicantMessage,
+                    internalNote: rejectionInternalNote,
                   })
                 }}
-                className="rounded-xl bg-rose-600 hover:bg-rose-500 text-white px-4 py-1.5 text-xs font-bold disabled:opacity-50 cursor-pointer"
+                className="rounded-xl bg-rose-600 hover:bg-rose-500 text-white px-4 py-1.5 text-xs font-bold disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
               >
-                Proceed to Decline
+                {actionLoading ? 'Declining…' : 'Proceed to Decline'}
               </button>
             </div>
           </div>

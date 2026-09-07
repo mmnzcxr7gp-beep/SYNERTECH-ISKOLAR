@@ -131,6 +131,11 @@ function validateStatusTransition(currentStatus, nextStatus, actorRole = 'provid
     return { valid: true, from, to };
   }
 
+  // Administrator authority override: Admins have oversight authority to transition any active application
+  if (actorRole === 'admin' && from !== 'CLOSED') {
+    return { valid: true, from, to };
+  }
+
   const allowedNext = ALLOWED_TRANSITIONS[from] || [];
   if (!allowedNext.includes(to)) {
     return {

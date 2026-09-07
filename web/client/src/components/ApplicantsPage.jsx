@@ -799,7 +799,7 @@ export default function ApplicantsPage({ token }) {
                               docId,
                               token,
                               filename: doc.originalname || 'document.pdf',
-                              onPreview: (url) => setPreviewDocument({ ...doc, url })
+                              onPreview: (url, blob) => setPreviewDocument({ ...doc, url, mimeType: blob?.type || doc.mime_type || doc.file_type })
                             })
                           }}
                           className="btn-secondary px-2 py-1 text-[10px] font-bold cursor-pointer"
@@ -967,7 +967,7 @@ export default function ApplicantsPage({ token }) {
                                 docId,
                                 token,
                                 filename: doc.originalname || 'document.pdf',
-                                onPreview: (url) => setPreviewDocument({ ...doc, url })
+                                onPreview: (url, blob) => setPreviewDocument({ ...doc, url, mimeType: blob?.type || doc.mime_type || doc.file_type })
                               })
                               setDownloadingDocId(null)
                             }}
@@ -1144,30 +1144,64 @@ export default function ApplicantsPage({ token }) {
         </div>
       )}
 
-      {/* High-Res Document Preview Lightbox */}
+      {/* High-Res Document Preview Lightbox (PDF & Image Support) */}
       {previewDocument && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'var(--bg-overlay)' }} role="dialog" aria-modal="true">
-          <div className="relative w-full max-w-4xl rounded-3xl border shadow-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-modal)', borderColor: 'var(--border)' }}>
-            <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--border)' }}>
-              <p className="text-xs font-bold" style={{ color: 'var(--text-heading)' }}>
-                {previewDocument.requirement_name || previewDocument.originalname || 'Document Preview'}
-              </p>
-              <button
-                type="button"
-                onClick={() => setPreviewDocument(null)}
-                className="p-1.5 rounded-xl text-xs font-bold hover:bg-[var(--color-surface-panel)] cursor-pointer"
-                style={{ color: 'var(--text-muted)' }}
-              >
-                ✕ Close
-              </button>
+          <div className="relative w-full max-w-5xl rounded-3xl border shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" style={{ backgroundColor: 'var(--bg-modal)', borderColor: 'var(--border)' }}>
+            <div className="flex items-center justify-between p-4 border-b flex-shrink-0" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-center gap-2">
+                <DocumentIcon className="w-5 h-5 text-blue-500" />
+                <p className="text-sm font-bold truncate max-w-md" style={{ color: 'var(--text-heading)' }}>
+                  {previewDocument.requirement_name || previewDocument.originalname || 'Document Preview'}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={previewDocument.url}
+                  download={previewDocument.originalname || 'document.pdf'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1.5 transition shadow-sm cursor-pointer"
+                >
+                  <ExternalLinkIcon className="w-3.5 h-3.5" />
+                  <span>Download / Open</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewDocument(null)}
+                  className="p-1.5 px-2.5 rounded-xl text-xs font-bold hover:bg-[var(--color-surface-panel)] cursor-pointer"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  ✕ Close
+                </button>
+              </div>
             </div>
-            <div className="p-6 flex items-center justify-center max-h-[75vh] overflow-y-auto" style={{ backgroundColor: 'var(--color-surface-panel)' }}>
+            <div className="p-4 flex-1 flex items-center justify-center overflow-hidden" style={{ backgroundColor: 'var(--color-surface-panel)' }}>
               {previewDocument.url ? (
-                <img
-                  src={previewDocument.url}
-                  alt="Document Preview"
-                  className="max-h-[70vh] rounded-2xl object-contain shadow-md"
-                />
+                (() => {
+                  const mime = String(previewDocument.mimeType || previewDocument.mime_type || previewDocument.file_type || '').toLowerCase()
+                  const name = String(previewDocument.originalname || previewDocument.filename || '').toLowerCase()
+                  const isImage = mime.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(name)
+
+                  if (isImage) {
+                    return (
+                      <img
+                        src={previewDocument.url}
+                        alt="Document Preview"
+                        className="max-h-[75vh] max-w-full rounded-2xl object-contain shadow-md"
+                      />
+                    )
+                  }
+
+                  // Default to PDF iframe for academic documents & PDFs
+                  return (
+                    <iframe
+                      src={previewDocument.url}
+                      title={previewDocument.originalname || 'Document Preview'}
+                      className="w-full h-[75vh] rounded-2xl border-0 bg-white shadow-md"
+                    />
+                  )
+                })()
               ) : (
                 <p className="text-xs text-[var(--text-muted)]">Document preview unavailable.</p>
               )}

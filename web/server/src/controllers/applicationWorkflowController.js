@@ -868,14 +868,21 @@ const executeReviewAction = async (req, res, next) => {
         }
 
         // Add System Message & Enable messaging thread
+        const checklist = Array.isArray(application.approvalData?.nextStepChecklist)
+          ? application.approvalData.nextStepChecklist
+          : [];
+        const checklistText = checklist.length > 0
+          ? `\n\nRequired Next Steps:\n${checklist.map((s, i) => `${i + 1}. ${s}`).join('\n')}`
+          : '';
+
         await addMessageToConversation({
           conversationId: convId,
           applicationId,
           senderId: req.user.id,
           senderRole: userRole,
           messageType: 'APPROVAL_NOTICE',
-          body: `🎉 CONGRATULATIONS! Your application for "${scholarship.title || 'Scholarship'}" has been APPROVED!\n\nNote from Provider: ${approvalNote || 'Welcome to the scholarship program!'}\n\nRequired Next Steps:\n${application.approvalData.nextStepChecklist.map((s, i) => `${i + 1}. ${s}`).join('\n')}`,
-          metadata: application.approvalData,
+          body: `🎉 CONGRATULATIONS! Your application for "${scholarship.title || 'Scholarship'}" has been APPROVED!\n\nNote from Provider: ${approvalNote || 'Welcome to the scholarship program!'}${checklistText}`,
+          metadata: application.approvalData || {},
         });
 
         await createWorkflowNotification({
