@@ -866,6 +866,31 @@ export default function ProviderDashboard({ onLogout }) {
     }
   }, [mobileMenuOpen, profileDropdownOpen])
 
+  const resilientFetch = async (endpoint, options = {}) => {
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
+    const isProdHost = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
+    const safeBase = (isProdHost && (baseUrl || '').includes('localhost')) ? '' : (baseUrl || '')
+
+    // Primary attempt: safeBase + cleanEndpoint
+    try {
+      const res = await fetch(`${safeBase}${cleanEndpoint}`, options)
+      if (res.ok || res.status < 500) return res
+    } catch (err) {
+      // ignore and cascade
+    }
+
+    // Relative fallback: same-origin proxy (works seamlessly on Vercel / iskolar.org)
+    try {
+      const res = await fetch(cleanEndpoint, options)
+      if (res.ok || res.status < 500) return res
+    } catch (err) {
+      // ignore and cascade
+    }
+
+    // Direct cloud backend fallback
+    return await fetch(`https://iskolar-api.onrender.com${cleanEndpoint}`, options)
+  }
+
   useEffect(() => {
     let intervalId = null
 
@@ -882,7 +907,7 @@ export default function ProviderDashboard({ onLogout }) {
       setError('')
 
       try {
-        const profileRes = await fetch(`${baseUrl}/api/auth/me`, {
+        const profileRes = await resilientFetch('/api/auth/me', {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -906,7 +931,7 @@ export default function ProviderDashboard({ onLogout }) {
 
         // Fetch appropriate dashboard endpoint based on role
         if (isUserAdmin) {
-          const adminRes = await fetch(`${baseUrl}/api/admin/overview`, {
+          const adminRes = await resilientFetch('/api/admin/overview', {
             headers: { Authorization: `Bearer ${token}` }
           })
           if (adminRes.ok) {
@@ -915,7 +940,7 @@ export default function ProviderDashboard({ onLogout }) {
           }
         }
 
-        const dashboardRes = await fetch(`${baseUrl}/api/providers/dashboard`, {
+        const dashboardRes = await resilientFetch('/api/providers/dashboard', {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -939,7 +964,7 @@ export default function ProviderDashboard({ onLogout }) {
 
     intervalId = window.setInterval(() => {
       if (!token) return
-      fetch(`${baseUrl}/api/providers/dashboard`, {
+      resilientFetch('/api/providers/dashboard', {
         headers: { Authorization: `Bearer ${token}` },
       })
         .then((r) => (r.ok ? r.json() : null))
@@ -969,7 +994,7 @@ export default function ProviderDashboard({ onLogout }) {
   const handleUpdate = async () => {
     if (!token) return
     try {
-      const profileRes = await fetch(`${baseUrl}/api/auth/me`, {
+      const profileRes = await resilientFetch('/api/auth/me', {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (profileRes.ok) {
