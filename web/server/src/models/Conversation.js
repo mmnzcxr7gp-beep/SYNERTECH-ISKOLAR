@@ -8,7 +8,6 @@ const conversationSchema = new mongoose.Schema(
     applicationId: {
       type: mongoose.Schema.Types.Mixed,
       required: true,
-      index: true,
     },
     scholarshipId: {
       type: mongoose.Schema.Types.Mixed,

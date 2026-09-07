@@ -1,8 +1,23 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { API_BASE_URL } from '../config/api'
 
 // Mandatory Pre-Registration Privacy Policy Modal Component
 function PrivacyPolicyModal({ open, onCancel, onAgree }) {
+  const privacyRef = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handleKey = (e) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        onCancel?.()
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [open, onCancel])
+
   if (!open) return null
 
   return (
@@ -18,6 +33,10 @@ function PrivacyPolicyModal({ open, onCancel, onAgree }) {
       />
 
       <motion.div
+        ref={privacyRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="privacy-policy-title"
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -26,7 +45,7 @@ function PrivacyPolicyModal({ open, onCancel, onAgree }) {
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-800">
           <div>
-            <h3 className="text-xl font-black text-white">Privacy Policy</h3>
+            <h3 id="privacy-policy-title" className="text-xl font-black text-white">Privacy Policy</h3>
             <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>Please review and accept our Data Privacy terms before creating an account.</p>
           </div>
           <button
@@ -118,6 +137,62 @@ function PrivacyPolicyModal({ open, onCancel, onAgree }) {
 }
 
 export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLogin }) {
+  // Focus containment & accessibility refs (SEC-09)
+  const modalRef = useRef(null)
+  const previousFocusRef = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    previousFocusRef.current = document.activeElement
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onClose?.()
+        return
+      }
+
+      if (e.key === 'Tab' && modalRef.current) {
+        const focusableElements = modalRef.current.querySelectorAll(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+        if (focusableElements.length === 0) return
+
+        const firstElement = focusableElements[0]
+        const lastElement = focusableElements[focusableElements.length - 1]
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement) {
+            e.preventDefault()
+            lastElement.focus()
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            e.preventDefault()
+            firstElement.focus()
+          }
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    const timer = setTimeout(() => {
+      if (modalRef.current) {
+        const firstInput = modalRef.current.querySelector('input:not([disabled]), button:not([disabled])')
+        if (firstInput) firstInput.focus()
+      }
+    }, 50)
+
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('keydown', handleKeyDown)
+      if (previousFocusRef.current && typeof previousFocusRef.current.focus === 'function') {
+        previousFocusRef.current.focus()
+      }
+    }
+  }, [open, onClose])
+
   // Mode: 'login' | 'register'
   const [mode, setMode] = useState('login')
   
@@ -175,8 +250,7 @@ export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLo
 
   if (!open) return null
 
-  const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-  const baseUrl = isLocal ? 'http://localhost:4000' : (import.meta?.env?.VITE_API_URL || 'http://localhost:4000')
+  const baseUrl = API_BASE_URL
 
   const getPasswordStrength = (pwd) => {
     if (!pwd) return { score: 0, label: 'None', color: 'bg-slate-700' }
@@ -234,7 +308,10 @@ export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLo
 
       if (body.requiresMfa) {
         setMfaToken(body.mfaToken)
-        setMsg('Please enter the 6-digit verification code sent to your email.')
+        if (body.devOtp) {
+          setOtp(body.devOtp)
+        }
+        setMsg(body.message || 'Please enter the 6-digit verification code sent to your email.')
         setMsgType('success')
         setLoading(false)
         return
@@ -422,6 +499,36 @@ export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLo
     }
   }
 
+  async function handleResendMfaOtp() {
+    setMsg('')
+    setLoading(true)
+    try {
+      const res = await fetch(`${baseUrl}/api/auth/resend-otp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Client-Platform': 'web',
+        },
+        body: JSON.stringify({ email }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setMsg(body.message || 'Failed to resend code.')
+        setMsgType('error')
+        setLoading(false)
+        return
+      }
+      setOtp('')
+      setMsg('A new verification code has been sent to your email.')
+      setMsgType('success')
+    } catch (e) {
+      setMsg('Network error while resending verification code.')
+      setMsgType('error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   function handleLoginSuccess(body) {
     const role = (body.user?.role || selectedRole || 'provider').toLowerCase()
     const token = body.token
@@ -463,6 +570,11 @@ export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLo
         />
 
         <motion.div
+          ref={modalRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="login-modal-title"
+          tabIndex={-1}
           initial={{ opacity: 0, scale: 0.92, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -525,7 +637,7 @@ export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLo
 
           <div className="space-y-4">
             <div>
-              <h3 className="text-2xl font-black tracking-tight" style={{ color: 'var(--text-heading, #ffffff)' }}>
+              <h3 id="login-modal-title" className="text-2xl font-black tracking-tight" style={{ color: 'var(--text-heading, #ffffff)' }}>
                 {mfaToken
                   ? 'MFA Verification'
                   : regStep === 2
@@ -1008,7 +1120,7 @@ export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLo
                       required
                       value={otp}
                       onChange={(e) => setOtp(e.target.value)}
-                      placeholder="123456"
+                      placeholder="••••••"
                       className="w-full px-3.5 py-3 rounded-xl border text-center tracking-[0.4em] font-mono text-xl focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
                       style={{ background: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
                     />
@@ -1076,7 +1188,7 @@ export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLo
                     required
                     value={otp}
                     onChange={(e) => setOtp(e.target.value)}
-                    placeholder="123456"
+                    placeholder="••••••"
                     className="w-full px-3.5 py-2.5 rounded-xl border text-center tracking-[0.4em] font-mono text-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
                     style={{
                       background: 'var(--bg-input)',
@@ -1100,6 +1212,17 @@ export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLo
                 >
                   {loading ? 'Verifying Code...' : 'Verify & Access Workspace'}
                 </button>
+
+                <div className="text-center pt-2">
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={handleResendMfaOtp}
+                    className="text-xs font-semibold text-[var(--primary)] hover:underline disabled:opacity-50 transition"
+                  >
+                    Resend Verification Code
+                  </button>
+                </div>
               </form>
             )}
           </div>

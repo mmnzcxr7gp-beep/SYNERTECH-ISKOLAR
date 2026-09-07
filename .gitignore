@@ -28,3 +28,8 @@ uploads/
 cleanup_quarantine/
 .cleanup-quarantine/
 tools/
+scratch/
+web/server/scratch/
+.test_credentials.json
+*.test_credentials.json
+.tempmediaStorage/

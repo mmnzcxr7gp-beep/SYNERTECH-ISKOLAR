@@ -32,6 +32,32 @@ export default defineConfig({
       }
     }
   },
+  preview: {
+    port: 5173,
+    proxy: {
+      '/api': {
+        target: backendTarget,
+        changeOrigin: true,
+        secure: false,
+      },
+      '/admin': {
+        target: backendTarget,
+        changeOrigin: true,
+        secure: false,
+      },
+      '/uploads': {
+        target: backendTarget,
+        changeOrigin: true,
+        secure: false,
+      },
+      '/socket.io': {
+        target: backendTarget,
+        ws: true,
+        changeOrigin: true,
+        secure: false,
+      }
+    }
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -42,6 +68,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
+          three: ['three'],
           sentry: ['@sentry/react'],
           vendor: ['react', 'react-dom', 'framer-motion', 'socket.io-client'],
         },

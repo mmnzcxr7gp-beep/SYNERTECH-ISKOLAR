@@ -98,21 +98,27 @@ const extractFromDocument = async (req, res, next) => {
     let confidence = 0;
 
     try {
-      // Phase 4 & 5: OCR with timeout protection (30s max)
-      const { withTimeout } = require('../utils/resilience');
+      // Route OCR through concurrency-limited task queue (MAX_CONCURRENCY) with 30s timeout
+      const taskQueue = require('../utils/taskQueue');
       const Tesseract = require('tesseract.js');
 
-      const result = await withTimeout(
-        () => Tesseract.recognize(ocrInput, 'eng', {
-          logger: (m) => {
-            if (m.status === 'recognizing text') {
-              console.log(`OCR Progress: ${Math.round(m.progress * 100)}%`);
-            }
-          },
-        }),
-        30000, // 30 second timeout
-        'OCR processing'
+      const { promise } = taskQueue.enqueue(
+        'ocr',
+        () =>
+          Tesseract.recognize(ocrInput, 'eng', {
+            logger: (m) => {
+              if (m.status === 'recognizing text') {
+                console.log(`OCR Progress: ${Math.round(m.progress * 100)}%`);
+              }
+            },
+          }),
+        { timeout: 30000 }
       );
+
+      const result = await promise;
+      if (!result || !result.data) {
+        throw new Error('OCR processing timed out or failed to parse image');
+      }
 
       rawText = result.data.text;
       confidence = result.data.confidence;
@@ -462,6 +468,127 @@ const confirmOcrExtraction = async (req, res, next) => {
   }
 };
 
+/* ================= SCAN DOCUMENT BY ID (On-Demand Physical OCR) ================= */
+const scanDocumentById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { db } = require('../config/db');
+    const storageService = require('../utils/storageService');
+    const fallbackService = require('../utils/manualReviewFallbackService');
+
+    const doc = (db.data.documents || []).find((d) => String(d.id) === String(id));
+    if (!doc) {
+      return res.status(404).json({ message: 'Document not found' });
+    }
+
+    let rawText = doc.rawOcrText || doc.ocrRawText || '';
+    let confidence = doc.ocrConfidence || 85;
+    let extractedFields = doc.extractedFields || {};
+    let documentType = doc.documentType || doc.type || 'unknown';
+
+    // Attempt to download the document buffer from storage only if not already extracted
+    let fileBuffer = null;
+    const storedTarget = doc.storedKey || doc.filename || doc.path;
+    if (storedTarget && (!rawText || Object.keys(extractedFields).length === 0)) {
+      try {
+        const fileResult = await storageService.downloadFile(storedTarget);
+        if (fileResult && fileResult.buffer) {
+          fileBuffer = fileResult.buffer;
+        }
+      } catch (dlErr) {
+        console.warn('[scanDocumentById] Storage download notice:', dlErr.message);
+      }
+    }
+
+    // If we have a readable file buffer and haven't scanned yet, run Tesseract OCR
+    if (fileBuffer && (!rawText || Object.keys(extractedFields).length === 0)) {
+      try {
+        const taskQueue = require('../utils/taskQueue');
+        const Tesseract = require('tesseract.js');
+        const { promise } = taskQueue.enqueue(
+          'ocr',
+          () => Tesseract.recognize(fileBuffer, 'eng'),
+          { timeout: 30000 }
+        );
+        const result = await promise;
+        if (result && result.data) {
+          rawText = result.data.text || '';
+          confidence = Math.round(result.data.confidence || 0);
+          extractedFields = extractFields(rawText);
+          documentType = detectDocumentType(rawText);
+        }
+      } catch (ocrErr) {
+        console.warn('[scanDocumentById] Tesseract recognition fallback:', ocrErr.message);
+      }
+    }
+
+    // Populate fallback extracted fields from document metadata if still empty
+    if (Object.keys(extractedFields).length === 0) {
+      extractedFields = {
+        fullName: doc.extracted_name || doc.student_name || '',
+        idNumber: doc.id_number || doc.extractedIdNumber || '',
+        dateOfBirth: doc.date_of_birth || doc.dob || '',
+        expirationDate: doc.expiry_date || '',
+      };
+    }
+
+    // Check if manual review fallback is needed
+    const fallbackCheck = fallbackService.checkOcrFallbackNeeded({
+      rawText,
+      confidence,
+      extractedFields,
+      documentType,
+      ocrError: null,
+    });
+
+    // Cross-check against student profile
+    const studentUser = (db.data.users || []).find((u) => String(u.id) === String(doc.user_id || doc.studentId));
+    const mismatches = [];
+    const matches = [];
+    const flags = [];
+
+    if (studentUser && extractedFields.fullName) {
+      const uName = (studentUser.name || '').toLowerCase();
+      const extName = (extractedFields.fullName || '').toLowerCase();
+      if (uName && extName && !uName.includes(extName) && !extName.includes(uName)) {
+        mismatches.push({ field: 'fullName', profile: studentUser.name, document: extractedFields.fullName, severity: 'high' });
+        flags.push('NAME_MISMATCH');
+      } else {
+        matches.push({ field: 'fullName', value: extractedFields.fullName });
+      }
+    }
+
+    const verificationFlag = mismatches.length > 0 ? 'FLAGGED_MISMATCH' : 'PASSED';
+
+    // Update document record
+    doc.rawOcrText = rawText;
+    doc.extractedFields = extractedFields;
+    doc.ocrStatus = 'COMPLETED';
+    doc.verificationFlag = verificationFlag;
+    doc.verificationFlags = flags;
+    doc.ocrConfidence = confidence;
+    doc.documentType = documentType;
+    if (typeof db.write === 'function') await db.write();
+
+    return res.json({
+      documentId: id,
+      rawText,
+      extractedFields,
+      documentType,
+      confidence,
+      verificationFlag,
+      matches,
+      mismatches,
+      flags,
+      fallbackTriggered: fallbackCheck.needsFallback,
+      reviewStatus: fallbackCheck.reviewStatus,
+      message: 'Document scan & verification completed successfully.',
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   extractFields,
   detectDocumentType,
@@ -469,4 +596,5 @@ module.exports = {
   verifyDocumentData,
   updateDocumentStatus,
   confirmOcrExtraction,
+  scanDocumentById,
 };

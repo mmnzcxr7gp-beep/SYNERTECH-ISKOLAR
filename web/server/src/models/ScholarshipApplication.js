@@ -5,16 +5,28 @@ const scholarshipApplicationSchema = new mongoose.Schema(
     _id: {
       type: mongoose.Schema.Types.Mixed, // Supports ObjectId or legacy numeric ID
     },
+    id: {
+      type: mongoose.Schema.Types.Mixed,
+      index: true,
+    },
     scholarshipId: {
       type: mongoose.Schema.Types.Mixed, // Supports ObjectId or legacy numeric scholarship ID
       ref: 'Scholarship',
       required: true,
       index: true,
     },
+    scholarship_id: {
+      type: mongoose.Schema.Types.Mixed,
+      index: true,
+    },
     studentId: {
       type: mongoose.Schema.Types.Mixed, // Supports ObjectId or legacy numeric student ID
       ref: 'Student',
       required: true,
+      index: true,
+    },
+    student_id: {
+      type: mongoose.Schema.Types.Mixed,
       index: true,
     },
     userId: {
@@ -192,7 +204,18 @@ const scholarshipApplicationSchema = new mongoose.Schema(
   }
 );
 
-scholarshipApplicationSchema.index({ scholarshipId: 1, studentId: 1 });
+scholarshipApplicationSchema.pre('save', function (next) {
+  if (this.scholarshipId && !this.scholarship_id) this.scholarship_id = this.scholarshipId;
+  if (this.scholarship_id && !this.scholarshipId) this.scholarshipId = this.scholarship_id;
+  if (this.studentId && !this.student_id) this.student_id = this.studentId;
+  if (this.student_id && !this.studentId) this.studentId = this.student_id;
+  if (this._id && !this.id) this.id = this._id;
+  if (this.id && !this._id) this._id = this.id;
+  next();
+});
+
+scholarshipApplicationSchema.index({ scholarshipId: 1, studentId: 1 }, { unique: true });
+scholarshipApplicationSchema.index({ scholarship_id: 1, student_id: 1 }, { unique: true, sparse: true });
 scholarshipApplicationSchema.index({ status: 1, createdAt: -1 });
 
-module.exports = mongoose.model('ScholarshipApplication', scholarshipApplicationSchema);
+module.exports = mongoose.model('ScholarshipApplication', scholarshipApplicationSchema, 'applications');

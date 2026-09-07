@@ -33,11 +33,12 @@ class OcrService {
   /// Upload a document image to backend OCR endpoint for identity extraction
   static Future<OcrResult> extractFromDocument({
     required String token,
-    required String filePath,
+    String? filePath,
+    dynamic file,
   }) async {
     final response = await ApiService.multipartUpload(
       '/ocr/extract',
-      filePaths: {'document': filePath},
+      filePaths: {'document': file ?? filePath},
       token: token,
     );
 

@@ -24,6 +24,18 @@ const securityHeaders = (req, res, next) => {
   // Prevent XSS reflection (legacy browsers)
   res.setHeader('X-XSS-Protection', '1; mode=block');
 
+  // HTTP Strict Transport Security (HSTS) in production or over HTTPS
+  const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
+  if (process.env.NODE_ENV === 'production' || isHttps) {
+    const hstsPreload = process.env.HSTS_PRELOAD === 'true' ? '; includeSubDomains; preload' : '';
+    res.setHeader('Strict-Transport-Security', `max-age=31536000${hstsPreload}`);
+  }
+
+  // Automatic HTTPS redirection for cleartext HTTP traffic in production environments
+  if (process.env.NODE_ENV === 'production' && req.headers['x-forwarded-proto'] === 'http') {
+    return res.redirect(301, `https://${req.headers.host}${req.url}`);
+  }
+
   // Cache control for API responses (no caching of sensitive data)
   if (req.path.startsWith('/api/')) {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');

@@ -154,36 +154,59 @@ const readinessHandler = async (_req, res) => {
     const checks = {};
     let isReady = true;
 
-    // 1. MongoDB Mongoose / MongoClient check
+    // 1. MongoDB Mongoose / MongoClient live ping check
     const mongoState = mongoose.connection.readyState;
     let mongoOk = false;
-    if (mongoState === 1) {
+    let mongoPingError = null;
+    let dbName = null;
+
+    if (mongoState === 1 && mongoose.connection.db) {
       try {
         await mongoose.connection.db.admin().ping();
         mongoOk = true;
-      } catch (_) {
-        mongoOk = false;
+        dbName = mongoose.connection.name;
+      } catch (err) {
+        mongoPingError = err?.message || String(err);
       }
     }
+
     const { db } = require('../config/db');
-    if (!mongoOk && db.collection) {
-      mongoOk = true;
+    if (db.client) {
+      try {
+        await db.client.db('admin').command({ ping: 1 });
+        mongoOk = true;
+        mongoPingError = null;
+        if (!dbName) dbName = db.client.db().databaseName;
+      } catch (err) {
+        if (!mongoOk) {
+          mongoPingError = err?.message || String(err);
+        }
+      }
+    } else if (!mongoOk && db.collection) {
+      const pingResult = await db.ping();
+      if (pingResult) {
+        mongoOk = true;
+        mongoPingError = null;
+      }
     }
 
     checks.mongodb = {
       status: mongoOk ? 'ready' : 'unready',
       connected: mongoOk,
+      database: dbName || mongoose.connection?.name || 'unknown',
+      message: mongoOk
+        ? 'MongoDB Atlas connection active and ping succeeded'
+        : `MongoDB unavailable: ${mongoPingError || 'Connection not established'}`,
     };
     if (!mongoOk) isReady = false;
 
-    // 2. Socket.IO initialization
+    // 2. Socket.IO status
     const io = global._io;
     const socketOk = !!io;
     checks.socketIO = {
-      status: socketOk ? 'ready' : 'unready',
+      status: socketOk ? 'ready' : 'degraded',
       initialized: socketOk,
     };
-    if (!socketOk) isReady = false;
 
     // 3. Required configuration
     const configOk = !!(process.env.JWT_SECRET || process.env.NODE_ENV !== 'production');
@@ -206,11 +229,24 @@ const readinessHandler = async (_req, res) => {
       storageOk = false;
       checks.storage = { status: 'unready' };
     }
-    if (!storageOk) isReady = false;
+
+    // 5. Uniqueness constraint enforcement check (Directive 4)
+    const { ensureIndexes } = require('./ensureIndexes');
+    const uniquenessOk = !ensureIndexes.uniquenessBlocked;
+    checks.uniquenessEnforced = {
+      status: uniquenessOk ? 'ready' : 'unready',
+      ...(ensureIndexes.uniquenessError ? { error: ensureIndexes.uniquenessError.message } : {}),
+    };
+    if (!uniquenessOk) isReady = false;
 
     const statusCode = isReady ? 200 : 503;
+    const failureReason = !mongoOk
+      ? (mongoPingError ? `MongoDB is unavailable: ${mongoPingError}` : 'MongoDB is unavailable: connection not established')
+      : (!configOk ? 'Required configuration missing' : (!uniquenessOk ? 'Database uniqueness constraints unready' : 'Service unready'));
+
     res.status(statusCode).json({
       status: isReady ? 'ready' : 'not_ready',
+      message: isReady ? 'System is ready and connected to MongoDB' : failureReason,
       instanceId: process.env.INSTANCE_ID || 'default',
       timestamp: new Date().toISOString(),
       checks,
@@ -218,9 +254,10 @@ const readinessHandler = async (_req, res) => {
   } catch (err) {
     res.status(503).json({
       status: 'not_ready',
+      message: `Readiness check failed: ${err?.message || err}`,
       instanceId: process.env.INSTANCE_ID || 'default',
       timestamp: new Date().toISOString(),
-      error: 'Readiness probe failed',
+      error: err?.message || String(err),
     });
   }
 };

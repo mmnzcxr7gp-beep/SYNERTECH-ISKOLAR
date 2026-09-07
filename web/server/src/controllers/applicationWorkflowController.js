@@ -6,8 +6,118 @@ const { isOwnedBy } = require('../utils/ownership');
 const { validateStatusTransition, normalizeStatus } = require('../utils/statusStateMachine');
 const emailService = require('../utils/emailService');
 const storageService = require('../utils/storageService');
+const approvalService = require('../services/approvalService');
 
 const isSponsorRole = (role) => role === 'sponsor' || role === 'provider';
+const isProd = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1' || process.env.RENDER === 'true';
+
+async function getApplicationFromDb(appId) {
+  let app = null;
+  if (db.collections?.applications) {
+    const numId = Number(appId);
+    const { ObjectId } = require('mongodb');
+    const filter = {
+      $or: [
+        { id: appId },
+        ...(!Number.isNaN(numId) ? [{ id: numId }] : []),
+        { _id: appId },
+        ...(ObjectId.isValid(appId) ? [{ _id: new ObjectId(appId) }] : []),
+      ],
+    };
+    app = await db.collections.applications.findOne(filter);
+  }
+  if (!app && !isProd && db.data?.applications) {
+    app = db.data.applications.find((a) => String(a.id) === String(appId) || String(a._id) === String(appId)) || null;
+  }
+  if (app && (!app.documents || app.documents.length === 0)) {
+    const targetId = app.id || app._id;
+    const numTargetId = Number(targetId);
+    if (db.collections?.documents) {
+      const docFilter = {
+        $or: [
+          { application_id: targetId },
+          { applicationId: targetId },
+          { application_id: String(targetId) },
+          { applicationId: String(targetId) },
+          ...(!Number.isNaN(numTargetId) ? [{ application_id: numTargetId }, { applicationId: numTargetId }] : []),
+        ],
+      };
+      app.documents = await db.collections.documents.find(docFilter).toArray().catch(() => []);
+    } else if (db.data?.documents) {
+      app.documents = (db.data.documents || []).filter((d) => String(d.application_id || d.applicationId) === String(targetId));
+    }
+  }
+  return app;
+}
+
+async function getScholarshipFromDb(schId) {
+  if (db.collections?.scholarships) {
+    const numId = Number(schId);
+    const { ObjectId } = require('mongodb');
+    const filter = {
+      $or: [
+        { id: schId },
+        ...(!Number.isNaN(numId) ? [{ id: numId }] : []),
+        { _id: schId },
+        ...(ObjectId.isValid(schId) ? [{ _id: new ObjectId(schId) }] : []),
+      ],
+    };
+    const sch = await db.collections.scholarships.findOne(filter);
+    if (sch) return sch;
+  }
+  if (!isProd && db.data?.scholarships) {
+    return db.data.scholarships.find((s) => String(s.id) === String(schId) || String(s._id) === String(schId)) || null;
+  }
+  return null;
+}
+
+async function getUserFromDb(userId) {
+  if (db.collections?.users) {
+    const numId = Number(userId);
+    const { ObjectId } = require('mongodb');
+    const filter = {
+      $or: [
+        { id: userId },
+        ...(!Number.isNaN(numId) ? [{ id: numId }] : []),
+        { _id: userId },
+        ...(ObjectId.isValid(userId) ? [{ _id: new ObjectId(userId) }] : []),
+      ],
+    };
+    const user = await db.collections.users.findOne(filter);
+    if (user) return user;
+  }
+  if (!isProd && db.data?.users) {
+    return db.data.users.find((u) => String(u.id) === String(userId) || String(u._id) === String(userId)) || null;
+  }
+  return null;
+}
+
+async function saveApplicationToDb(appId, updateFields) {
+  if (db.collections?.applications) {
+    const numAppId = Number(appId);
+    const { ObjectId } = require('mongodb');
+    const filter = {
+      $or: [
+        { id: appId },
+        ...(!Number.isNaN(numAppId) ? [{ id: numAppId }] : []),
+        { _id: appId },
+        ...(ObjectId.isValid(appId) ? [{ _id: new ObjectId(appId) }] : []),
+      ],
+    };
+    await db.collections.applications.updateOne(
+      filter,
+      { $set: { ...updateFields, updated_at: new Date().toISOString() } }
+    );
+  }
+  if (!isProd && db.data?.applications) {
+    const memApp = db.data.applications.find(
+      (a) => String(a.id) === String(appId) || String(a._id) === String(appId)
+    );
+    if (memApp) {
+      Object.assign(memApp, updateFields, { updated_at: new Date().toISOString() });
+    }
+  }
+}
 
 // Helper: Ensure socket emits to both standard user room and legacy role room
 function emitToUser(userId, role, eventName, payload) {
@@ -200,16 +310,17 @@ function appendTimelineEvent(application, eventData) {
 const getApplicationConversation = async (req, res, next) => {
   try {
     const applicationId = req.params.id;
-    const application = (db.data.applications || []).find((a) => String(a.id) === String(applicationId));
+    const application = await getApplicationFromDb(applicationId);
     if (!application) return res.status(404).json({ message: 'Application not found' });
 
-    const scholarship = (db.data.scholarships || []).find((s) => String(s.id) === String(application.scholarship_id)) || {};
+    const scholarshipId = application.scholarship_id || application.scholarshipId;
+    const scholarship = (await getScholarshipFromDb(scholarshipId)) || {};
     const userIdStr = String(req.user.id);
     const userRole = (req.user.role || '').toLowerCase();
 
     // Strict Authorization
     if (userRole === 'student') {
-      if (String(application.student_id) !== userIdStr) {
+      if (String(application.student_id || application.studentId) !== userIdStr) {
         return res.status(403).json({ message: 'Forbidden: You may only access your own application conversation.' });
       }
     } else if (isSponsorRole(userRole)) {
@@ -218,8 +329,8 @@ const getApplicationConversation = async (req, res, next) => {
       }
     }
 
-    const studentUser = (db.data.users || []).find((u) => String(u.id) === String(application.student_id)) || {};
-    const studentProfile = (db.data.student_profiles || []).find((p) => String(p.user_id) === String(application.student_id)) || {};
+    const studentUser = (await getUserFromDb(application.student_id || application.studentId)) || {};
+    const studentProfile = (db.data?.student_profiles || []).find((p) => String(p.user_id) === String(application.student_id || application.studentId)) || {};
     const providerId = scholarship.sponsor_id || scholarship.provider_id || scholarship.providerId || req.user.id;
 
     const conversation = await getOrCreateConversation(application, scholarship, application.student_id, providerId);
@@ -278,10 +389,11 @@ const sendMessage = async (req, res, next) => {
       return res.status(400).json({ message: 'Message exceeds maximum allowed length of 5000 characters.' });
     }
 
-    const application = (db.data.applications || []).find((a) => String(a.id) === String(applicationId));
+    const application = await getApplicationFromDb(applicationId);
     if (!application) return res.status(404).json({ message: 'Application not found' });
 
-    const scholarship = (db.data.scholarships || []).find((s) => String(s.id) === String(application.scholarship_id)) || {};
+    const scholarshipId = application.scholarship_id || application.scholarshipId;
+    const scholarship = (await getScholarshipFromDb(scholarshipId)) || {};
     const userIdStr = String(req.user.id);
     const userRole = (req.user.role || '').toLowerCase();
 
@@ -291,7 +403,7 @@ const sendMessage = async (req, res, next) => {
 
     // Authorization
     if (userRole === 'student') {
-      if (String(application.student_id) !== userIdStr) {
+      if (String(application.student_id || application.studentId) !== userIdStr) {
         return res.status(403).json({ message: 'Forbidden: You may only message in your own application thread.' });
       }
       // Students cannot send system messages
@@ -383,10 +495,11 @@ const executeReviewAction = async (req, res, next) => {
     if (normalizedAction === 'APPROVE') normalizedAction = 'APPROVE_APPLICATION';
     if (normalizedAction === 'REJECT') normalizedAction = 'REJECT_APPLICATION';
 
-    const application = (db.data.applications || []).find((a) => String(a.id) === String(applicationId));
+    const application = await getApplicationFromDb(applicationId);
     if (!application) return res.status(404).json({ message: 'Application not found' });
 
-    const scholarship = (db.data.scholarships || []).find((s) => String(s.id) === String(application.scholarship_id)) || {};
+    const scholarshipId = application.scholarship_id || application.scholarshipId;
+    const scholarship = (await getScholarshipFromDb(scholarshipId)) || {};
     const userRole = (req.user.role || '').toLowerCase();
 
     // Authorization: Only Provider owning scholarship or Admin
@@ -399,8 +512,8 @@ const executeReviewAction = async (req, res, next) => {
     }
 
     const currentStatus = application.status || 'PENDING_HUMAN_REVIEW';
-    const studentUser = (db.data.users || []).find((u) => String(u.id) === String(application.student_id)) || {};
-    const studentProfile = (db.data.student_profiles || []).find((p) => String(p.user_id) === String(application.student_id)) || {};
+    const studentUser = (await getUserFromDb(application.student_id || application.studentId)) || {};
+    const studentProfile = (db.data?.student_profiles || []).find((p) => String(p.user_id) === String(application.student_id || application.studentId)) || {};
     const studentEmail = studentUser.email || studentProfile.email || 'student@iskolar.ph';
     const studentName = studentUser.name || studentProfile.name || 'Scholar Candidate';
     const providerName = req.user.name || scholarship.organization_name || 'Scholarship Provider';
@@ -713,32 +826,46 @@ const executeReviewAction = async (req, res, next) => {
       case 'APPROVE_APPLICATION': {
         const { approvalNote, effectiveDate, scholarshipInstructions, acceptanceDeadline, contactInstructions, nextStepChecklist } = payload;
 
+        // Idempotent retry: If application is already approved, return success without altering slots
+        if (currentStatus === 'APPROVED') {
+          return res.json({
+            message: 'Application is already approved',
+            status: 'APPROVED',
+            application,
+          });
+        }
+
         const transition = validateStatusTransition(currentStatus, 'APPROVED', userRole);
         if (!transition.valid) return res.status(409).json({ message: transition.error });
 
-        targetStatus = 'APPROVED';
-        application.status = targetStatus;
-        application.approved_at = new Date().toISOString();
-        application.approvalData = {
-          approvalNote: approvalNote || 'Congratulations on your scholarship award!',
-          effectiveDate: effectiveDate ? new Date(effectiveDate).toISOString() : new Date().toISOString(),
-          scholarshipInstructions: scholarshipInstructions || 'Please review the onboarding instructions in your ISKOLAR mobile app.',
-          acceptanceDeadline: acceptanceDeadline ? new Date(acceptanceDeadline).toISOString() : null,
-          contactInstructions: contactInstructions || `Contact ${providerName} via application messages for inquiries.`,
-          nextStepChecklist: Array.isArray(nextStepChecklist) && nextStepChecklist.length > 0 ? nextStepChecklist : ['Acknowledge Scholarship Acceptance', 'Submit Final Enrollment Copy', 'Attend Scholar Orientation'],
-          approvedAt: new Date().toISOString(),
-          approvedBy: req.user.id,
-          acknowledgedByStudent: false,
-        };
+        // Unified Transactional Approval & Atomic Capacity Reservation
+        try {
+          const approvalResult = await approvalService.approveApplication({
+            applicationId,
+            actorUser: req.user,
+            approvalNote,
+            effectiveDate,
+            scholarshipInstructions,
+            acceptanceDeadline,
+            contactInstructions,
+            nextStepChecklist,
+          });
 
-        appendTimelineEvent(application, {
-          event: 'APPLICATION_APPROVED',
-          fromStatus: currentStatus,
-          toStatus: targetStatus,
-          actorId: req.user.id,
-          actorRole: userRole,
-          notes: approvalNote || 'Application officially approved and awarded.',
-        });
+          targetStatus = 'APPROVED';
+          application.status = 'APPROVED';
+          application.approved_at = approvalResult.application.approved_at || new Date().toISOString();
+          application.approvalData = approvalResult.application.approvalData;
+          if (approvalResult.scholarship) {
+            scholarship.approved_count = approvalResult.scholarship.approved_count;
+            scholarship.is_full = approvalResult.scholarship.is_full;
+          }
+        } catch (approvalErr) {
+          return res.status(approvalErr.statusCode || 500).json({
+            message: approvalErr.message,
+            availableSlots: approvalErr.availableSlots,
+            approvedCount: approvalErr.approvedCount,
+          });
+        }
 
         // Add System Message & Enable messaging thread
         await addMessageToConversation({
@@ -833,14 +960,18 @@ const executeReviewAction = async (req, res, next) => {
     }
 
     // Sync authoritative MongoDB write
-    try {
-      if (typeof db.syncApplication === 'function') {
-        await db.syncApplication(application);
-      }
-    } catch (syncErr) {
-      console.warn('MongoDB sync warning:', syncErr.message);
+    if (normalizedAction !== 'APPROVE_APPLICATION') {
+      await saveApplicationToDb(applicationId, {
+        status: targetStatus,
+        timeline: application.timeline,
+        ...(application.scheduleData ? { scheduleData: application.scheduleData } : {}),
+        ...(application.moreInfoRequest ? { moreInfoRequest: application.moreInfoRequest } : {}),
+        ...(application.resubmissionRequest ? { resubmissionRequest: application.resubmissionRequest } : {}),
+        ...(application.interviewSchedule ? { interviewSchedule: application.interviewSchedule } : {}),
+        ...(application.rejection_reason ? { rejection_reason: application.rejection_reason } : {}),
+      });
     }
-    if (typeof db.write === 'function') await db.write();
+    if (!isProd && typeof db.write === 'function') await db.write();
 
     // Emit live status change to student
     emitToUser(application.student_id, 'student', 'application-status-changed', {
@@ -871,10 +1002,10 @@ const respondToMoreInformation = async (req, res, next) => {
     const applicationId = req.params.id;
     const { responseText, fileContent, filename } = req.body;
 
-    const application = (db.data.applications || []).find((a) => String(a.id) === String(applicationId));
+    const application = await getApplicationFromDb(applicationId);
     if (!application) return res.status(404).json({ message: 'Application not found' });
 
-    if (String(application.student_id) !== String(req.user.id)) {
+    if (String(application.student_id || application.studentId) !== String(req.user.id)) {
       return res.status(403).json({ message: 'Forbidden: You may only respond to your own application.' });
     }
 
@@ -929,9 +1060,10 @@ const respondToMoreInformation = async (req, res, next) => {
       notes: responseText,
     });
 
-    const scholarship = (db.data.scholarships || []).find((s) => String(s.id) === String(application.scholarship_id)) || {};
+    const scholarshipId = application.scholarship_id || application.scholarshipId;
+    const scholarship = (await getScholarshipFromDb(scholarshipId)) || {};
     const providerId = scholarship.sponsor_id || scholarship.provider_id || scholarship.providerId;
-    const conversation = await getOrCreateConversation(application, scholarship, application.student_id, providerId);
+    const conversation = await getOrCreateConversation(application, scholarship, application.student_id || application.studentId, providerId);
 
     // Message in thread
     await addMessageToConversation({
@@ -955,10 +1087,12 @@ const respondToMoreInformation = async (req, res, next) => {
       });
     }
 
-    try {
-      if (typeof db.syncApplication === 'function') await db.syncApplication(application);
-    } catch (e) {}
-    if (typeof db.write === 'function') await db.write();
+    await saveApplicationToDb(applicationId, {
+      status: 'PENDING_HUMAN_REVIEW',
+      moreInformationRequest: application.moreInformationRequest,
+      timeline: application.timeline,
+    });
+    if (!isProd && typeof db.write === 'function') await db.write();
 
     return res.json({ success: true, message: 'Response submitted successfully. Application returned to human review.', application });
   } catch (error) {
@@ -974,10 +1108,10 @@ const resubmitDocument = async (req, res, next) => {
     const applicationId = req.params.id;
     const { documentId, notes, fileContent, filename } = req.body;
 
-    const application = (db.data.applications || []).find((a) => String(a.id) === String(applicationId));
+    const application = await getApplicationFromDb(applicationId);
     if (!application) return res.status(404).json({ message: 'Application not found' });
 
-    if (String(application.student_id) !== String(req.user.id)) {
+    if (String(application.student_id || application.studentId) !== String(req.user.id)) {
       return res.status(403).json({ message: 'Forbidden: You may only resubmit documents for your own application.' });
     }
 
@@ -1026,21 +1160,30 @@ const resubmitDocument = async (req, res, next) => {
       };
     }
 
+    const scholarship = (db.data.scholarships || []).find((s) => String(s.id) === String(application.scholarship_id)) || {};
+    const providerId = scholarship.sponsor_id || scholarship.provider_id || scholarship.providerId || 0;
+
     const newDocId = createId('documents');
     const newDoc = {
       id: newDocId,
       documentId: String(newDocId),
       application_id: applicationId,
       applicationId: applicationId,
-      user_id: req.user.id,
+      student_id: req.user.id,
       studentId: req.user.id,
+      providerId: Number(providerId),
       requirement_name: docType,
+      requirementId: String(application.resubmissionRequest?.requirementId || docType),
       type: docType,
       filename: uploadResult.storedKey,
       storedKey: uploadResult.storedKey,
+      objectKey: uploadResult.storedKey,
       storageDriver: uploadResult.storageDriver,
+      bucket: uploadResult.bucket || '',
       fileHash: uploadResult.fileHash,
+      sha256Hash: uploadResult.fileHash,
       originalname: filename,
+      originalFilename: filename,
       path: uploadResult.storedKey,
       fileUrl: `/api/documents/${newDocId}/download`,
       mime_type: uploadResult.mimeType,
@@ -1048,8 +1191,13 @@ const resubmitDocument = async (req, res, next) => {
       size: uploadResult.size,
       file_size: uploadResult.size,
       version: 2,
+      uploaded_by: String(req.user.id),
+      uploadedBy: String(req.user.id),
       uploaded_at: uploadResult.uploadedAt,
+      uploadedAt: uploadResult.uploadedAt,
+      status: 'PENDING_MANUAL_REVIEW',
       ocr_status: 'VERIFIED',
+      ocrStatus: 'VERIFIED',
       ocr_result: {
         status: 'VERIFIED_MATCH',
         auto_checked: true,
@@ -1070,17 +1218,26 @@ const resubmitDocument = async (req, res, next) => {
           await Document.create({
             documentId: String(newDocId),
             studentId: Number(req.user.id),
+            providerId: Number(providerId),
             applicationId: Number(applicationId),
+            requirementId: String(application.resubmissionRequest?.requirementId || docType),
             docType,
             originalName: filename,
+            originalFilename: filename,
             storedKey: uploadResult.storedKey,
+            objectKey: uploadResult.storedKey,
             storageDriver: uploadResult.storageDriver,
+            bucket: uploadResult.bucket || '',
             fileHash: uploadResult.fileHash,
+            sha256Hash: uploadResult.fileHash,
             fileUrl: `/api/documents/${newDocId}/download`,
             mimeType: uploadResult.mimeType,
             size: uploadResult.size,
             version: 2,
             status: 'PENDING_MANUAL_REVIEW',
+            ocrStatus: 'VERIFIED',
+            uploadedBy: String(req.user.id),
+            uploadedAt: new Date(uploadResult.uploadedAt),
           });
         }
       } catch (_) {}
@@ -1102,8 +1259,6 @@ const resubmitDocument = async (req, res, next) => {
       notes: `Resubmitted ${docType}. ${notes ? `Note: ${notes}` : ''}`,
     });
 
-    const scholarship = (db.data.scholarships || []).find((s) => String(s.id) === String(application.scholarship_id)) || {};
-    const providerId = scholarship.sponsor_id || scholarship.provider_id || scholarship.providerId;
     const conversation = await getOrCreateConversation(application, scholarship, application.student_id, providerId);
 
     // Message in thread
@@ -1128,10 +1283,12 @@ const resubmitDocument = async (req, res, next) => {
       });
     }
 
-    try {
-      if (typeof db.syncApplication === 'function') await db.syncApplication(application);
-    } catch (e) {}
-    if (typeof db.write === 'function') await db.write();
+    await saveApplicationToDb(applicationId, {
+      status: 'PENDING_HUMAN_REVIEW',
+      resubmissionRequest: application.resubmissionRequest,
+      timeline: application.timeline,
+    });
+    if (!isProd && typeof db.write === 'function') await db.write();
 
     return res.json({ success: true, message: 'Replacement document uploaded successfully. Application returned to human review.', application, document: newDoc });
   } catch (error) {
@@ -1145,10 +1302,10 @@ const resubmitDocument = async (req, res, next) => {
 const acknowledgeSchedule = async (req, res, next) => {
   try {
     const applicationId = req.params.id;
-    const application = (db.data.applications || []).find((a) => String(a.id) === String(applicationId));
+    const application = await getApplicationFromDb(applicationId);
     if (!application) return res.status(404).json({ message: 'Application not found' });
 
-    if (String(application.student_id) !== String(req.user.id)) {
+    if (String(application.student_id || application.studentId) !== String(req.user.id)) {
       return res.status(403).json({ message: 'Forbidden: You may only acknowledge your own schedule.' });
     }
 
@@ -1168,9 +1325,10 @@ const acknowledgeSchedule = async (req, res, next) => {
       notes: 'Student confirmed attendance for the scheduled session.',
     });
 
-    const scholarship = (db.data.scholarships || []).find((s) => String(s.id) === String(application.scholarship_id)) || {};
+    const scholarshipId = application.scholarship_id || application.scholarshipId;
+    const scholarship = (await getScholarshipFromDb(scholarshipId)) || {};
     const providerId = scholarship.sponsor_id || scholarship.provider_id || scholarship.providerId;
-    const conversation = await getOrCreateConversation(application, scholarship, application.student_id, providerId);
+    const conversation = await getOrCreateConversation(application, scholarship, application.student_id || application.studentId, providerId);
 
     // Message in thread
     await addMessageToConversation({
@@ -1193,10 +1351,11 @@ const acknowledgeSchedule = async (req, res, next) => {
       });
     }
 
-    try {
-      if (typeof db.syncApplication === 'function') await db.syncApplication(application);
-    } catch (e) {}
-    if (typeof db.write === 'function') await db.write();
+    await saveApplicationToDb(applicationId, {
+      scheduleData: application.scheduleData,
+      timeline: application.timeline,
+    });
+    if (!isProd && typeof db.write === 'function') await db.write();
 
     return res.json({ success: true, message: 'Schedule acknowledged successfully.', scheduleData: application.scheduleData });
   } catch (error) {
@@ -1210,14 +1369,14 @@ const acknowledgeSchedule = async (req, res, next) => {
 const acknowledgeApproval = async (req, res, next) => {
   try {
     const applicationId = req.params.id;
-    const application = (db.data.applications || []).find((a) => String(a.id) === String(applicationId));
+    const application = await getApplicationFromDb(applicationId);
     if (!application) return res.status(404).json({ message: 'Application not found' });
 
-    if (String(application.student_id) !== String(req.user.id)) {
+    if (String(application.student_id || application.studentId) !== String(req.user.id)) {
       return res.status(403).json({ message: 'Forbidden: You may only acknowledge your own scholarship award.' });
     }
 
-    if (application.status !== 'APPROVED') {
+    if (String(application.status || '').toUpperCase() !== 'APPROVED') {
       return res.status(400).json({ message: 'Application is not in approved state.' });
     }
 
@@ -1236,9 +1395,10 @@ const acknowledgeApproval = async (req, res, next) => {
       notes: 'Student acknowledged and accepted the scholarship award terms.',
     });
 
-    const scholarship = (db.data.scholarships || []).find((s) => String(s.id) === String(application.scholarship_id)) || {};
+    const scholarshipId = application.scholarship_id || application.scholarshipId;
+    const scholarship = (await getScholarshipFromDb(scholarshipId)) || {};
     const providerId = scholarship.sponsor_id || scholarship.provider_id || scholarship.providerId;
-    const conversation = await getOrCreateConversation(application, scholarship, application.student_id, providerId);
+    const conversation = await getOrCreateConversation(application, scholarship, application.student_id || application.studentId, providerId);
 
     // Message in thread
     await addMessageToConversation({
@@ -1261,12 +1421,13 @@ const acknowledgeApproval = async (req, res, next) => {
       });
     }
 
-    try {
-      if (typeof db.syncApplication === 'function') await db.syncApplication(application);
-    } catch (e) {}
-    if (typeof db.write === 'function') await db.write();
+    await saveApplicationToDb(applicationId, {
+      approvalData: application.approvalData,
+      timeline: application.timeline,
+    });
+    if (!isProd && typeof db.write === 'function') await db.write();
 
-    return res.json({ success: true, message: 'Scholarship award acknowledged successfully.', approvalData: application.approvalData });
+    return res.json({ success: true, message: 'Scholarship approval and award acknowledged.', approvalData: application.approvalData });
   } catch (error) {
     next(error);
   }

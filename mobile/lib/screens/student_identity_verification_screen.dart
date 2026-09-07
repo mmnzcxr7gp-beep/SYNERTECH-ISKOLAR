@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -30,18 +31,26 @@ class StudentVerificationScreen extends StatefulWidget {
 class _StudentVerificationScreenState extends State<StudentVerificationScreen> {
   final ImagePicker _imagePicker = ImagePicker();
 
+  XFile? _corXFile;
+  XFile? _schoolIdXFile;
+  XFile? _selfieXFile;
+
+  Uint8List? _corBytes;
+  Uint8List? _schoolIdBytes;
+  Uint8List? _selfieBytes;
+
   File? _corImageFile;
   File? _schoolIdImageFile;
   File? _selfieImageFile;
 
   bool _isLoading = false;
 
-  Future<void> _runOcrAndReview(File file) async {
+  Future<void> _runOcrAndReview(XFile file, Uint8List bytes) async {
     setState(() => _isLoading = true);
     try {
       final ocrResult = await OcrService.extractFromDocument(
         token: widget.token,
-        filePath: file.path,
+        file: file,
       );
 
       if (!mounted) return;
@@ -68,7 +77,7 @@ class _StudentVerificationScreenState extends State<StudentVerificationScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('OCR check failed: ${e.toString().replaceAll('Exception: ', '')}. Proceeding manually.'),
+            content: Text('OCR check notice: ${e.toString().replaceAll('Exception: ', '')}. Proceeding manually.'),
             backgroundColor: Colors.orange,
           ),
         );
@@ -87,24 +96,31 @@ class _StudentVerificationScreenState extends State<StudentVerificationScreen> {
         imageQuality: 85,
       );
 
-      if (pickedFile != null && pickedFile.path.isNotEmpty) {
-        final file = File(pickedFile.path);
+      if (pickedFile != null) {
+        final bytes = await pickedFile.readAsBytes();
+        final file = !kIsWeb && pickedFile.path.isNotEmpty ? File(pickedFile.path) : null;
         setState(() {
           switch (documentType) {
             case 'cor':
+              _corXFile = pickedFile;
+              _corBytes = bytes;
               _corImageFile = file;
               break;
             case 'schoolId':
+              _schoolIdXFile = pickedFile;
+              _schoolIdBytes = bytes;
               _schoolIdImageFile = file;
               break;
             case 'selfie':
+              _selfieXFile = pickedFile;
+              _selfieBytes = bytes;
               _selfieImageFile = file;
               break;
           }
         });
 
         if (documentType == 'schoolId') {
-          await _runOcrAndReview(file);
+          await _runOcrAndReview(pickedFile, bytes);
         }
       }
     } catch (e) {
@@ -124,24 +140,31 @@ class _StudentVerificationScreenState extends State<StudentVerificationScreen> {
         imageQuality: 85,
       );
 
-      if (pickedFile != null && pickedFile.path.isNotEmpty) {
-        final file = File(pickedFile.path);
+      if (pickedFile != null) {
+        final bytes = await pickedFile.readAsBytes();
+        final file = !kIsWeb && pickedFile.path.isNotEmpty ? File(pickedFile.path) : null;
         setState(() {
           switch (documentType) {
             case 'cor':
+              _corXFile = pickedFile;
+              _corBytes = bytes;
               _corImageFile = file;
               break;
             case 'schoolId':
+              _schoolIdXFile = pickedFile;
+              _schoolIdBytes = bytes;
               _schoolIdImageFile = file;
               break;
             case 'selfie':
+              _selfieXFile = pickedFile;
+              _selfieBytes = bytes;
               _selfieImageFile = file;
               break;
           }
         });
 
         if (documentType == 'schoolId') {
-          await _runOcrAndReview(file);
+          await _runOcrAndReview(pickedFile, bytes);
         }
       }
     } catch (e) {
@@ -154,7 +177,11 @@ class _StudentVerificationScreenState extends State<StudentVerificationScreen> {
 
   Future<void> _submitVerification() async {
     // Validation
-    if (_corImageFile == null || _schoolIdImageFile == null || _selfieImageFile == null) {
+    final hasCor = _corBytes != null || _corImageFile != null;
+    final hasSchoolId = _schoolIdBytes != null || _schoolIdImageFile != null;
+    final hasSelfie = _selfieBytes != null || _selfieImageFile != null;
+
+    if (!hasCor || !hasSchoolId || !hasSelfie) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please upload all required documents'),
@@ -175,9 +202,9 @@ class _StudentVerificationScreenState extends State<StudentVerificationScreen> {
         token: widget.token,
         lrn: '',
         schoolName: schoolName,
-        governmentId: _schoolIdImageFile,
-        selfieWithId: _selfieImageFile,
-        certificateOfRegistration: _corImageFile,
+        governmentId: _schoolIdXFile ?? _schoolIdBytes ?? _schoolIdImageFile,
+        selfieWithId: _selfieXFile ?? _selfieBytes ?? _selfieImageFile,
+        certificateOfRegistration: _corXFile ?? _corBytes ?? _corImageFile,
       );
 
       if (mounted) {
@@ -274,6 +301,7 @@ class _StudentVerificationScreenState extends State<StudentVerificationScreen> {
               description: 'Front page of your COR or enrollment certificate',
               documentType: 'cor',
               imageFile: _corImageFile,
+              imageBytes: _corBytes,
               onGalleryTap: () => _pickImage('cor'),
               onCameraTap: () => _takePhoto('cor'),
             ),
@@ -285,6 +313,7 @@ class _StudentVerificationScreenState extends State<StudentVerificationScreen> {
               description: 'Clear photo of your school ID (front side)',
               documentType: 'schoolId',
               imageFile: _schoolIdImageFile,
+              imageBytes: _schoolIdBytes,
               onGalleryTap: () => _pickImage('schoolId'),
               onCameraTap: () => _takePhoto('schoolId'),
             ),
@@ -296,6 +325,7 @@ class _StudentVerificationScreenState extends State<StudentVerificationScreen> {
               description: 'Take a clear selfie while holding your school ID',
               documentType: 'selfie',
               imageFile: _selfieImageFile,
+              imageBytes: _selfieBytes,
               onGalleryTap: () => _pickImage('selfie'),
               onCameraTap: () => _takePhoto('selfie'),
               isSelfie: true,
@@ -370,10 +400,13 @@ class _StudentVerificationScreenState extends State<StudentVerificationScreen> {
     required String description,
     required String documentType,
     required File? imageFile,
+    required Uint8List? imageBytes,
     required VoidCallback onGalleryTap,
     required VoidCallback onCameraTap,
     bool isSelfie = false,
   }) {
+    final hasImage = imageBytes != null || imageFile != null;
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -409,7 +442,7 @@ class _StudentVerificationScreenState extends State<StudentVerificationScreen> {
               ],
             ),
           ),
-          if (imageFile == null)
+          if (!hasImage)
             Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -489,12 +522,19 @@ class _StudentVerificationScreenState extends State<StudentVerificationScreen> {
                   padding: const EdgeInsets.all(16),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: Image.file(
-                      imageFile,
-                      width: double.infinity,
-                      height: 200,
-                      fit: BoxFit.cover,
-                    ),
+                    child: imageBytes != null
+                        ? Image.memory(
+                            imageBytes,
+                            width: double.infinity,
+                            height: 200,
+                            fit: BoxFit.cover,
+                          )
+                        : Image.file(
+                            imageFile!,
+                            width: double.infinity,
+                            height: 200,
+                            fit: BoxFit.cover,
+                          ),
                   ),
                 ),
                 Positioned(
@@ -511,10 +551,16 @@ class _StudentVerificationScreenState extends State<StudentVerificationScreen> {
                         setState(() {
                           if (documentType == 'cor') {
                             _corImageFile = null;
+                            _corBytes = null;
+                            _corXFile = null;
                           } else if (documentType == 'schoolId') {
                             _schoolIdImageFile = null;
+                            _schoolIdBytes = null;
+                            _schoolIdXFile = null;
                           } else if (documentType == 'selfie') {
                             _selfieImageFile = null;
+                            _selfieBytes = null;
+                            _selfieXFile = null;
                           }
                         });
                       },

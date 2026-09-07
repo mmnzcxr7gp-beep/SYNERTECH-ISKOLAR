@@ -8,21 +8,36 @@ const SCHOLARSHIP_CACHE_TTL = 60 * 1000; // 60 seconds
 const isSponsorRole = (role) => role === 'sponsor' || role === 'provider';
 const { isOwnedBy } = require('../utils/ownership');
 
-const getScholarships = (req, res, next) => {
+const getScholarships = async (req, res, next) => {
   try {
     // Phase 2: Cache-through for scholarship listings
     const cached = cacheService.get(SCHOLARSHIP_CACHE_KEY);
     if (cached) return res.json({ scholarships: cached });
 
-    const scholarships = db.data.scholarships
-      .filter((scholarship) => scholarship.status === 'open')
-      .map((scholarship) => ({
-        ...scholarship,
-        criteria: JSON.parse(scholarship.criteria_json || '{}'),
-        sponsor_name: db.data.users.find((u) => u.id === scholarship.sponsor_id)?.name || null,
-        sponsor_verified: !!db.data.users.find((u) => u.id === scholarship.sponsor_id)?.sponsor_verified,
-        organization_verified: !!db.data.users.find((u) => u.id === scholarship.sponsor_id)?.organization_verified,
-      }));
+    let rawScholarships = [];
+    if (db.collections?.scholarships) {
+      rawScholarships = await db.collections.scholarships.find({ status: 'open' }).toArray();
+    } else {
+      rawScholarships = (db.data.scholarships || []).filter((scholarship) => scholarship.status === 'open');
+    }
+
+    const scholarships = await Promise.all(
+      rawScholarships.map(async (scholarship) => {
+        let sponsor = null;
+        if (db.collections?.users) {
+          sponsor = await db.collections.users.findOne({ id: scholarship.sponsor_id });
+        } else {
+          sponsor = (db.data.users || []).find((u) => u.id === scholarship.sponsor_id);
+        }
+        return {
+          ...scholarship,
+          criteria: JSON.parse(scholarship.criteria_json || '{}'),
+          sponsor_name: sponsor?.name || null,
+          sponsor_verified: !!sponsor?.sponsor_verified,
+          organization_verified: !!sponsor?.organization_verified,
+        };
+      })
+    );
 
     cacheService.set(SCHOLARSHIP_CACHE_KEY, scholarships, SCHOLARSHIP_CACHE_TTL);
     return res.json({ scholarships });
@@ -31,10 +46,18 @@ const getScholarships = (req, res, next) => {
   }
 };
 
-const getScholarshipById = (req, res, next) => {
+const getScholarshipById = async (req, res, next) => {
   try {
     const targetIdStr = String(req.params.id);
-    const scholarship = db.data.scholarships.find((item) => String(item.id) === targetIdStr);
+    let scholarship = null;
+    if (db.collections?.scholarships) {
+      scholarship = await db.collections.scholarships.findOne({
+        $or: [{ id: targetIdStr }, { id: Number(targetIdStr) }, { _id: targetIdStr }],
+      });
+    }
+    if (!scholarship && db.data.scholarships) {
+      scholarship = db.data.scholarships.find((item) => String(item.id) === targetIdStr);
+    }
     if (!scholarship) {
       return res.status(404).json({ message: 'Scholarship not found' });
     }
@@ -67,6 +90,25 @@ const createScholarship = async (req, res, next) => {
       selectionStages,
     } = req.body;
 
+    if (!title || typeof title !== 'string' || !title.trim()) {
+      return res.status(400).json({ message: 'Scholarship title is required and cannot be empty' });
+    }
+
+    const rawSlots = slots !== undefined ? slots : totalSlots;
+    const parsedSlots = Number(rawSlots);
+    if (rawSlots !== undefined && (isNaN(parsedSlots) || parsedSlots < 1)) {
+      return res.status(400).json({ message: 'Slots must be a positive integer greater than or equal to 1' });
+    }
+    const finalSlots = !isNaN(parsedSlots) && parsedSlots >= 1 ? parsedSlots : 1;
+
+    const rawDeadline = deadline || applicationDeadline;
+    if (rawDeadline) {
+      const d = new Date(rawDeadline);
+      if (isNaN(d.getTime())) {
+        return res.status(400).json({ message: 'Invalid deadline date format' });
+      }
+    }
+
     const requirementsArray = Array.isArray(requirements)
       ? requirements.map(r => (typeof r === 'object' && r.requirementName ? r.requirementName : String(r).trim())).filter(Boolean)
       : (typeof requirements === 'string' && requirements.trim()
@@ -76,13 +118,13 @@ const createScholarship = async (req, res, next) => {
     const scholarship = {
       id: createId('scholarships'),
       sponsor_id: req.user.id,
-      title,
+      title: title.trim(),
       description: description || '',
       type: type || 'Scholarship',
       benefits: benefits || '',
       eligibilityRequirements: eligibilityRequirements || '',
-      slots: Number(slots || totalSlots) || 1,
-      deadline: deadline || applicationDeadline || '',
+      slots: finalSlots,
+      deadline: rawDeadline || '',
       allowance: allowance ? parseFloat(allowance) : 0,
       maxAmount: maxAmount ? parseFloat(maxAmount) : 0,
       requirements: requirementsArray,
@@ -97,6 +139,9 @@ const createScholarship = async (req, res, next) => {
       status: 'open',
       created_at: new Date().toISOString(),
     };
+    if (db.collections?.scholarships) {
+      await db.collections.scholarships.insertOne({ ...scholarship });
+    }
     db.data.scholarships.push(scholarship);
     await db.write();
     cacheService.invalidatePattern('scholarships:');
@@ -170,23 +215,30 @@ const getScholarshipApplications = (req, res, next) => {
       .map((application) => {
         const student = db.data.users.find((user) => user.id === application.student_id) || {};
         const profile = db.data.student_profiles.find((item) => item.user_id === application.student_id) || {};
-        const docs = db.data.documents
-          .filter((d) => d.application_id === application.id)
+        const docs = (db.data.documents || [])
+          .filter((d) => String(d.application_id || d.applicationId || '') === String(application.id || application._id || ''))
           .map((d) => {
+            const docId = d.id || d._id || d.documentId;
             const storedFilename = d.filename || (typeof d.path === 'string' ? path.basename(d.path) : null);
             const documentUrl =
-              d.url ||
-              (typeof d.path === 'string' && d.path.startsWith('/uploads/') ? d.path : storedFilename ? `/uploads/${storedFilename}` : null);
+              d.fileUrl ||
+              (docId ? `/api/documents/${docId}/download` : (d.url || (storedFilename ? `/uploads/${storedFilename}` : null)));
 
             return {
-              id: d.id,
-              requirement_name: d.requirement_name || d.type || d.requirement_field,
-              originalname: d.originalname,
+              id: docId,
+              documentId: String(docId),
+              requirement_name: d.requirement_name || d.type || d.requirement_field || 'Certificate of Enrollment (COE)',
+              originalname: d.originalname || d.originalFilename || `${d.requirement_name || 'Document'}.pdf`,
               filename: d.filename,
-              mime_type: d.mime_type,
-              uploaded_at: d.uploaded_at,
+              mime_type: d.mime_type || d.mimeType || 'application/pdf',
+              uploaded_at: d.uploaded_at || d.uploadedAt || application.applied_at || new Date().toISOString(),
               url: documentUrl,
               fileUrl: documentUrl,
+              status: d.status || d.verificationStatus || 'PENDING_HUMAN_REVIEW',
+              verificationStatus: d.verificationStatus || d.status || 'PENDING_HUMAN_REVIEW',
+              manualReviewStatus: d.manualReviewStatus || 'PENDING',
+              ocr_status: d.ocr_status || d.ocrStatus || 'PENDING_HUMAN_REVIEW',
+              ocrStatus: d.ocrStatus || d.ocr_status || 'PENDING_HUMAN_REVIEW',
             };
           });
         return {

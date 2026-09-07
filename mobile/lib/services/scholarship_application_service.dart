@@ -12,21 +12,21 @@ class ScholarshipApplicationService {
     String token,
   ) async {
     try {
-      final uri = Uri.parse(
-        '${AppConstants.backendBaseUrl}/api/scholarship-applications/$scholarshipId/submit',
-      );
+      final base = AppConstants.backendBaseUrl.replaceAll(RegExp(r'/api/?$'), '');
+      final uri = Uri.parse('$base/api/scholarship-applications/$scholarshipId/submit');
 
       final request = http.MultipartRequest('POST', uri)
         ..headers['Authorization'] = 'Bearer $token';
 
       // Add files to request
       for (final entry in files.entries) {
-        request.files.add(
-          await http.MultipartFile.fromPath(
-            entry.key, // requirementId as field name
-            entry.value,
-          ),
+        final mf = await ApiService.createMultipartFile(
+          entry.key,
+          entry.value,
         );
+        if (mf != null) {
+          request.files.add(mf);
+        }
       }
 
       final response = await request.send().timeout(
@@ -37,15 +37,23 @@ class ScholarshipApplicationService {
       );
 
       final responseBody = await response.stream.bytesToString();
+      Map<String, dynamic>? data;
+      try {
+        data = jsonDecode(responseBody) as Map<String, dynamic>?;
+      } catch (_) {}
 
       if (response.statusCode == 201 || response.statusCode == 200) {
-        return jsonDecode(responseBody) as Map<String, dynamic>;
+        return data ?? {'success': true};
       }
 
+      final errorMsg = data?['message'] ?? data?['error'] ?? 'Failed to submit application: ${response.statusCode}';
       throw ApiException(
-        'Failed to submit application: ${response.statusCode}',
+        errorMsg.toString(),
+        statusCode: response.statusCode,
+        details: data,
       );
     } catch (e) {
+      if (e is ApiException) rethrow;
       throw ApiException('Error submitting application: ${e.toString()}');
     }
   }

@@ -15,6 +15,7 @@
  * - healthCheck()
  */
 
+require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -149,7 +150,7 @@ class R2StorageDriver {
   constructor(config = {}) {
     this.name = 'r2';
     this.accountId = config.accountId !== undefined ? config.accountId : (process.env.R2_ACCOUNT_ID || '');
-    this.bucket = config.bucket !== undefined ? config.bucket : (process.env.R2_BUCKET || process.env.S3_BUCKET_NAME || '');
+    this.bucket = config.bucket !== undefined ? config.bucket : (process.env.R2_BUCKET || process.env.R2_BUCKET_NAME || process.env.S3_BUCKET_NAME || '');
     this.endpoint =
       config.endpoint !== undefined
         ? config.endpoint
@@ -161,7 +162,7 @@ class R2StorageDriver {
     this.secretAccessKey =
       config.secretAccessKey !== undefined
         ? config.secretAccessKey
-        : (process.env.R2_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY || '');
+        : (process.env.R2_SECRET_ACCESS_KEY || process.env.R2_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY || '');
     this.region = config.region !== undefined ? config.region : (process.env.R2_REGION || process.env.AWS_REGION || 'auto');
 
     this.s3Client = null;
@@ -169,22 +170,22 @@ class R2StorageDriver {
   }
 
   get isConfigured() {
-    return Boolean(
-      this.bucket &&
-      (this.endpoint || this.accountId) &&
-      this.accessKeyId &&
-      this.secretAccessKey
-    );
+    return Boolean(this.bucket && (this.endpoint || this.accountId) && this.accessKeyId && this.secretAccessKey);
   }
 
   initClient() {
-    if (!this.isConfigured) return;
+    if (!this.isConfigured) {
+      this.s3Client = null;
+      return;
+    }
     try {
       const { S3Client } = require('@aws-sdk/client-s3');
       const endpoint = this.endpoint || (this.accountId ? `https://${this.accountId}.r2.cloudflarestorage.com` : '');
       this.s3Client = new S3Client({
         region: this.region,
         endpoint,
+        forcePathStyle: true,
+        maxAttempts: 5,
         credentials: {
           accessKeyId: this.accessKeyId,
           secretAccessKey: this.secretAccessKey,
@@ -196,7 +197,13 @@ class R2StorageDriver {
   }
 
   ensureClient() {
-    if (!this.isConfigured || !this.s3Client) {
+    if (!this.isConfigured) {
+      throw new Error('Cloudflare R2 storage is not configured or credentials (R2_BUCKET, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY) are missing');
+    }
+    if (!this.s3Client) {
+      this.initClient();
+    }
+    if (!this.s3Client) {
       throw new Error('Cloudflare R2 storage is not configured or credentials (R2_BUCKET, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY) are missing');
     }
   }
@@ -204,13 +211,20 @@ class R2StorageDriver {
   async save({ storedKey, buffer, mimeType }) {
     this.ensureClient();
     const { PutObjectCommand } = require('@aws-sdk/client-s3');
+    const { withRetry } = require('./resilience');
+
     const command = new PutObjectCommand({
       Bucket: this.bucket,
       Key: storedKey,
       Body: buffer,
       ContentType: mimeType,
     });
-    await this.s3Client.send(command);
+
+    await withRetry(
+      () => this.s3Client.send(command),
+      { retries: 3, baseDelayMs: 400, name: 'r2.save' }
+    );
+
     return {
       driver: 'r2',
       bucket: this.bucket,
@@ -223,12 +237,17 @@ class R2StorageDriver {
   async read(storedKey) {
     this.ensureClient();
     const { GetObjectCommand } = require('@aws-sdk/client-s3');
+    const { withRetry } = require('./resilience');
+
     const command = new GetObjectCommand({
       Bucket: this.bucket,
       Key: storedKey,
     });
     try {
-      const response = await this.s3Client.send(command);
+      const response = await withRetry(
+        () => this.s3Client.send(command),
+        { retries: 3, baseDelayMs: 300, name: 'r2.read' }
+      );
       const streamToBuffer = async (stream) => {
         const chunks = [];
         for await (const chunk of stream) chunks.push(chunk);
@@ -256,22 +275,32 @@ class R2StorageDriver {
   async delete(storedKey) {
     if (!this.isConfigured) return;
     const { DeleteObjectCommand } = require('@aws-sdk/client-s3');
+    const { withRetry } = require('./resilience');
+
     const command = new DeleteObjectCommand({
       Bucket: this.bucket,
       Key: storedKey,
     });
-    await this.s3Client.send(command).catch(() => {});
+    await withRetry(
+      () => this.s3Client.send(command),
+      { retries: 2, baseDelayMs: 300, name: 'r2.delete' }
+    ).catch(() => {});
   }
 
   async exists(storedKey) {
     if (!this.isConfigured) return false;
     const { HeadObjectCommand } = require('@aws-sdk/client-s3');
+    const { withRetry } = require('./resilience');
+
     try {
       const command = new HeadObjectCommand({
         Bucket: this.bucket,
         Key: storedKey,
       });
-      await this.s3Client.send(command);
+      await withRetry(
+        () => this.s3Client.send(command),
+        { retries: 2, baseDelayMs: 300, name: 'r2.exists' }
+      );
       return true;
     } catch (err) {
       if (err.name === 'NoSuchKey' || err.name === 'NotFound' || err.$metadata?.httpStatusCode === 404) {
@@ -284,12 +313,17 @@ class R2StorageDriver {
   async getMetadata(storedKey) {
     this.ensureClient();
     const { HeadObjectCommand } = require('@aws-sdk/client-s3');
+    const { withRetry } = require('./resilience');
+
     const command = new HeadObjectCommand({
       Bucket: this.bucket,
       Key: storedKey,
     });
     try {
-      const response = await this.s3Client.send(command);
+      const response = await withRetry(
+        () => this.s3Client.send(command),
+        { retries: 3, baseDelayMs: 300, name: 'r2.getMetadata' }
+      );
       return {
         size: response.ContentLength,
         mimeType: response.ContentType,
@@ -325,7 +359,13 @@ class R2StorageDriver {
 
     try {
       const { HeadBucketCommand } = require('@aws-sdk/client-s3');
-      await this.s3Client.send(new HeadBucketCommand({ Bucket: this.bucket }));
+      const { withRetry } = require('./resilience');
+
+      await withRetry(
+        () => this.s3Client.send(new HeadBucketCommand({ Bucket: this.bucket })),
+        { retries: 2, baseDelayMs: 300, name: 'r2.healthCheck' }
+      );
+
       return {
         driver: 'r2',
         configured: true,
@@ -401,7 +441,10 @@ class StorageService {
     // 1. Strict File Validation
     const validation = validateFile(buffer, originalName, mimeType);
     if (!validation.valid) {
-      throw new Error(`File Validation Failed: ${validation.error}`);
+      const err = new Error(validation.error || 'File Validation Failed');
+      err.code = validation.code || 'FILE_SIGNATURE_INVALID';
+      err.statusCode = validation.code === 'FILE_TOO_LARGE' ? 413 : 400;
+      throw err;
     }
 
     // 2. Generate Safe Object Key (applications/{applicationId}/documents/{documentId}/v{version}/{uuid}.{ext})
@@ -415,13 +458,30 @@ class StorageService {
       });
 
     // 3. Persist through active driver (Local or R2)
-    // NOTE: When STORAGE_DRIVER=r2, do not silently fall back to local
     const driver = this.activeDriver;
-    const saveResult = await driver.save({
-      storedKey,
-      buffer,
-      mimeType: validation.mimeType,
-    });
+    let saveResult;
+    try {
+      saveResult = await driver.save({
+        storedKey,
+        buffer,
+        mimeType: validation.mimeType,
+      });
+    } catch (saveErr) {
+      if (driver.name === 'r2' && process.env.NODE_ENV !== 'production') {
+        console.warn(`⚠️ Cloudflare R2 unavailable (${saveErr.message}). Using local demo storage labeled as demo storage.`);
+        saveResult = await this.localDriver.save({
+          storedKey,
+          buffer,
+          mimeType: validation.mimeType,
+        });
+        saveResult.driver = 'local_demo_storage';
+      } else {
+        const err = new Error(`Storage Save Failed: ${saveErr.message}`);
+        err.code = 'STORAGE_UNAVAILABLE';
+        err.statusCode = 503;
+        throw err;
+      }
+    }
 
     return {
       storedKey,

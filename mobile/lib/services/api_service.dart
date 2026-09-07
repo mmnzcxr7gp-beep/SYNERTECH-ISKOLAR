@@ -4,15 +4,17 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:mime/mime.dart';
 
 import '../utils/app_constants.dart';
 
 /// Custom exception for API errors.
 class ApiException implements Exception {
-  ApiException(this.message, {this.statusCode});
+  ApiException(this.message, {this.statusCode, this.details});
 
   final String message;
   final int? statusCode;
+  final dynamic details;
 
   @override
   String toString() => message;
@@ -167,9 +169,72 @@ class ApiService {
 
   /// Upload files via multipart/form-data.
   ///
+  /// Safely create a MultipartFile across Flutter Web, Android, iOS, Desktop
+  static Future<http.MultipartFile?> createMultipartFile(
+    String fieldName,
+    dynamic value, {
+    String? defaultFilename,
+  }) async {
+    if (value == null) return null;
+
+    Uint8List? bytes;
+    String filename = defaultFilename ?? '$fieldName.jpg';
+
+    if (value is Uint8List) {
+      bytes = value;
+    } else if (value is List<int>) {
+      bytes = Uint8List.fromList(value);
+    } else if (value is Map && value['bytes'] != null) {
+      final raw = value['bytes'];
+      bytes = raw is Uint8List ? raw : Uint8List.fromList(List<int>.from(raw));
+      filename = value['filename'] as String? ?? filename;
+    } else {
+      // Dynamic check for XFile or File without hard crash on web
+      try {
+        final dynamic dyn = value;
+        final dynamic b = await dyn.readAsBytes();
+        if (b != null) {
+          bytes = b is Uint8List ? b : Uint8List.fromList(List<int>.from(b));
+        }
+        filename = (dyn.name as String?) ??
+            (dyn.path as String?)?.split(RegExp(r'[/\\]')).last ??
+            filename;
+      } catch (_) {
+        if (!kIsWeb && value is String) {
+          try {
+            final f = File(value);
+            if (await f.exists()) {
+              bytes = await f.readAsBytes();
+              filename = value.split(Platform.pathSeparator).last;
+            }
+          } catch (_) {}
+        }
+      }
+    }
+
+    if (bytes == null || bytes.isEmpty) return null;
+
+    http.MediaType? mediaType;
+    try {
+      final mimeType = lookupMimeType(filename) ?? 'application/octet-stream';
+      final parts = mimeType.split('/');
+      if (parts.length == 2) {
+        mediaType = http.MediaType(parts[0], parts[1]);
+      }
+    } catch (_) {}
+
+    return http.MultipartFile.fromBytes(
+      fieldName,
+      bytes,
+      filename: filename,
+      contentType: mediaType,
+    );
+  }
+
   /// [filePaths] is a map of field-name → value, where value can be:
-  ///   - A `String` (file path on disk)
-  ///   - A `List<dynamic>` of file paths or `{bytes, filename}` maps
+  ///   - A `String` (file path on disk or asset)
+  ///   - An `XFile` / `File` / `Uint8List`
+  ///   - A `List<dynamic>` of file objects/paths or `{bytes, filename}` maps
   ///   - A `Map` with `bytes` (Uint8List) and `filename` keys (for web)
   static Future<Map<String, dynamic>> multipartUpload(
     String path, {
@@ -197,44 +262,17 @@ class ApiService {
         final fieldName = entry.key;
         final value = entry.value;
 
-        if (value is String) {
-          // Single file path
-          request.files.add(
-            await http.MultipartFile.fromPath(fieldName, value),
-          );
-        } else if (value is List) {
-          // List of files
+        if (value is List) {
           for (final item in value) {
-            if (item is String) {
-              request.files.add(
-                await http.MultipartFile.fromPath(fieldName, item),
-              );
-            } else if (item is Map) {
-              // Web upload: {bytes: Uint8List, filename: String}
-              final bytes = item['bytes'];
-              final filename = item['filename'] as String? ?? 'file';
-              if (bytes is List<int>) {
-                request.files.add(
-                  http.MultipartFile.fromBytes(
-                    fieldName,
-                    bytes,
-                    filename: filename,
-                  ),
-                );
-              }
+            final mf = await createMultipartFile(fieldName, item);
+            if (mf != null) {
+              request.files.add(mf);
             }
           }
-        } else if (value is Map) {
-          final bytes = value['bytes'];
-          final filename = value['filename'] as String? ?? 'file';
-          if (bytes is List<int>) {
-            request.files.add(
-              http.MultipartFile.fromBytes(
-                fieldName,
-                bytes,
-                filename: filename,
-              ),
-            );
+        } else {
+          final mf = await createMultipartFile(fieldName, value);
+          if (mf != null) {
+            request.files.add(mf);
           }
         }
       }

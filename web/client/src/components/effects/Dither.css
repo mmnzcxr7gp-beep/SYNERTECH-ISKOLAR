@@ -1,0 +1,44 @@
+/* ==========================================================================
+   Dither Component Styles (React Bits ISKOLAR Integration)
+   ========================================================================== */
+
+.dither-container {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.dither-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  pointer-events: none;
+  display: block;
+}
+
+.dither-fallback {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--color-bg-orange-tint, #FFF8F4);
+  pointer-events: none;
+}
+
+[data-theme="dark"] .dither-fallback {
+  background: var(--color-bg-orange-tint, #1C1A22);
+}
+
+/* Reduced Motion Override */
+@media (prefers-reduced-motion: reduce) {
+  .dither-canvas {
+    display: none !important;
+  }
+}

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, Suspense, lazy } from 'react'
 import { AnimatePresence, MotionConfig } from 'framer-motion'
 import { ThemeProvider } from './components/ThemeContext'
 import Navbar from './components/Navbar'
@@ -11,11 +11,18 @@ import About from './components/About'
 import Download from './components/Download'
 import FinalCTA from './components/FinalCTA'
 import Footer from './components/Footer'
-import LoginModal from './components/LoginModal'
-import ProviderDashboard from './components/ProviderDashboard'
-import ProviderGuide from './components/ProviderGuide'
-import StudentRedirectNotice from './components/StudentRedirectNotice'
-import TypographyDocPage from './components/TypographyDocPage'
+
+const LoginModal = lazy(() => import('./components/LoginModal'))
+const ProviderDashboard = lazy(() => import('./components/ProviderDashboard'))
+const ProviderGuide = lazy(() => import('./components/ProviderGuide'))
+const StudentRedirectNotice = lazy(() => import('./components/StudentRedirectNotice'))
+const TypographyDocPage = lazy(() => import('./components/TypographyDocPage'))
+
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center p-12 min-h-[400px]">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" style={{ borderColor: 'var(--color-accent-blue, #2563eb)' }} />
+  </div>
+)
 
 function AppContent() {
   const [showLogin, setShowLogin] = useState(false)
@@ -72,7 +79,9 @@ function AppContent() {
     if (activeSection === 'typography') {
       return (
         <main id="main-content" tabIndex={-1} className="animate-fadeIn outline-none py-4">
-          <TypographyDocPage />
+          <Suspense fallback={<LoadingFallback />}>
+            <TypographyDocPage />
+          </Suspense>
         </main>
       )
     }
@@ -89,7 +98,9 @@ function AppContent() {
                 </div>
                 <a href="#home" className="btn-secondary text-xs font-bold py-1.5 px-3">← Back to Home</a>
               </div>
-              <ProviderGuide onLogin={openLogin} />
+              <Suspense fallback={<LoadingFallback />}>
+                <ProviderGuide onLogin={openLogin} />
+              </Suspense>
             </div>
           </main>
         )
@@ -112,12 +123,20 @@ function AppContent() {
 
     // Provider / Sponsor / Admin / Administrator Role Views: Full-featured Workspace Dashboard Shell
     if (role === 'provider' || role === 'sponsor' || role === 'admin' || role === 'administrator') {
-      return <ProviderDashboard onLogout={handleLogout} />
+      return (
+        <Suspense fallback={<LoadingFallback />}>
+          <ProviderDashboard onLogout={handleLogout} />
+        </Suspense>
+      )
     }
 
     // Student / Applicant Role Views: Strictly prohibited on Web Portal
     if (role === 'student' || role === 'applicant') {
-      return <StudentRedirectNotice user={currentUser} onLogout={handleLogout} />
+      return (
+        <Suspense fallback={<LoadingFallback />}>
+          <StudentRedirectNotice user={currentUser} onLogout={handleLogout} />
+        </Suspense>
+      )
     }
 
     // Default Fallback Landing Page
@@ -161,15 +180,17 @@ function AppContent() {
 
       <AnimatePresence>
         {showLogin && (
-          <LoginModal
-            open={showLogin}
-            onClose={() => setShowLogin(false)}
-            onLoginSuccess={handleLoginSuccess}
-            onProviderLogin={() => {
-              setShowLogin(false)
-              window.location.hash = '#providers'
-            }}
-          />
+          <Suspense fallback={null}>
+            <LoginModal
+              open={showLogin}
+              onClose={() => setShowLogin(false)}
+              onLoginSuccess={handleLoginSuccess}
+              onProviderLogin={() => {
+                setShowLogin(false)
+                window.location.hash = '#providers'
+              }}
+            />
+          </Suspense>
         )}
       </AnimatePresence>
     </div>

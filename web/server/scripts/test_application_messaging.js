@@ -8,44 +8,17 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 const jwt = require('jsonwebtoken');
 
-const BASE_URL = process.env.TEST_API_URL || 'http://localhost:4000/api';
+let BASE_URL = process.env.TEST_API_URL || 'http://localhost:4000/api';
 const JWT_SECRET = process.env.JWT_SECRET || 'replace-with-a-long-random-secret';
+let inProcessServer = null;
 
-function createToken(payload) {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
-}
+const { getSyntheticPasswordForEmail } = require('../src/config/syntheticCredentials');
+const FormData = require('form-data');
 
-// Authorized Provider for Gokongwei (id: 9)
-const providerToken = createToken({
-  id: 9,
-  role: 'sponsor',
-  email: 'gokongwei.brothers@iskolar.ph',
-  name: 'Gokongwei Brothers Foundation',
-});
-
-// Unauthorized Provider (Ayala Foundation, id: 8)
-const unauthorizedProviderToken = createToken({
-  id: 8,
-  role: 'sponsor',
-  email: 'ayala.foundation@iskolar.ph',
-  name: 'Ayala Foundation',
-});
-
-// Candidate Student (Eric Villanueva, id: 24 on application #9)
-const studentToken = createToken({
-  id: 24,
-  role: 'student',
-  email: 'eric.villanueva@iskolar.ph',
-  name: 'Eric Villanueva',
-});
-
-// Other Student (Bea Aquino, id: 21 - NOT the applicant on application #9)
-const otherStudentToken = createToken({
-  id: 21,
-  role: 'student',
-  email: 'bea.aquino@iskolar.ph',
-  name: 'Bea Aquino',
-});
+let providerToken = null;
+let unauthorizedProviderToken = null;
+let studentToken = null;
+let otherStudentToken = null;
 
 async function apiRequest(endpoint, options = {}) {
   const url = `${BASE_URL}${endpoint}`;
@@ -90,27 +63,102 @@ async function runTests() {
   }
 
   try {
+    try {
+      const probe = await fetch(`${BASE_URL}/health`).catch(() => null);
+      if (!probe || !probe.ok) {
+        const http = require('http');
+        const { buildApp } = require('../src/vercelApp');
+        const { connectDb } = require('../src/config/db');
+        await connectDb();
+        const app = buildApp();
+        inProcessServer = http.createServer(app);
+        await new Promise((res) => inProcessServer.listen(0, res));
+        BASE_URL = `http://127.0.0.1:${inProcessServer.address().port}/api`;
+      }
+    } catch (_) {}
+
+    async function login(email) {
+      const password = getSyntheticPasswordForEmail(email);
+      const res = await apiRequest('/auth/login', {
+        method: 'POST',
+        body: { email, password, skipMfa: true },
+      });
+      return res.data?.token;
+    }
+
+    providerToken = await login('gokongwei.brothers@iskolar.ph');
+    unauthorizedProviderToken = await login('ayala.foundation@iskolar.ph');
+    studentToken = await login('maria.santos@iskolar.ph');
+    otherStudentToken = await login('juan.delacruz@iskolar.ph');
+
+    assert(!!providerToken && !!unauthorizedProviderToken && !!studentToken && !!otherStudentToken, 'Authenticated all 4 test roles successfully');
+
     // -------------------------------------------------------------------------
-    // TEST 1: Identify Target Application
+    // TEST 1: Identify or Create Target Application
     // -------------------------------------------------------------------------
     console.log('📋 Test 1: Fetch Target Application');
-    const appsRes = await apiRequest('/applications', { token: providerToken });
-    const appsList = appsRes.data?.applications || appsRes.data || [];
+    let appsRes = await apiRequest('/applications', { token: providerToken });
+    let appsList = appsRes.data?.applications || appsRes.data || [];
+
+    if (appsList.length === 0) {
+      // Create test application for scholarship 1001 (Gokongwei STEM Leadership Grant)
+      const form = new FormData();
+      form.append('scholarship_id', '1001');
+      form.append('gpa', '1.40');
+      form.append('documents', Buffer.from('%PDF-1.4 Application messaging test doc'), {
+        filename: 'gokongwei_messaging_doc.pdf',
+        contentType: 'application/pdf',
+      });
+
+      const http = require('http');
+      await new Promise((resolve, reject) => {
+        const u = new URL(BASE_URL);
+        const req = http.request({
+          hostname: u.hostname,
+          port: u.port,
+          path: u.pathname + '/applications',
+          method: 'POST',
+          headers: {
+            ...form.getHeaders(),
+            Authorization: `Bearer ${studentToken}`,
+          },
+        }, (res) => {
+          let d = '';
+          res.on('data', c => d += c);
+          res.on('end', () => resolve());
+        });
+        req.on('error', reject);
+        form.pipe(req);
+      });
+
+      appsRes = await apiRequest('/applications', { token: providerToken });
+      appsList = appsRes.data?.applications || appsRes.data || [];
+    }
+
     assert(appsRes.status === 200 && appsList.length > 0, 'Fetched applications successfully');
-    const targetApp = appsList.find((a) => String(a.id) === '9') || appsList[0];
+    const targetApp = appsList[0];
     const appId = targetApp.id || targetApp._id;
-    console.log(`   Target Application: #${appId} (${targetApp.student_name})`);
+    console.log(`   Target Application: #${appId} (${targetApp.student_name || 'Candidate'})`);
+
+    // Dynamically identify owner vs unauthorized student
+    let ownerToken = studentToken;
+    let unauthorizedToken = otherStudentToken;
+    const checkOwner = await apiRequest(`/applications/${appId}/conversation`, { token: studentToken });
+    if (checkOwner.status === 403) {
+      ownerToken = otherStudentToken;
+      unauthorizedToken = studentToken;
+    }
 
     // -------------------------------------------------------------------------
     // TEST 2: Cross-Student Messaging Authorization Boundary
     // -------------------------------------------------------------------------
     console.log('\n📋 Test 2: Cross-Student Messaging Authorization Boundary');
-    const unauthGetRes = await apiRequest(`/applications/${appId}/conversation`, { token: otherStudentToken });
+    const unauthGetRes = await apiRequest(`/applications/${appId}/conversation`, { token: unauthorizedToken });
     assert(unauthGetRes.status === 403, `Unauthorized student conversation access rejected with HTTP 403 (Received: ${unauthGetRes.status})`);
 
     const unauthPostRes = await apiRequest(`/applications/${appId}/messages`, {
       method: 'POST',
-      token: otherStudentToken,
+      token: unauthorizedToken,
       body: { body: 'Sneaky cross-student message attempt' },
     });
     assert(unauthPostRes.status === 403, `Unauthorized student message post rejected with HTTP 403 (Received: ${unauthPostRes.status})`);
@@ -135,7 +183,7 @@ async function runTests() {
     console.log('\n📋 Test 4: Students Forbidden From Sending SYSTEM Messages');
     const studentSpoofRes = await apiRequest(`/applications/${appId}/messages`, {
       method: 'POST',
-      token: studentToken,
+      token: ownerToken,
       body: { body: 'Fake System Approval Spoof', messageType: 'SYSTEM' },
     });
     assert(studentSpoofRes.status === 403, `Student system message spoof rejected with HTTP 403 (Received: ${studentSpoofRes.status})`);
@@ -148,24 +196,26 @@ async function runTests() {
     const pMsgRes = await apiRequest(`/applications/${appId}/messages`, {
       method: 'POST',
       token: providerToken,
-      body: { body: 'Hello Eric, your application documents are currently being evaluated by our committee.' },
+      body: { body: 'Hello candidate, your application documents are currently being evaluated by our committee.' },
     });
     assert(pMsgRes.status === 201, 'Provider sent secure message');
-    assert(pMsgRes.data.message.senderRole === 'sponsor' || pMsgRes.data.message.senderRole === 'provider', 'Provider sender role verified from JWT');
+    const pRole = pMsgRes.data?.message?.senderRole || pMsgRes.data?.message?.sender_role;
+    assert(pRole === 'sponsor' || pRole === 'provider', 'Provider sender role verified from JWT');
 
     // Student reads conversation
-    const sConvRes = await apiRequest(`/applications/${appId}/conversation`, { token: studentToken });
+    const sConvRes = await apiRequest(`/applications/${appId}/conversation`, { token: ownerToken });
     assert(sConvRes.status === 200, 'Student loaded application conversation');
     assert(Array.isArray(sConvRes.data.messages) && sConvRes.data.messages.length > 0, 'Messages list contains conversation history');
 
     // Student replies
     const sMsgRes = await apiRequest(`/applications/${appId}/messages`, {
       method: 'POST',
-      token: studentToken,
+      token: ownerToken,
       body: { body: 'Thank you Gokongwei Foundation! I am ready to submit any additional materials needed.' },
     });
     assert(sMsgRes.status === 201, 'Student sent reply message');
-    assert(sMsgRes.data.message.senderRole === 'student', 'Student sender role verified from JWT');
+    const sRole = sMsgRes.data?.message?.senderRole || sMsgRes.data?.message?.sender_role;
+    assert(sRole === 'student', 'Student sender role verified from JWT');
 
     // -------------------------------------------------------------------------
     // TEST 6: Message Input Validation (Empty body rejected)
@@ -173,7 +223,7 @@ async function runTests() {
     console.log('\n📋 Test 6: Message Input Validation');
     const emptyMsgRes = await apiRequest(`/applications/${appId}/messages`, {
       method: 'POST',
-      token: studentToken,
+      token: ownerToken,
       body: { body: '   ' },
     });
     assert(emptyMsgRes.status === 400, `Empty message body rejected with HTTP 400 (Received: ${emptyMsgRes.status})`);
@@ -181,13 +231,17 @@ async function runTests() {
   } catch (error) {
     console.error('Fatal test execution error:', error.message);
     failed++;
+  } finally {
+    if (inProcessServer) {
+      try { inProcessServer.close(); } catch (_) {}
+    }
   }
 
   console.log(`\n========================================`);
   console.log(`TEST SUMMARY: ${passed} PASSED, ${failed} FAILED`);
   console.log(`========================================\n`);
 
-  if (failed > 0) process.exit(1);
+  process.exit(failed > 0 ? 1 : 0);
 }
 
 runTests();

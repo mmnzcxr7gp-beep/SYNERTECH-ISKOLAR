@@ -54,10 +54,10 @@ flutter build apk --release
 
 ```bash
 # MongoDB Dump (Backup)
-mongodump --uri="mongodb+srv://<user>:<password>@cluster.mongodb.net/iskolar_prod" --out=/backups/$(date +%F)
+mongodump --uri="mongodb+srv://<REDACTED_URI>/iskolar_prod" --out=/backups/$(date +%F)
 
 # MongoDB Restore
-mongorestore --uri="mongodb+srv://<user>:<password>@cluster.mongodb.net/iskolar_prod" /backups/2026-08-12/iskolar_prod
+mongorestore --uri="mongodb+srv://<REDACTED_URI>/iskolar_prod" /backups/2026-08-12/iskolar_prod
 ```
 
 ---

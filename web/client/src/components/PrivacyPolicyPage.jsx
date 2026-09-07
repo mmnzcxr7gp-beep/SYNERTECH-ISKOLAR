@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react'
+import { API_BASE_URL } from '../config/api'
 
 export default function PrivacyPolicyPage() {
   const [policy, setPolicy] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  const baseUrl = import.meta?.env?.VITE_API_URL || 'http://localhost:4000'
+  const baseUrl = API_BASE_URL
 
   useEffect(() => {
     fetch(`${baseUrl}/api/privacy-policy`)

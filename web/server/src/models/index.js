@@ -18,6 +18,8 @@ const Notification = require('./Notification');
 const ManualReviewLog = require('./ManualReviewLog');
 const Conversation = require('./Conversation');
 const Message = require('./Message');
+const Otp = require('./Otp');
+const RevokedToken = require('./RevokedToken');
 
 module.exports = {
   User,
@@ -40,5 +42,7 @@ module.exports = {
   ManualReviewLog,
   Conversation,
   Message,
+  Otp,
+  RevokedToken,
 };
 

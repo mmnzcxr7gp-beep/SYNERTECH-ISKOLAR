@@ -12,6 +12,7 @@ class User {
     this.company = '',
     this.sponsorVerified = false,
     this.organizationVerified = false,
+    this.studentVerified = false,
     this.organizationDocuments = const [],
     this.profile,
     this.firstName = '',
@@ -39,6 +40,7 @@ class User {
 
   final bool sponsorVerified;
   final bool organizationVerified;
+  final bool studentVerified;
 
   final List<OrganizationDocument> organizationDocuments;
 
@@ -77,6 +79,10 @@ class User {
       return 'pending';
     }
 
+    if (studentVerified || sponsorVerified || organizationVerified) {
+      return 'verified';
+    }
+
     return status;
   }
 
@@ -84,7 +90,10 @@ class User {
       normalizedVerificationStatus == 'pending';
 
   bool get isVerified =>
-      normalizedVerificationStatus == 'verified';
+      normalizedVerificationStatus == 'verified' ||
+      sponsorVerified ||
+      organizationVerified ||
+      studentVerified;
 
   bool get isRejected =>
       normalizedVerificationStatus == 'rejected';
@@ -93,6 +102,60 @@ class User {
       organizationDocuments.isNotEmpty
           ? organizationDocuments.first.displayName
           : null;
+
+  User copyWith({
+    int? id,
+    String? name,
+    String? email,
+    String? role,
+    String? company,
+    bool? sponsorVerified,
+    bool? organizationVerified,
+    bool? studentVerified,
+    List<OrganizationDocument>? organizationDocuments,
+    StudentProfile? profile,
+    String? firstName,
+    String? middleName,
+    String? lastName,
+    bool? emailVerified,
+    String? verificationStatus,
+    String? verificationSubmittedAt,
+    String? profilePicture,
+    String? mobileNumber,
+    String? school,
+    String? course,
+    String? yearLevel,
+    String? corUrl,
+    String? schoolIdUrl,
+    String? selfieWithIdUrl,
+  }) {
+    return User(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      email: email ?? this.email,
+      role: role ?? this.role,
+      company: company ?? this.company,
+      sponsorVerified: sponsorVerified ?? this.sponsorVerified,
+      organizationVerified: organizationVerified ?? this.organizationVerified,
+      studentVerified: studentVerified ?? this.studentVerified,
+      organizationDocuments: organizationDocuments ?? this.organizationDocuments,
+      profile: profile ?? this.profile,
+      firstName: firstName ?? this.firstName,
+      middleName: middleName ?? this.middleName,
+      lastName: lastName ?? this.lastName,
+      emailVerified: emailVerified ?? this.emailVerified,
+      verificationStatus: verificationStatus ?? this.verificationStatus,
+      verificationSubmittedAt: verificationSubmittedAt ?? this.verificationSubmittedAt,
+      profilePicture: profilePicture ?? this.profilePicture,
+      mobileNumber: mobileNumber ?? this.mobileNumber,
+      school: school ?? this.school,
+      course: course ?? this.course,
+      yearLevel: yearLevel ?? this.yearLevel,
+      corUrl: corUrl ?? this.corUrl,
+      schoolIdUrl: schoolIdUrl ?? this.schoolIdUrl,
+      selfieWithIdUrl: selfieWithIdUrl ?? this.selfieWithIdUrl,
+    );
+  }
 
   factory User.fromJson(Map<String, dynamic> json) {
     List<OrganizationDocument> docs = [];
@@ -115,6 +178,17 @@ class User {
 
     final rawId = json['id'];
     final parsedId = rawId is int ? rawId : (int.tryParse(rawId?.toString() ?? '') ?? 0);
+    final isStudentVerified = json['student_verified'] == true ||
+        json['is_verified'] == true ||
+        json['isVerified'] == true ||
+        json['student_verified'].toString() == 'true' ||
+        json['is_verified'].toString() == 'true' ||
+        json['isVerified'].toString() == 'true';
+
+    final rawVerStatus = json['verificationStatus'] ?? json['verification_status'];
+    final resolvedStatus = rawVerStatus != null
+        ? rawVerStatus.toString()
+        : (isStudentVerified ? 'verified' : 'unverified');
 
     return User(
       id: parsedId,
@@ -124,13 +198,14 @@ class User {
       company: (json['company'] ?? json['organization_name'] ?? '').toString(),
       sponsorVerified: json['sponsor_verified'] == true || json['sponsor_verified'] == 1 || json['sponsor_verified'].toString() == 'true',
       organizationVerified: json['organization_verified'] == true || json['organization_verified'] == 1 || json['organization_verified'].toString() == 'true',
+      studentVerified: isStudentVerified,
       organizationDocuments: docs,
       profile: userProfile,
       firstName: (json['firstName'] ?? json['first_name'] ?? '').toString(),
       middleName: (json['middleName'] ?? json['middle_name'] ?? '').toString(),
       lastName: (json['lastName'] ?? json['last_name'] ?? '').toString(),
       emailVerified: json['emailVerified'] == true || json['email_verified'] == true || json['emailVerified'].toString() == 'true',
-      verificationStatus: (json['verificationStatus'] ?? json['verification_status'] ?? 'unverified').toString(),
+      verificationStatus: resolvedStatus,
       verificationSubmittedAt: (json['verification_submitted_at'] ?? '').toString(),
       profilePicture: (json['profilePicture'] ?? json['profile_picture'] ?? '').toString(),
       mobileNumber: (json['mobileNumber'] ?? json['mobile_number'] ?? '').toString(),

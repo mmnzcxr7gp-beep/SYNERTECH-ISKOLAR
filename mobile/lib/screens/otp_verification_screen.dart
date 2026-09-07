@@ -397,48 +397,20 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.18),
+                color: AppColors.primary.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: const Row(
                 children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.bolt_rounded, color: Colors.cyanAccent, size: 18),
-                      SizedBox(width: 6),
-                      Text(
-                        'Live Real-Time OTP: 123456',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                  InkWell(
-                    onTap: () {
-                      const code = '123456';
-                      for (int i = 0; i < 6; i++) {
-                        _otpControllers[i].text = code[i];
-                      }
-                      _verifyOTP();
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.cyanAccent,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Text(
-                        '1-TAP AUTOFILL',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 10,
-                        ),
+                  Icon(Icons.mark_email_read_outlined, color: Colors.cyanAccent, size: 18),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Please enter the 6-digit verification code sent to your registered email address.',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
                       ),
                     ),
                   ),

@@ -55,16 +55,32 @@ const handleDocumentDownload = async (req, res, next) => {
       return res.status(401).json({ message: 'Authentication required' });
     }
 
-    // 3. Document Metadata Lookup (Check db.data.documents or Mongoose)
+    // 3. Document Metadata Lookup (Authoritative scoped MongoDB query first)
     const docIdStr = String(cleanIdentifier);
-    let doc = (db.data.documents || []).find(
-      (d) =>
-        String(d.id) === docIdStr ||
-        d.filename === cleanIdentifier ||
-        d.originalname === cleanIdentifier ||
-        d.storedKey === cleanIdentifier ||
-        (d.path && d.path.endsWith(cleanIdentifier))
-    );
+    let doc = null;
+
+    if (db.collections?.documents) {
+      const numDocId = Number(docIdStr);
+      const mDoc = await db.collections.documents.findOne({
+        $or: [
+          { id: docIdStr },
+          ...(!Number.isNaN(numDocId) ? [{ id: numDocId }] : []),
+          { _id: docIdStr },
+          { documentId: docIdStr },
+          { storedKey: cleanIdentifier },
+          { filename: cleanIdentifier },
+          { originalname: cleanIdentifier },
+        ],
+      }).catch(() => null);
+      if (mDoc) {
+        doc = {
+          ...mDoc,
+          id: mDoc.id || mDoc.documentId || mDoc._id,
+          user_id: mDoc.user_id || mDoc.userId || mDoc.studentId || mDoc.applicantId,
+          application_id: mDoc.application_id || mDoc.applicationId,
+        };
+      }
+    }
 
     if (!doc) {
       const mongoose = require('mongoose');
@@ -98,6 +114,17 @@ const handleDocumentDownload = async (req, res, next) => {
       }
     }
 
+    if (!doc && db.data?.documents) {
+      doc = (db.data.documents || []).find(
+        (d) =>
+          String(d.id) === docIdStr ||
+          d.filename === cleanIdentifier ||
+          d.originalname === cleanIdentifier ||
+          d.storedKey === cleanIdentifier ||
+          (d.path && d.path.endsWith(cleanIdentifier))
+      );
+    }
+
     if (!doc) {
       return res.status(404).json({ message: 'Document not found' });
     }
@@ -105,19 +132,81 @@ const handleDocumentDownload = async (req, res, next) => {
     // 4. Object-Level Authorization Check
     const userRole = (req.user.role || '').toLowerCase();
     const userIdStr = String(req.user.id);
-    const docUserIdStr = String(doc.user_id || doc.userId || doc.studentId || '');
+    const docUserIdStr = String(doc.user_id || doc.userId || doc.studentId || doc.student_id || doc.applicantId || '');
 
     let isAuthorized = false;
 
     if (userRole === 'admin') {
       isAuthorized = true;
+      // Record immutable audit event for administrator document access
+      try {
+        if (!db.data.audit_logs) db.data.audit_logs = [];
+        db.data.audit_logs.push({
+          id: db.data.audit_logs.length + 1,
+          actorUserId: req.user.id,
+          actorRole: 'admin',
+          action: 'ADMIN_FILE_ACCESS',
+          targetType: 'Document',
+          targetId: String(doc.id || doc.documentId || cleanIdentifier),
+          details: {
+            documentId: String(doc.id || doc.documentId || cleanIdentifier),
+            applicationId: doc.application_id || doc.applicationId,
+            studentId: doc.user_id || doc.studentId,
+            filename: doc.originalname || doc.filename || cleanIdentifier,
+          },
+          ip: req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || '',
+          timestamp: new Date().toISOString(),
+        });
+        if (typeof db.write === 'function') await db.write();
+
+        const mongoose = require('mongoose');
+        if (mongoose.connection.readyState === 1) {
+          const { AuditLog } = require('../models');
+          if (AuditLog) {
+            await AuditLog.create({
+              actorUserId: req.user.id,
+              actorRole: 'admin',
+              action: 'ADMIN_FILE_ACCESS',
+              targetType: 'Document',
+              targetId: String(doc.id || doc.documentId || cleanIdentifier),
+              afterSummary: {
+                documentId: String(doc.id || doc.documentId || cleanIdentifier),
+                applicationId: doc.application_id || doc.applicationId,
+                studentId: doc.user_id || doc.studentId,
+                filename: doc.originalname || doc.filename || cleanIdentifier,
+              },
+              ip: req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || '',
+              userAgent: req.headers['user-agent'] || '',
+            }).catch(() => {});
+          }
+        }
+      } catch (auditErr) {
+        console.warn('Admin document access audit logging notice:', auditErr?.message);
+      }
     } else if (userRole === 'student' || userRole === 'applicant') {
       isAuthorized = docUserIdStr === userIdStr;
     } else if (userRole === 'provider' || userRole === 'sponsor') {
       if (doc.application_id) {
-        const app = (db.data.applications || []).find((a) => String(a.id) === String(doc.application_id));
+        let app = null;
+        if (db.collections?.applications) {
+          app = await db.collections.applications.findOne({
+            $or: [{ id: doc.application_id }, { id: Number(doc.application_id) }, { _id: doc.application_id }],
+          }).catch(() => null);
+        }
+        if (!app) {
+          app = (db.data.applications || []).find((a) => String(a.id) === String(doc.application_id));
+        }
         if (app) {
-          const scholarship = (db.data.scholarships || []).find((s) => String(s.id) === String(app.scholarship_id));
+          const sId = app.scholarship_id || app.scholarshipId;
+          let scholarship = null;
+          if (db.collections?.scholarships) {
+            scholarship = await db.collections.scholarships.findOne({
+              $or: [{ id: sId }, { id: Number(sId) }, { _id: sId }],
+            }).catch(() => null);
+          }
+          if (!scholarship) {
+            scholarship = (db.data.scholarships || []).find((s) => String(s.id) === String(sId));
+          }
           if (scholarship && isOwnedBy(scholarship, req.user.id)) {
             isAuthorized = true;
           }
@@ -173,7 +262,21 @@ const getManualReviewData = async (req, res, next) => {
       return res.status(401).json({ message: 'Authentication required' });
     }
 
-    const doc = (db.data.documents || []).find((d) => String(d.id) === String(docId));
+    let doc = null;
+    if (db.collections?.documents) {
+      const numDocId = Number(docId);
+      doc = await db.collections.documents.findOne({
+        $or: [
+          { id: docId },
+          ...(!Number.isNaN(numDocId) ? [{ id: numDocId }] : []),
+          { _id: docId },
+          { documentId: docId },
+        ],
+      }).catch(() => null);
+    }
+    if (!doc) {
+      doc = (db.data.documents || []).find((d) => String(d.id) === String(docId));
+    }
     if (!doc) {
       return res.status(404).json({ message: 'Document not found' });
     }
@@ -181,7 +284,7 @@ const getManualReviewData = async (req, res, next) => {
     // Object-Level Authorization Check
     const userRole = (req.user.role || '').toLowerCase();
     const userIdStr = String(req.user.id);
-    const docUserIdStr = String(doc.user_id || doc.userId || '');
+    const docUserIdStr = String(doc.user_id || doc.userId || doc.studentId || doc.student_id || doc.applicantId || '');
 
     let isAuthorized = false;
     if (userRole === 'admin') {
@@ -190,9 +293,26 @@ const getManualReviewData = async (req, res, next) => {
       isAuthorized = docUserIdStr === userIdStr;
     } else if (userRole === 'provider' || userRole === 'sponsor') {
       if (doc.application_id) {
-        const app = (db.data.applications || []).find((a) => String(a.id) === String(doc.application_id));
+        let app = null;
+        if (db.collections?.applications) {
+          app = await db.collections.applications.findOne({
+            $or: [{ id: doc.application_id }, { id: Number(doc.application_id) }, { _id: doc.application_id }],
+          }).catch(() => null);
+        }
+        if (!app) {
+          app = (db.data.applications || []).find((a) => String(a.id) === String(doc.application_id));
+        }
         if (app) {
-          const scholarship = (db.data.scholarships || []).find((s) => String(s.id) === String(app.scholarship_id));
+          const sId = app.scholarship_id || app.scholarshipId;
+          let scholarship = null;
+          if (db.collections?.scholarships) {
+            scholarship = await db.collections.scholarships.findOne({
+              $or: [{ id: sId }, { id: Number(sId) }, { _id: sId }],
+            }).catch(() => null);
+          }
+          if (!scholarship) {
+            scholarship = (db.data.scholarships || []).find((s) => String(s.id) === String(sId));
+          }
           if (scholarship && isOwnedBy(scholarship, req.user.id)) {
             isAuthorized = true;
           }
@@ -206,9 +326,29 @@ const getManualReviewData = async (req, res, next) => {
     }
 
     // Retrieve OCR extraction details
-    const ocrExtraction = (db.data.ocr_extractions || []).find((o) => String(o.documentId) === String(docId)) || {};
-    const reviewLog = (db.data.manual_review_logs || []).find((l) => String(l.documentId) === String(docId)) || {};
-    const checkResults = (db.data.automatic_check_results || []).filter((c) => String(c.applicationId) === String(doc.application_id));
+    let ocrExtraction = null;
+    let reviewLog = null;
+    let checkResults = [];
+    if (db.collections?.ocr_extractions) {
+      ocrExtraction = await db.collections.ocr_extractions.findOne({ documentId: String(docId) }).catch(() => null);
+    }
+    if (!ocrExtraction) {
+      ocrExtraction = (db.data.ocr_extractions || []).find((o) => String(o.documentId) === String(docId)) || {};
+    }
+    if (db.collections?.manual_review_logs) {
+      reviewLog = await db.collections.manual_review_logs.findOne({ documentId: String(docId) }).catch(() => null);
+    }
+    if (!reviewLog) {
+      reviewLog = (db.data.manual_review_logs || []).find((l) => String(l.documentId) === String(docId)) || {};
+    }
+    if (db.collections?.automatic_check_results) {
+      checkResults = await db.collections.automatic_check_results.find({
+        $or: [{ applicationId: String(doc.application_id) }, { applicationId: doc.application_id }],
+      }).toArray().catch(() => []);
+    }
+    if (!checkResults || checkResults.length === 0) {
+      checkResults = (db.data.automatic_check_results || []).filter((c) => String(c.applicationId) === String(doc.application_id));
+    }
 
     const isStudent = userRole === 'student' || userRole === 'applicant';
 
@@ -265,15 +405,6 @@ const submitReviewAction = async (req, res, next) => {
     const { action, decision, reason } = req.body;
     const finalDecision = (decision || action || '').toUpperCase();
 
-    const allowed = ['VERIFIED', 'NEEDS_RESUBMISSION', 'REJECTED'];
-    if (!allowed.includes(finalDecision)) {
-      return res.status(400).json({ message: `Invalid review action "${finalDecision}". Must be VERIFIED, NEEDS_RESUBMISSION, or REJECTED.` });
-    }
-
-    if ((finalDecision === 'NEEDS_RESUBMISSION' || finalDecision === 'REJECTED') && (!reason || !reason.trim())) {
-      return res.status(400).json({ message: `A written reason is required when setting document status to ${finalDecision}.` });
-    }
-
     const doc = (db.data.documents || []).find((d) => String(d.id) === String(docId));
     if (!doc) {
       return res.status(404).json({ message: 'Document not found' });
@@ -294,11 +425,31 @@ const submitReviewAction = async (req, res, next) => {
       }
     }
 
+    const allowed = ['VERIFIED', 'NEEDS_RESUBMISSION', 'REJECTED'];
+    if (!allowed.includes(finalDecision)) {
+      return res.status(400).json({ message: `Invalid review action "${finalDecision}". Must be VERIFIED, NEEDS_RESUBMISSION, or REJECTED.` });
+    }
+
+    const effectiveReason = (reason && reason.trim()) ? reason.trim() : (finalDecision === 'VERIFIED' ? 'Verified during manual review' : '');
+    if (!effectiveReason) {
+      return res.status(400).json({ message: `A written reason is required when recording a human review decision (${finalDecision}).` });
+    }
+
+    const humanVerificationStatus = finalDecision === 'VERIFIED' ? 'VERIFIED_BY_HUMAN' : finalDecision === 'REJECTED' ? 'REJECTED_BY_HUMAN' : 'PENDING_HUMAN_REVIEW';
+    const humanManualReviewStatus = (finalDecision === 'VERIFIED' || finalDecision === 'REJECTED') ? 'COMPLETED' : 'PENDING';
+
     doc.status = finalDecision;
-    doc.verificationStatus = finalDecision;
+    doc.verificationStatus = humanVerificationStatus;
+    doc.manualReviewStatus = humanManualReviewStatus;
     doc.reviewed_by = req.user.id;
     doc.review_reason = reason || '';
     doc.reviewed_at = new Date().toISOString();
+    doc.verifiedByHuman = {
+      reviewerId: req.user.id,
+      reviewerRole: req.user.role,
+      reviewedAt: new Date(),
+      reason: reason || '',
+    };
 
     const fallbackService = require('../utils/manualReviewFallbackService');
     const updatedLog = await fallbackService.processProviderReviewAction({
@@ -310,10 +461,25 @@ const submitReviewAction = async (req, res, next) => {
       reason: reason || '',
     });
 
+    if (!db.data.audit_logs) db.data.audit_logs = [];
+    db.data.audit_logs.push({
+      id: db.data.audit_logs.length + 1,
+      actorUserId: req.user.id,
+      actorRole: req.user.role,
+      action: `DOCUMENT_${finalDecision}`,
+      targetType: 'Document',
+      targetId: String(docId),
+      timestamp: new Date().toISOString(),
+      beforeSummary: { status: doc.status },
+      afterSummary: { status: finalDecision, verificationStatus: humanVerificationStatus, reason },
+      reason: reason || '',
+    });
+
     return res.json({
       message: `Document successfully marked as ${finalDecision}`,
       documentId: docId,
       status: finalDecision,
+      document: doc,
       reviewLog: updatedLog,
     });
   } catch (error) {
@@ -337,7 +503,8 @@ const resubmitDocument = async (req, res, next) => {
       return res.status(404).json({ message: 'Document not found' });
     }
 
-    if (String(doc.user_id) !== String(req.user.id)) {
+    const docOwnerId = doc.user_id || doc.userId || doc.studentId || doc.student_id || doc.applicantId;
+    if (String(docOwnerId) !== String(req.user.id)) {
       return res.status(403).json({ message: 'Forbidden: You are not the owner of this document' });
     }
 
@@ -432,7 +599,90 @@ const upload = multer({
 const { roleMiddleware } = require('../middleware/roleMiddleware');
 const sponsorVerification = require('../middleware/sponsorVerification');
 
+/**
+ * GET /api/documents
+ * List documents in verification queue for authorized Provider, Sponsor, or Admin
+ */
+const getDocumentsQueue = async (req, res, next) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: 'Authentication required' });
+
+    let docs = [];
+    if (db.collections?.documents) {
+      if (req.user.role === 'provider' || req.user.role === 'sponsor') {
+        let myScholarshipIds = [];
+        if (db.collections?.scholarships) {
+          const sList = await db.collections.scholarships.find({
+            $or: [
+              { sponsor_id: req.user.id },
+              { sponsor_id: Number(req.user.id) },
+              { sponsor_id: String(req.user.id) },
+              { providerId: req.user.id },
+              { providerId: String(req.user.id) },
+              { provider_id: req.user.id },
+              { provider_id: String(req.user.id) },
+            ],
+          }, { projection: { id: 1, _id: 1 } }).toArray().catch(() => []);
+          myScholarshipIds = sList.flatMap(s => [s.id, s._id, String(s.id), String(s._id)]).filter(Boolean);
+        }
+        let myAppIds = [];
+        if (db.collections?.applications && myScholarshipIds.length > 0) {
+          const aList = await db.collections.applications.find({
+            $or: [
+              { scholarship_id: { $in: myScholarshipIds } },
+              { scholarshipId: { $in: myScholarshipIds } },
+            ],
+          }, { projection: { id: 1, _id: 1 } }).toArray().catch(() => []);
+          myAppIds = aList.flatMap(a => [a.id, a._id, String(a.id), String(a._id)]).filter(Boolean);
+        }
+        docs = await db.collections.documents.find({
+          $or: [
+            { providerId: req.user.id },
+            { providerId: String(req.user.id) },
+            ...(myAppIds.length > 0 ? [
+              { application_id: { $in: myAppIds } },
+              { applicationId: { $in: myAppIds } },
+            ] : []),
+          ],
+        }).toArray().catch(() => []);
+      } else if (req.user.role === 'admin') {
+        docs = await db.collections.documents.find({}).toArray().catch(() => []);
+      } else {
+        docs = await db.collections.documents.find({
+          $or: [
+            { user_id: req.user.id },
+            { user_id: Number(req.user.id) },
+            { user_id: String(req.user.id) },
+            { studentId: req.user.id },
+            { studentId: String(req.user.id) },
+          ],
+        }).toArray().catch(() => []);
+      }
+    } else {
+      docs = db.data.documents || [];
+      if (req.user.role === 'provider' || req.user.role === 'sponsor') {
+        const myScholarshipIds = (db.data.scholarships || [])
+          .filter(s => String(s.sponsor_id) === String(req.user.id) || String(s.providerId) === String(req.user.id))
+          .map(s => s.id);
+        
+        const myAppIds = (db.data.applications || [])
+          .filter(a => myScholarshipIds.includes(a.scholarship_id))
+          .map(a => a.id);
+
+        docs = docs.filter(d => String(d.providerId) === String(req.user.id) || myAppIds.includes(d.application_id));
+      } else if (req.user.role !== 'admin') {
+        docs = docs.filter(d => String(d.user_id) === String(req.user.id) || String(d.studentId) === String(req.user.id));
+      }
+    }
+
+    return res.json({ documents: docs, count: docs.length });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // Route definitions
+router.get('/', authMiddleware, getDocumentsQueue);
 router.get('/:id/download', authMiddleware, handleDocumentDownload);
 router.get('/file/:filename', authMiddleware, handleDocumentDownload);
 router.get('/:id/manual-review', authMiddleware, getManualReviewData);
@@ -443,11 +693,22 @@ router.post(
   sponsorVerification,
   submitReviewAction
 );
+const resubmitUpload = upload.fields([
+  { name: 'document', maxCount: 1 },
+  { name: 'file', maxCount: 1 },
+]);
+
 router.post(
   '/:id/resubmit',
   authMiddleware,
   roleMiddleware(['student']),
-  upload.single('document'),
+  resubmitUpload,
+  (req, res, next) => {
+    if (!req.file && req.files) {
+      req.file = req.files?.document?.[0] || req.files?.file?.[0];
+    }
+    next();
+  },
   resubmitDocument
 );
 
@@ -458,4 +719,5 @@ module.exports = {
   getManualReviewData,
   submitReviewAction,
   resubmitDocument,
+  getDocumentsQueue,
 };

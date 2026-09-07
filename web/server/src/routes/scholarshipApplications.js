@@ -18,29 +18,18 @@ const {
 
 const router = express.Router();
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadsDir = path.join(__dirname, '../../uploads/documents');
-    cb(null, uploadsDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueName = `${file.fieldname}-${Date.now()}-${Math.random()
-      .toString(36)
-      .substring(7)}${path.extname(file.originalname)}`;
-    cb(null, uniqueName);
-  },
-});
-
+// Configure multer with memory storage so files are handled uniformly by StorageService (Local or R2)
 const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Only PDF, JPG, and PNG files are allowed'));
+      const err = new Error('Only PDF, JPG, PNG, and WebP files are allowed');
+      err.code = 'FILE_TYPE_NOT_ALLOWED';
+      cb(err);
     }
   },
 });

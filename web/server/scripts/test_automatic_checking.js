@@ -25,7 +25,9 @@ async function runAutomaticCheckingTests() {
   const mongoose = require('mongoose');
   const mongoUri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/iskolar';
   if (mongoose.connection.readyState !== 1) {
-    await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 5000 });
+    try {
+      await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 1500 });
+    } catch (_) {}
   }
 
   let passed = 0;

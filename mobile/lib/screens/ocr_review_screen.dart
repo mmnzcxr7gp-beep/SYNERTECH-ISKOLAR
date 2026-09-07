@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../services/ocr_service.dart';
 import '../utils/app_colors.dart';
@@ -10,11 +11,13 @@ class OcrReviewScreen extends StatefulWidget {
     required this.token,
     required this.imagePath,
     required this.ocrResult,
+    this.imageBytes,
   });
 
   final String token;
   final String imagePath;
   final OcrResult ocrResult;
+  final Uint8List? imageBytes;
 
   @override
   State<OcrReviewScreen> createState() => _OcrReviewScreenState();
@@ -96,11 +99,24 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(16),
-                  child: Image.file(
-                    File(widget.imagePath),
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                  ),
+                  child: widget.imageBytes != null
+                      ? Image.memory(
+                          widget.imageBytes!,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                        )
+                      : (!kIsWeb && widget.imagePath.isNotEmpty)
+                          ? Image.file(
+                              File(widget.imagePath),
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                            )
+                          : Container(
+                              color: AppColors.surface,
+                              child: const Center(
+                                child: Icon(Icons.document_scanner, color: AppColors.primary, size: 48),
+                              ),
+                            ),
                 ),
               ),
               const SizedBox(height: 24),

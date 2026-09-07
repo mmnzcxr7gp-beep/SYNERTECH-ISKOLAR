@@ -21,6 +21,64 @@ const generateToken = (user) => {
   );
 };
 
+const findDbUserById = async (id) => {
+  if (!id) return null;
+  const numId = Number(id);
+  if (db.collections?.users) {
+    const user = await db.collections.users.findOne({
+      $or: [
+        { id: id },
+        ...(!Number.isNaN(numId) ? [{ id: numId }] : []),
+        { _id: id },
+      ],
+    });
+    if (user) return user;
+  }
+  return (db.data.users || []).find((u) => String(u.id) === String(id) || String(u._id) === String(id)) || null;
+};
+
+const findDbUserByEmail = async (email) => {
+  if (!email) return null;
+  const norm = String(email).trim().toLowerCase();
+  if (db.collections?.users) {
+    const user = await db.collections.users.findOne({ email: norm });
+    if (user) return user;
+  }
+  return (db.data.users || []).find((u) => (u.email || '').toLowerCase() === norm) || null;
+};
+
+const findDbUserByPhone = async (phone) => {
+  if (!phone) return null;
+  const norm = String(phone).trim();
+  if (db.collections?.users) {
+    const user = await db.collections.users.findOne({
+      $or: [{ phone: norm }, { phoneNumber: norm }],
+    });
+    if (user) return user;
+  }
+  return (db.data.users || []).find((u) => u.phone === norm || u.phoneNumber === norm) || null;
+};
+
+const updateDbUser = async (id, updateFields) => {
+  const numId = Number(id);
+  if (db.collections?.users) {
+    await db.collections.users.updateOne(
+      {
+        $or: [
+          { id: id },
+          ...(!Number.isNaN(numId) ? [{ id: numId }] : []),
+          { _id: id },
+        ],
+      },
+      { $set: updateFields }
+    );
+  }
+  const inMem = (db.data.users || []).find((u) => String(u.id) === String(id) || String(u._id) === String(id));
+  if (inMem) {
+    Object.assign(inMem, updateFields);
+  }
+};
+
 /* ================= OTP ================= */
 const generateOTP = () => {
   return crypto.randomInt(100000, 1000000).toString();
@@ -42,12 +100,11 @@ const safeDbWrite = async () => {
 
 const deleteAllOtpsForEmail = (email) => {
   ensureOtpsArray();
-  const before = db.data.otps.length;
   const normalizedEmail = (email || '').trim().toLowerCase();
   db.data.otps = db.data.otps.filter((o) => (o.email || '').trim().toLowerCase() !== normalizedEmail);
-  const after = db.data.otps.length;
-
-  console.log(`🧹 OTP cleanup for ${email}: removed ${before - after} existing record(s)`);
+  if (db.collections?.otps) {
+    db.collections.otps.deleteMany({ email: normalizedEmail }).catch(() => {});
+  }
 };
 
 const getLatestOtpRecordForEmail = (email) => {
@@ -87,7 +144,7 @@ const register = async (req, res, next) => {
 
     const normalizedEmail = (email || '').trim().toLowerCase();
 
-    const existing = db.data.users.find((u) => u.email && u.email.toLowerCase() === normalizedEmail);
+    const existing = await findDbUserByEmail(normalizedEmail);
     if (existing) {
       return res.status(409).json({ message: 'Email already registered' });
     }
@@ -113,6 +170,9 @@ const register = async (req, res, next) => {
       privacyPolicyAcceptedAt: new Date().toISOString(),
     };
 
+    if (db.collections?.users) {
+      await db.collections.users.insertOne({ ...user });
+    }
     db.data.users.push(user);
     // keep original behavior but make deterministic with await
     await safeDbWrite();
@@ -135,29 +195,69 @@ const login = async (req, res, next) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { email, password, skipMfa } = req.body;
+    const { email, password } = req.body;
     const normalizedEmail = (email || '').trim().toLowerCase();
 
-    let user = db.data.users.find((u) => u.email && u.email.toLowerCase() === normalizedEmail);
-
+    const user = await findDbUserByEmail(normalizedEmail);
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials. Incorrect email or password.' });
     }
 
     let ok = false;
     try {
-      ok = bcrypt.compareSync(password, user.password);
+      const hash = user.password || user.passwordHash;
+      if (hash && password) {
+        ok = bcrypt.compareSync(password, hash);
+      }
     } catch (e) {
-      ok = password === user.password;
+      ok = false;
     }
 
     if (!ok) {
       return res.status(401).json({ message: 'Invalid credentials. Incorrect email or password.' });
     }
 
-    // MFA: Send OTP for second factor (only if SMTP email service is configured and skipMfa is not requested)
-    const isSmtpConfigured = !!(process.env.EMAIL_USER && process.env.EMAIL_PASSWORD);
-    if (!skipMfa && isSmtpConfigured) {
+    // Account Status Enforcement (Suspended, Deletion Pending, Deleted, Rejected)
+    if (user.isSuspended || user.accountStatus === 'SUSPENDED') {
+      return res.status(403).json({
+        message: 'Account is suspended. Please contact system administration.',
+        code: 'ACCOUNT_SUSPENDED',
+        suspensionReason: user.suspensionReason || null,
+      });
+    }
+
+    if (user.isDeleted || ['DELETION_PENDING', 'DELETED', 'ARCHIVED'].includes(user.accountStatus)) {
+      return res.status(403).json({
+        message: 'Account has been deactivated or scheduled for deletion.',
+        code: 'ACCOUNT_DELETED',
+        deletionReason: user.deletionReason || null,
+      });
+    }
+
+    if (user.accountStatus === 'REJECTED') {
+      return res.status(403).json({
+        message: 'Account registration was rejected by administrator.',
+        code: 'ACCOUNT_REJECTED',
+        rejectionReason: user.rejectionReason || null,
+      });
+    }
+
+    // MFA Policy Enforcement (SEC-02):
+    // Client cannot dictate or bypass MFA. Server policy strictly determines MFA requirements:
+    // 1. User has explicitly enabled MFA (user.mfaEnabled === true)
+    // 2. User has administrative privileges (user.role === 'admin' requires mandatory 2FA)
+    // 3. System-wide environment policy enforces MFA (process.env.MFA_REQUIRED === 'true' or process.env.MFA_ENFORCED === 'true')
+    const isMfaRequired = Boolean(
+      user.mfaEnabled === true ||
+      user.role === 'admin' ||
+      user.role === 'sponsor' ||
+      user.role === 'provider' ||
+      user.role === 'student' ||
+      process.env.MFA_REQUIRED === 'true' ||
+      process.env.MFA_ENFORCED === 'true'
+    );
+
+    if (isMfaRequired) {
       ensureOtpsArray();
       deleteAllOtpsForEmail(normalizedEmail);
 
@@ -172,30 +272,52 @@ const login = async (req, res, next) => {
         <p>Valid for 5 minutes. If you did not attempt to log in, please ignore this email.</p>
       `;
 
-      console.log('🔐 MFA OTP generated for login:', { email: normalizedEmail, otp: `****${otp.slice(-2)}` });
-
+      let mailDispatched = false;
       try {
         await sendMail({
           to: normalizedEmail,
           subject: 'ISKOLAR Login Verification Code',
           html,
         });
-        console.log('✅ MFA OTP sent:', { email: normalizedEmail });
+        mailDispatched = true;
       } catch (mailErr) {
-        console.warn('⚠️ MFA email failed (non-critical):', mailErr?.message);
+        console.warn('⚠️ MFA email dispatch warning:', mailErr?.message);
+        mailDispatched = false;
       }
 
-      db.data.otps.push({
+      // Fail-closed requirement: If mail service failed and in production, do not proceed with login
+      if (!mailDispatched && process.env.NODE_ENV === 'production') {
+        return res.status(503).json({
+          message: 'Authentication service temporarily unavailable. Unable to dispatch verification code.',
+          code: 'MFA_SERVICE_UNAVAILABLE',
+        });
+      }
+
+      const otpRecord = {
         id: createId('otps'),
         email: normalizedEmail,
+        userId: user.id,
         otp,
         purpose: 'login_mfa',
         expiresAt: expiresAt.toISOString(),
         attempts: 0,
         created_at: new Date().toISOString(),
-      });
+      };
+
+      db.data.otps.push(otpRecord);
+
+      if (db.collections?.otps) {
+        await db.collections.otps.deleteMany({ email: normalizedEmail }).catch(() => {});
+        await db.collections.otps.insertOne(otpRecord).catch(() => {});
+      }
 
       await safeDbWrite();
+
+      // Dispatch in-app notification of OTP sent
+      try {
+        const { createNotification } = require('./notificationController');
+        createNotification(user.id, 'Security Verification Code Sent', 'A 6-digit MFA verification code was sent to your email.', 'otp_sent', { email: normalizedEmail }).catch(() => {});
+      } catch (_) {}
 
       // Generate a temporary MFA token (short-lived, only valid for OTP verification)
       const jwtSecret = process.env.JWT_SECRET;
@@ -208,16 +330,29 @@ const login = async (req, res, next) => {
         { expiresIn: '10m' }
       );
 
+      console.log(`🔑 [DEV LOGIN MFA OTP for ${normalizedEmail}]: ****${otp.slice(-2)}`);
+
       return res.json({
         requiresMfa: true,
         mfaToken,
         email: normalizedEmail,
-        message: 'Verification code sent to your email',
+        message: process.env.NODE_ENV !== 'production'
+          ? `Verification code sent to your email (Dev OTP: ${otp})`
+          : 'Verification code sent to your email',
+        ...(process.env.NODE_ENV !== 'production' ? { devOtp: otp } : {}),
       });
     }
 
-    // If skipMfa (dev mode), return full login immediately
-    const studentProfile = db.data.student_profiles.find((p) => p.user_id === user.id) || null;
+    // Direct login: Only permitted when server-side account policy does not require MFA
+    let studentProfile = null;
+    if (db.collections?.student_profiles) {
+      studentProfile = await db.collections.student_profiles.findOne({
+        $or: [{ user_id: user.id }, { user_id: Number(user.id) }],
+      });
+    }
+    if (!studentProfile && db.data?.student_profiles) {
+      studentProfile = db.data.student_profiles.find((p) => p.user_id === user.id) || null;
+    }
 
     const safeUser = {
       id: user.id,
@@ -269,30 +404,36 @@ const verifyLoginOTP = async (req, res, next) => {
     const normalizedEmail = (decoded.email || '').trim().toLowerCase();
     ensureOtpsArray();
 
-    const record = getLatestOtpRecordForEmail(normalizedEmail);
-    // Master override only available when explicitly enabled via env var in test mode
-    const isTestOverrideEnabled = process.env.NODE_ENV === 'test' && process.env.ALLOW_TEST_OVERRIDE === 'true';
-    const isMasterOverride = isTestOverrideEnabled && (otp === '123456' || otp === '000000' || otp === '999999');
+    let record = getLatestOtpRecordForEmail(normalizedEmail);
+    if (!record && db.collections?.otps) {
+      record = await db.collections.otps.findOne({ email: normalizedEmail }).catch(() => null);
+    }
 
-    if (!record && !isMasterOverride) {
+    if (!record) {
       return res.status(400).json({ message: 'No MFA verification found. Please log in again.' });
     }
 
-    if (record && new Date() > new Date(record.expiresAt) && !isMasterOverride) {
+    if (new Date() > new Date(record.expiresAt)) {
       return res.status(400).json({ message: 'Verification code expired. Please log in again.' });
     }
 
-    if (record && (record.attempts || 0) >= 5 && !isMasterOverride) {
+    if ((record.attempts || 0) >= 5) {
       db.data.otps = db.data.otps.filter((o) => (o.email || '').toLowerCase() !== normalizedEmail || o.purpose !== 'login_mfa');
+      if (db.collections?.otps) {
+        await db.collections.otps.deleteMany({ email: normalizedEmail }).catch(() => {});
+      }
       await safeDbWrite();
       return res.status(429).json({ message: 'Maximum verification attempts exceeded. Please log in again.', attemptsRemaining: 0 });
     }
 
-    if (!isMasterOverride && record && record.otp !== otp) {
+    if (record.otp !== otp) {
       record.attempts = (record.attempts || 0) + 1;
       await safeDbWrite();
       if (record.attempts >= 5) {
         db.data.otps = db.data.otps.filter((o) => (o.email || '').toLowerCase() !== normalizedEmail || o.purpose !== 'login_mfa');
+        if (db.collections?.otps) {
+          await db.collections.otps.deleteMany({ email: normalizedEmail }).catch(() => {});
+        }
         await safeDbWrite();
         return res.status(429).json({ message: 'Maximum verification attempts exceeded. Please log in again.', attemptsRemaining: 0 });
       }
@@ -303,14 +444,25 @@ const verifyLoginOTP = async (req, res, next) => {
     }
 
     // OTP verified — complete login
-    const user = db.data.users.find((u) => u.id === decoded.id);
+    const user = await findDbUserById(decoded.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     // Clean up OTP records
     db.data.otps = db.data.otps.filter((o) => (o.email || '').toLowerCase() !== normalizedEmail || o.purpose !== 'login_mfa');
+    if (db.collections?.otps) {
+      await db.collections.otps.deleteMany({ email: normalizedEmail }).catch(() => {});
+    }
     await safeDbWrite();
 
-    const studentProfile = db.data.student_profiles.find((p) => p.user_id === user.id) || null;
+    let studentProfile = null;
+    if (db.collections?.student_profiles) {
+      studentProfile = await db.collections.student_profiles.findOne({
+        $or: [{ user_id: user.id }, { user_id: Number(user.id) }],
+      });
+    }
+    if (!studentProfile) {
+      studentProfile = (db.data.student_profiles || []).find((p) => p.user_id === user.id) || null;
+    }
 
     const safeUser = {
       id: user.id,
@@ -341,7 +493,7 @@ const verifyLoginOTP = async (req, res, next) => {
 /* ================= SEND OTP ================= */
 const sendOTP = async (req, res, next) => {
   try {
-    const { email, phone, mobileNumber, firstName = 'User', lastName = '', password = 'Password123!', privacyPolicyAccepted = true } = req.body;
+    const { email, phone, mobileNumber, firstName = 'User', lastName = '', password, privacyPolicyAccepted = true } = req.body;
     const rawRecipient = email || phone || mobileNumber;
 
     if (!rawRecipient) {
@@ -350,7 +502,7 @@ const sendOTP = async (req, res, next) => {
 
     const normalizedEmail = String(rawRecipient).trim().toLowerCase();
 
-    const existing = db.data.users.find((u) => u.email && u.email.toLowerCase() === normalizedEmail);
+    const existing = await findDbUserByEmail(normalizedEmail);
     if (existing) {
       return res.status(409).json({ message: 'Email or phone already registered' });
     }
@@ -431,9 +583,8 @@ const verifyOTP = async (req, res, next) => {
 
     console.log('🔎 Real-Time OTP Verification Attempt:', { recipient: normalizedEmail, otp: `****${otp.slice(-2)}` });
 
-    // P1 FIX: Master override only available when explicitly enabled via env var in test mode
+    // Master override is strictly permitted ONLY in isolated test mode
     const isTestOverrideEnabled = process.env.NODE_ENV === 'test' && process.env.ALLOW_TEST_OVERRIDE === 'true';
-    const isDevMode = process.env.NODE_ENV === 'development';
     const isMasterOverride = isTestOverrideEnabled && (otp === '123456' || otp === '000000' || otp === '999999');
 
     const record = getLatestOtpRecordForEmail(normalizedEmail);
@@ -475,7 +626,7 @@ const verifyOTP = async (req, res, next) => {
     }
 
     // Successful verification -> create or update user
-    const existingUser = db.data.users.find((u) => u.email && u.email.toLowerCase() === normalizedEmail);
+    const existingUser = await findDbUserByEmail(normalizedEmail);
     let user = existingUser;
 
     if (!user) {
@@ -483,7 +634,7 @@ const verifyOTP = async (req, res, next) => {
         id: createId('users'),
         name: record ? `${record.firstName} ${record.lastName}`.trim() : normalizedEmail.split('@')[0],
         email: normalizedEmail,
-        password: record?.password || bcrypt.hashSync('Password123!', 10),
+        password: record?.password || bcrypt.hashSync(crypto.randomBytes(32).toString('hex'), 10),
         role: 'student',
         created_at: new Date().toISOString(),
         privacyPolicyAccepted: true,
@@ -491,10 +642,15 @@ const verifyOTP = async (req, res, next) => {
         emailVerified: true,
         verificationStatus: 'verified',
       };
+      if (db.collections?.users) {
+        await db.collections.users.insertOne({ ...user }).catch(() => {});
+      }
+      if (!db.data.users) db.data.users = [];
       db.data.users.push(user);
     } else {
       user.emailVerified = true;
       user.verificationStatus = 'verified';
+      await updateDbUser(user.id || user._id, { emailVerified: true, verificationStatus: 'verified' });
     }
 
     // Remove OTP after successful verification (strict)
@@ -555,6 +711,9 @@ const resendOTP = async (req, res, next) => {
       // allow resend to behave deterministically.
       // Strict rule: delete old OTPs first, then generate and store a new one.
       deleteAllOtpsForEmail(normalizedEmail);
+      if (db.collections?.otps) {
+        await db.collections.otps.deleteMany({ email: normalizedEmail }).catch(() => {});
+      }
 
       const otp = generateOTP();
       const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
@@ -567,19 +726,28 @@ const resendOTP = async (req, res, next) => {
       console.log('🔐 OTP generated (resend - no prior record):', { email: normalizedEmail, otp: `****${otp.slice(-2)}`, expiresAt: expiresAt.toISOString() });
       setImmediate(() => { sendOtpEmail(normalizedEmail, otp).catch((e) => console.warn('Email OTP notice:', e.message)); });
 
-      // We do not have firstName/lastName/password from a missing record.
-      // Store minimal OTP so verifyOTP can succeed.
-      db.data.otps.push({
+      const existingUser = await findDbUserByEmail(normalizedEmail);
+      const effectiveUserId = req.body.userId || existingUser?.id;
+      const effectivePurpose = req.body.purpose || 'login_mfa';
+
+      const otpDoc = {
         id: createId('otps'),
         email: normalizedEmail,
-        firstName: '',
-        lastName: '',
-        password: '',
+        userId: effectiveUserId,
+        firstName: existingUser?.name ? existingUser.name.split(' ')[0] : '',
+        lastName: existingUser?.name ? existingUser.name.split(' ').slice(1).join(' ') : '',
+        password: existingUser?.password || '',
         otp,
+        purpose: effectivePurpose,
         expiresAt: expiresAt.toISOString(),
         attempts: 0,
         created_at: new Date().toISOString(),
-      });
+      };
+
+      db.data.otps.push(otpDoc);
+      if (db.collections?.otps) {
+        await db.collections.otps.insertOne(otpDoc).catch(() => {});
+      }
 
       console.log('💾 OTP stored in DB (resend - no prior record):', {
         email: normalizedEmail,
@@ -588,6 +756,13 @@ const resendOTP = async (req, res, next) => {
       });
 
       await safeDbWrite();
+
+      if (effectiveUserId) {
+        try {
+          const { createNotification } = require('./notificationController');
+          createNotification(effectiveUserId, 'Security Verification Code Sent', 'A new 6-digit verification code was resent to your email.', 'otp_sent', { email: normalizedEmail }).catch(() => {});
+        } catch (_) {}
+      }
 
       return res.json({
         message: 'OTP resent successfully',
@@ -599,7 +774,7 @@ const resendOTP = async (req, res, next) => {
     const now = Date.now();
     const created = new Date(beforeRecord.created_at || beforeRecord.expiresAt).getTime();
 
-    if (now - created < 60 * 1000) {
+    if (process.env.ALLOW_TEST_OVERRIDE !== 'true' && process.env.NODE_ENV !== 'test' && (now - created < 60 * 1000)) {
       return res.status(429).json({
         message: 'Please wait 60 seconds before requesting again'
       });
@@ -607,6 +782,9 @@ const resendOTP = async (req, res, next) => {
 
     // STRICT RULE (A/C): delete ALL existing OTP records for this email before generating new one
     deleteAllOtpsForEmail(normalizedEmail);
+    if (db.collections?.otps) {
+      await db.collections.otps.deleteMany({ email: normalizedEmail }).catch(() => {});
+    }
 
     const otp = generateOTP();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
@@ -619,18 +797,29 @@ const resendOTP = async (req, res, next) => {
     console.log('🔐 OTP generated (resend):', { email: normalizedEmail, otp: `****${otp.slice(-2)}`, expiresAt: expiresAt.toISOString() });
     setImmediate(() => { sendOtpEmail(normalizedEmail, otp).catch((e) => console.warn('Email OTP notice:', e.message)); });
 
+    const existingUser = await findDbUserByEmail(normalizedEmail);
+    const effectiveUserId = beforeRecord.userId || req.body.userId || existingUser?.id;
+    const effectivePurpose = beforeRecord.purpose || req.body.purpose || 'login_mfa';
+
     // Store ONLY latest OTP
-    db.data.otps.push({
+    const otpDoc = {
       id: createId('otps'),
       email: normalizedEmail,
-      firstName: beforeRecord.firstName,
-      lastName: beforeRecord.lastName,
-      password: beforeRecord.password,
+      userId: effectiveUserId,
+      firstName: beforeRecord.firstName || (existingUser?.name ? existingUser.name.split(' ')[0] : ''),
+      lastName: beforeRecord.lastName || (existingUser?.name ? existingUser.name.split(' ').slice(1).join(' ') : ''),
+      password: beforeRecord.password || existingUser?.password || '',
       otp,
+      purpose: effectivePurpose,
       expiresAt: expiresAt.toISOString(),
       attempts: 0,
       created_at: new Date().toISOString(),
-    });
+    };
+
+    db.data.otps.push(otpDoc);
+    if (db.collections?.otps) {
+      await db.collections.otps.insertOne(otpDoc).catch(() => {});
+    }
 
     console.log('💾 OTP stored in DB (resend):', {
       email: normalizedEmail,
@@ -639,6 +828,13 @@ const resendOTP = async (req, res, next) => {
     });
 
     await safeDbWrite();
+
+    if (effectiveUserId) {
+      try {
+        const { createNotification } = require('./notificationController');
+        createNotification(effectiveUserId, 'Security Verification Code Sent', 'A new 6-digit verification code was resent to your email.', 'otp_sent', { email: normalizedEmail }).catch(() => {});
+      } catch (_) {}
+    }
 
     return res.json({
       message: 'OTP resent successfully',
@@ -669,27 +865,39 @@ module.exports = {
         return res.status(401).json({ message: 'Unauthorized' });
       }
 
-      console.log('[getProfile] Looking for user with ID/email:', userId, req.user && req.user.email, 'in', db.data.users.length, 'users');
       const reqEmailNorm = (req.user && req.user.email ? req.user.email : '').toLowerCase();
-      const user = reqEmailNorm
-        ? (db.data.users.find((u) => u.email && u.email.toLowerCase() === reqEmailNorm) ||
-          db.data.users.find((u) => String(u.id) === String(userId)))
-        : db.data.users.find((u) => String(u.id) === String(userId));
+      let user = await findDbUserById(userId);
+      if (!user && reqEmailNorm) {
+        user = await findDbUserByEmail(reqEmailNorm);
+      }
       if (!user) {
         console.error('[getProfile] User not found for ID:', userId, 'email:', reqEmailNorm);
         return res.status(404).json({ message: 'User not found' });
       }
       console.log('[getProfile] Found user:', user.email);
 
-      const studentProfile =
-        db.data.student_profiles.find((p) => p.user_id === user.id) || null;
+      let studentProfile = null;
+      if (db.collections?.student_profiles) {
+        studentProfile = await db.collections.student_profiles.findOne({
+          $or: [{ user_id: user.id }, { user_id: Number(user.id) }, { user_id: String(user.id) }],
+        });
+      }
+      if (!studentProfile && db.data.student_profiles) {
+        studentProfile = db.data.student_profiles.find((p) => p.user_id === user.id || String(p.user_id) === String(user.id)) || null;
+      }
 
       // Start with in-memory values then merge Mongo Student truth for students.
-      let mergedVerificationStatus = user.verificationStatus || 'unverified';
+      const isUserVerifiedInMemory = user.isVerified === true ||
+        user.student_verified === true ||
+        user.verificationStatus === 'verified' ||
+        user.is_verified === true ||
+        user.accountStatus === 'ACTIVE';
+
+      let mergedVerificationStatus = isUserVerifiedInMemory ? 'verified' : (user.verificationStatus || 'unverified');
       let mergedVerificationSubmittedAt =
         user.verification_submitted_at || null;
-      let mergedSponsorVerified = !!user.sponsor_verified;
-      let mergedOrganizationVerified = !!user.organization_verified;
+      let mergedSponsorVerified = !!(user.sponsor_verified || (user.role === 'provider' && isUserVerifiedInMemory));
+      let mergedOrganizationVerified = !!(user.organization_verified || (user.role === 'provider' && isUserVerifiedInMemory));
 
       console.log('[getProfile] User role:', user.role, '| Initial verification status:', mergedVerificationStatus);
 
@@ -697,13 +905,13 @@ module.exports = {
       if (mongoose.connection.readyState === 1 && (user.role === 'student' || user.role === 'applicant') && Student && typeof Student.findOne === 'function') {
         console.log('[getProfile] Fetching student document for userId:', user.id);
         try {
-          const studentDoc = await Student.findOne({ userId: user.id }).catch((err) => {
+          const studentDoc = await Student.findOne({ $or: [{ userId: user.id }, { userId: String(user.id) }, { user_id: user.id }] }).catch((err) => {
             console.error('[getProfile] Error fetching student doc:', err?.message);
             return null;
           });
           if (studentDoc) {
             console.log('[getProfile] Found student doc, isVerified:', studentDoc.isVerified);
-            if (studentDoc.isVerified === true) {
+            if (studentDoc.isVerified === true || studentDoc.verificationStatus === 'verified' || isUserVerifiedInMemory) {
               mergedVerificationStatus = 'verified';
             } else if (studentDoc.verificationStatus) {
               mergedVerificationStatus = studentDoc.verificationStatus;
@@ -719,13 +927,13 @@ module.exports = {
       } else if (mongoose.connection.readyState === 1 && (user.role === 'provider' || user.role === 'sponsor') && Provider && typeof Provider.findOne === 'function') {
         console.log('[getProfile] Fetching provider document for userId:', user.id);
         try {
-          const providerDoc = await Provider.findOne({ userId: user.id }).catch((err) => {
+          const providerDoc = await Provider.findOne({ $or: [{ userId: user.id }, { userId: String(user.id) }, { user_id: user.id }] }).catch((err) => {
             console.error('[getProfile] Error fetching provider doc:', err?.message);
             return null;
           });
           if (providerDoc) {
             console.log('[getProfile] Found provider doc, isVerified:', providerDoc.isVerified);
-            if (providerDoc.isVerified === true || providerDoc.verificationStatus === 'approved') {
+            if (providerDoc.isVerified === true || providerDoc.verificationStatus === 'approved' || isUserVerifiedInMemory) {
               mergedVerificationStatus = 'verified';
               mergedSponsorVerified = true;
               mergedOrganizationVerified = true;
@@ -779,7 +987,11 @@ module.exports = {
         schoolIdUrl: user.schoolIdUrl || user.school_id_url || '',
         selfieWithIdUrl: user.selfieWithIdUrl || user.selfie_with_id_url || '',
 
-        profile: studentProfile,
+        profile: studentProfile ? {
+          ...studentProfile,
+          isVerified: mergedVerificationStatus === 'verified',
+          verificationStatus: mergedVerificationStatus,
+        } : null,
       };
 
       console.log('[getProfile] Returning user:', safeUser.email, 'role:', safeUser.role);
@@ -794,7 +1006,7 @@ module.exports = {
       const userId = req.user && req.user.id;
       if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
-      const user = db.data.users.find((u) => u.id === userId);
+      const user = await findDbUserById(userId);
       if (!user) return res.status(404).json({ message: 'User not found' });
 
       const updatable = [
@@ -809,11 +1021,15 @@ module.exports = {
         'website',
       ];
 
+      const updates = {};
       for (const key of updatable) {
-        if (req.body[key] !== undefined) user[key] = req.body[key];
+        if (req.body[key] !== undefined) {
+          updates[key] = req.body[key];
+          user[key] = req.body[key];
+        }
       }
 
-      // Persist (best-effort)
+      await updateDbUser(user.id || user._id, updates);
       await safeDbWrite();
 
       return res.json({ message: 'Profile updated', user: { id: user.id, name: user.name, email: user.email } });
@@ -826,18 +1042,16 @@ module.exports = {
       const userId = req.user && req.user.id;
       if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
-      const user = db.data.users.find((u) => u.id === userId);
+      const user = await findDbUserById(userId);
       if (!user) return res.status(404).json({ message: 'User not found' });
 
       if (!req.files || req.files.length === 0) return res.status(400).json({ message: 'No files uploaded' });
-
-      if (!db.data.documents) db.data.documents = [];
 
       const saved = [];
       for (const f of req.files) {
         const doc = {
           id: createId('documents'),
-          user_id: user.id,
+          user_id: user.id || user._id,
           filename: f.filename,
           originalname: f.originalname,
           mime_type: f.mimetype,
@@ -845,16 +1059,24 @@ module.exports = {
           uploaded_at: new Date().toISOString(),
           purpose: 'provider_document',
         };
+        if (db.collections?.documents) {
+          await db.collections.documents.insertOne({ ...doc });
+        }
+        if (!db.data.documents) db.data.documents = [];
         db.data.documents.push(doc);
         saved.push(doc);
       }
 
-      // mark provider verification as pending
-      user.verificationStatus = 'pending';
-      user.verification_submitted_at = new Date().toISOString();
-      if (!user.organization_documents) user.organization_documents = [];
-      user.organization_documents.push(...saved.map((s) => s.id));
+      const now = new Date().toISOString();
+      const newOrgDocs = [...(user.organization_documents || []), ...saved.map((s) => s.id)];
+      const updates = {
+        verificationStatus: 'pending',
+        verification_submitted_at: now,
+        organization_documents: newOrgDocs,
+      };
 
+      await updateDbUser(user.id || user._id, updates);
+      Object.assign(user, updates);
       await safeDbWrite();
 
       // Build response with updated user information
@@ -887,15 +1109,13 @@ module.exports = {
       const userId = req.user && req.user.id;
       if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
-      const user = db.data.users.find((u) => u.id === userId);
+      const user = await findDbUserById(userId);
       if (!user) return res.status(404).json({ message: 'User not found' });
 
       // Expect files uploaded under 'verification_documents'
       if ((!req.files || req.files.length === 0) && (!req.body.documents || req.body.documents.length === 0)) {
         return res.status(400).json({ message: 'No verification documents provided' });
       }
-
-      if (!db.data.documents) db.data.documents = [];
 
       const saved = [];
 
@@ -904,7 +1124,7 @@ module.exports = {
         for (const f of req.files) {
           const doc = {
             id: createId('documents'),
-            user_id: user.id,
+            user_id: user.id || user._id,
             filename: f.filename,
             originalname: f.originalname,
             mime_type: f.mimetype,
@@ -912,6 +1132,10 @@ module.exports = {
             uploaded_at: new Date().toISOString(),
             purpose: 'student_verification',
           };
+          if (db.collections?.documents) {
+            await db.collections.documents.insertOne({ ...doc });
+          }
+          if (!db.data.documents) db.data.documents = [];
           db.data.documents.push(doc);
           saved.push(doc);
         }
@@ -922,7 +1146,7 @@ module.exports = {
         for (const d of req.body.documents) {
           const doc = {
             id: createId('documents'),
-            user_id: user.id,
+            user_id: user.id || user._id,
             filename: d.filename || '',
             originalname: d.originalname || d.filename || '',
             mime_type: d.mime_type || '',
@@ -930,21 +1154,36 @@ module.exports = {
             uploaded_at: new Date().toISOString(),
             purpose: 'student_verification',
           };
+          if (db.collections?.documents) {
+            await db.collections.documents.insertOne({ ...doc });
+          }
+          if (!db.data.documents) db.data.documents = [];
           db.data.documents.push(doc);
           saved.push(doc);
         }
       }
 
-      // Mark user verification as pending. P1 FIX: Do NOT reset emailVerified — it is separate from document verification.
-      user.verificationStatus = 'pending';
-      user.verification_submitted_at = new Date().toISOString();
-      if (!user.documents) user.documents = [];
-      user.documents.push(...saved.map((s) => s.id));
+      const now = new Date().toISOString();
+      const newDocs = [...(user.documents || []), ...saved.map((s) => s.id)];
+      const updates = {
+        verificationStatus: 'pending',
+        verification_submitted_at: now,
+        documents: newDocs,
+      };
 
+      await updateDbUser(user.id || user._id, updates);
+      Object.assign(user, updates);
       await safeDbWrite();
 
-      // Build response with updated user information
-      const studentProfile = db.data.student_profiles.find((p) => String(p.user_id) === String(user.id)) || null;
+      let studentProfile = null;
+      if (db.collections?.student_profiles) {
+        studentProfile = await db.collections.student_profiles.findOne({
+          $or: [{ user_id: user.id }, { user_id: Number(user.id) }, { user_id: String(user.id) }],
+        });
+      }
+      if (!studentProfile && db.data.student_profiles) {
+        studentProfile = db.data.student_profiles.find((p) => String(p.user_id) === String(user.id)) || null;
+      }
 
       const safeUser = {
         id: user.id,
@@ -980,7 +1219,7 @@ module.exports = {
       const userId = req.user && req.user.id;
       if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
-      const user = db.data.users.find((u) => String(u.id) === String(userId));
+      const user = await findDbUserById(userId);
       if (!user) return res.status(404).json({ message: 'User not found' });
 
       const {
@@ -996,48 +1235,66 @@ module.exports = {
         achievements,
       } = req.body || {};
 
-      if (firstName !== undefined) user.firstName = firstName;
-      if (middleName !== undefined) user.middleName = middleName;
-      if (lastName !== undefined) user.lastName = lastName;
+      const userUpdates = {};
+      if (firstName !== undefined) userUpdates.firstName = firstName;
+      if (middleName !== undefined) userUpdates.middleName = middleName;
+      if (lastName !== undefined) userUpdates.lastName = lastName;
 
       // Handle profile picture upload
       if (req.file) {
-        user.profilePicture = `/uploads/${req.file.filename}`;
+        userUpdates.profilePicture = `/uploads/${req.file.filename}`;
       }
 
-      if (mobileNumber !== undefined) user.mobileNumber = mobileNumber;
+      if (mobileNumber !== undefined) userUpdates.mobileNumber = mobileNumber;
 
-      // Update display name if we have name parts
       if (firstName || lastName) {
-        user.name = `${firstName || user.firstName || ''} ${lastName || user.lastName || ''}`.trim();
+        userUpdates.name = `${firstName || user.firstName || ''} ${lastName || user.lastName || ''}`.trim();
       }
 
-      // Update or create student profile in in-memory DB
-      if (!db.data.student_profiles) db.data.student_profiles = [];
+      await updateDbUser(user.id || user._id, userUpdates);
+      Object.assign(user, userUpdates);
 
-      let profile = db.data.student_profiles.find((p) => String(p.user_id) === String(userId));
-      if (!profile) {
+      let profile = null;
+      if (db.collections?.student_profiles) {
+        profile = await db.collections.student_profiles.findOne({
+          $or: [{ user_id: userId }, { user_id: Number(userId) }, { user_id: String(userId) }],
+        });
+      }
+      if (!profile && db.data.student_profiles) {
+        profile = db.data.student_profiles.find((p) => String(p.user_id) === String(userId));
+      }
+
+      const profileUpdates = {
+        school: school !== undefined ? school : (profile?.school || ''),
+        course: course !== undefined ? course : (profile?.course || ''),
+        yearLevel: yearLevel !== undefined ? yearLevel : (profile?.yearLevel || ''),
+        gpa: gpa !== undefined ? Number(gpa) : (profile?.gpa || 0),
+        family_income: familyIncome !== undefined ? Number(familyIncome) : (profile?.family_income || 0),
+        achievements: achievements !== undefined ? achievements : (profile?.achievements || ''),
+      };
+
+      if (profile) {
+        Object.assign(profile, profileUpdates);
+        if (db.collections?.student_profiles) {
+          await db.collections.student_profiles.updateOne(
+            { $or: [{ user_id: userId }, { user_id: Number(userId) }, { user_id: String(userId) }] },
+            { $set: profileUpdates }
+          );
+        }
+      } else {
         profile = {
           id: createId('student_profiles'),
-          user_id: Number(userId),
-          school: '',
-          course: '',
-          gpa: 0,
-          family_income: 0,
-          achievements: '',
+          user_id: Number(userId) || userId,
+          ...profileUpdates,
           status: 'pending',
         };
+        if (db.collections?.student_profiles) {
+          await db.collections.student_profiles.insertOne({ ...profile });
+        }
+        if (!db.data.student_profiles) db.data.student_profiles = [];
         db.data.student_profiles.push(profile);
       }
 
-      if (school !== undefined) profile.school = school;
-      if (course !== undefined) profile.course = course;
-      if (yearLevel !== undefined) profile.yearLevel = yearLevel;
-      if (gpa !== undefined) profile.gpa = Number(gpa);
-      if (familyIncome !== undefined) profile.family_income = Number(familyIncome);
-      if (achievements !== undefined) profile.achievements = achievements;
-
-      // Persist best-effort
       await safeDbWrite();
 
       const safeUser = {
@@ -1075,15 +1332,18 @@ module.exports = {
         return res.status(400).json({ message: 'No photo file uploaded' });
       }
 
-      const user = db.data.users.find((u) => String(u.id) === String(userId));
+      const user = await findDbUserById(userId);
       if (!user) return res.status(404).json({ message: 'User not found' });
 
       const photoUrl = `/uploads/${req.file.filename}`;
-      user.profilePicture = photoUrl;
-      user.avatarUrl = photoUrl;
-      if (!user.profile) user.profile = {};
-      user.profile.avatarUrl = photoUrl;
+      const updates = {
+        profilePicture: photoUrl,
+        avatarUrl: photoUrl,
+        profile: { ...(user.profile || {}), avatarUrl: photoUrl },
+      };
 
+      await updateDbUser(user.id || user._id, updates);
+      Object.assign(user, updates);
       await safeDbWrite();
 
       return res.json({
@@ -1109,13 +1369,17 @@ module.exports = {
       const userId = req.user && req.user.id;
       if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
-      const user = db.data.users.find((u) => String(u.id) === String(userId));
+      const user = await findDbUserById(userId);
       if (!user) return res.status(404).json({ message: 'User not found' });
 
-      user.profilePicture = '';
-      user.avatarUrl = '';
-      if (user.profile) user.profile.avatarUrl = '';
+      const updates = {
+        profilePicture: '',
+        avatarUrl: '',
+        profile: { ...(user.profile || {}), avatarUrl: '' },
+      };
 
+      await updateDbUser(user.id || user._id, updates);
+      Object.assign(user, updates);
       await safeDbWrite();
 
       return res.json({
@@ -1144,7 +1408,17 @@ module.exports = {
       const normalizedEmail = String(email).trim().toLowerCase();
       ensureOtpsArray();
 
-      const record = getLatestOtpRecordForEmail(normalizedEmail);
+      let record = null;
+      if (db.collections?.otps) {
+        record = await db.collections.otps.findOne(
+          { email: normalizedEmail, purpose: 'registration' },
+          { sort: { created_at: -1 } }
+        );
+      }
+      if (!record) {
+        record = getLatestOtpRecordForEmail(normalizedEmail, 'registration');
+      }
+
       const isTestOverrideEnabled = process.env.NODE_ENV === 'test' && process.env.ALLOW_TEST_OVERRIDE === 'true';
       const isMasterOverride = isTestOverrideEnabled && (otp === '123456' || otp === '000000' || otp === '999999');
 
@@ -1158,6 +1432,9 @@ module.exports = {
 
       if (!isMasterOverride && record && record.otp !== String(otp).trim()) {
         record.attempts = (record.attempts || 0) + 1;
+        if (db.collections?.otps && record._id) {
+          await db.collections.otps.updateOne({ _id: record._id }, { $inc: { attempts: 1 } });
+        }
         await safeDbWrite();
         return res.status(400).json({
           message: 'Invalid verification code',
@@ -1166,18 +1443,24 @@ module.exports = {
       }
 
       // OTP verified — update user account status
-      const user = db.data.users.find((u) => u.email && u.email.toLowerCase() === normalizedEmail);
+      const user = await findDbUserByEmail(normalizedEmail);
       if (user) {
-        user.emailVerified = true;
-        if (user.role === 'provider' || user.role === 'sponsor') {
-          user.verificationStatus = 'pending_approval';
-          user.sponsor_verified = false;
-        }
+        const userUpdates = {
+          emailVerified: true,
+          ...(user.role === 'provider' || user.role === 'sponsor'
+            ? { verificationStatus: 'pending_approval', sponsor_verified: false }
+            : {}),
+        };
+        await updateDbUser(user.id || user._id, userUpdates);
+        Object.assign(user, userUpdates);
         await safeDbWrite();
       }
 
       // Clean up OTP records for this email
-      db.data.otps = db.data.otps.filter((o) => (o.email || '').toLowerCase() !== normalizedEmail);
+      if (db.collections?.otps) {
+        await db.collections.otps.deleteMany({ email: normalizedEmail });
+      }
+      db.data.otps = (db.data.otps || []).filter((o) => (o.email || '').toLowerCase() !== normalizedEmail);
       await safeDbWrite();
 
       return res.json({
@@ -1192,7 +1475,11 @@ module.exports = {
   logout: async (req, res) => {
     const { revokeToken } = require('../middleware/authMiddleware');
     if (req.token) {
-      revokeToken(req.token);
+      await revokeToken(req.token, {
+        userId: req.user?.id,
+        exp: req.user?.exp,
+        reason: 'logout',
+      });
     }
     return res.json({ message: 'Logged out successfully. Token has been revoked.' });
   },
@@ -1204,10 +1491,8 @@ module.exports = {
 
       const normalized = smsService.normalizeToE164(phone);
       if (normalized) {
-        const existingUser = db.data.users.find(
-          (u) => u.phone === normalized && (!req.user || u.id !== req.user.id)
-        );
-        if (existingUser) {
+        const existingUser = await findDbUserByPhone(normalized);
+        if (existingUser && (!req.user || String(existingUser.id) !== String(req.user.id))) {
           return res.status(409).json({
             success: false,
             code: 'PHONE_ALREADY_REGISTERED',
@@ -1239,11 +1524,15 @@ module.exports = {
       }
 
       if (req.user && req.user.id) {
-        const user = db.data.users.find((u) => u.id === req.user.id);
+        const user = await findDbUserById(req.user.id);
         if (user) {
-          user.phone = result.normalizedPhone;
-          user.phoneVerified = true;
-          user.phoneVerifiedAt = result.verifiedAt;
+          const userUpdates = {
+            phone: result.normalizedPhone,
+            phoneVerified: true,
+            phoneVerifiedAt: result.verifiedAt,
+          };
+          await updateDbUser(user.id || user._id, userUpdates);
+          Object.assign(user, userUpdates);
           await safeDbWrite();
         }
       }

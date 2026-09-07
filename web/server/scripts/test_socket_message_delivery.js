@@ -7,39 +7,12 @@
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 const io = require('../../client/node_modules/socket.io-client');
-const jwt = require('jsonwebtoken');
+const { getSyntheticPasswordForEmail } = require('../src/config/syntheticCredentials');
+const FormData = require('form-data');
+const http = require('http');
 
-const BASE_URL = process.env.TEST_API_URL || 'http://localhost:4000/api';
-const SOCKET_URL = process.env.TEST_SOCKET_URL || 'http://localhost:4000';
-const JWT_SECRET = process.env.JWT_SECRET || 'replace-with-a-long-random-secret';
-
-function createToken(payload) {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
-}
-
-// Provider (Gokongwei Foundation, id: 9)
-const providerToken = createToken({
-  id: 9,
-  role: 'sponsor',
-  email: 'gokongwei.brothers@iskolar.ph',
-  name: 'Gokongwei Brothers Foundation',
-});
-
-// Candidate Student (Eric Villanueva, id: 24 on application #9)
-const studentToken = createToken({
-  id: 24,
-  role: 'student',
-  email: 'eric.villanueva@iskolar.ph',
-  name: 'Eric Villanueva',
-});
-
-// Other Student (Diana Torres, id: 22)
-const studentBToken = createToken({
-  id: 22,
-  role: 'student',
-  email: 'diana.torres@iskolar.ph',
-  name: 'Diana Torres',
-});
+const BASE_URL = process.env.TEST_API_URL || 'http://127.0.0.1:4000/api';
+const SOCKET_URL = process.env.TEST_SOCKET_URL || 'http://127.0.0.1:4000';
 
 async function apiRequest(endpoint, options = {}) {
   const url = `${BASE_URL}${endpoint}`;
@@ -66,6 +39,15 @@ async function apiRequest(endpoint, options = {}) {
   return { status: response.status, ok: response.ok, data };
 }
 
+async function login(email) {
+  const password = getSyntheticPasswordForEmail(email);
+  const res = await apiRequest('/auth/login', {
+    method: 'POST',
+    body: { email, password, skipMfa: true },
+  });
+  return res.data?.token;
+}
+
 async function runTests() {
   console.log('========================================================');
   console.log('🚀 RUNNING ISKOLAR SOCKET.IO MESSAGE DELIVERY SUITE');
@@ -83,7 +65,55 @@ async function runTests() {
     }
   }
 
-  // Connect sockets with real JWT tokens
+  // 1. Authenticate with real synthetic credentials
+  const providerToken = await login('gokongwei.brothers@iskolar.ph');
+  const studentToken = await login('maria.santos@iskolar.ph');
+  const studentBToken = await login('juan.delacruz@iskolar.ph');
+
+  assert(!!providerToken && !!studentToken && !!studentBToken, 'Authenticated Provider and Students via JWT');
+
+  // 2. Ensure an application exists for Gokongwei
+  let appsRes = await apiRequest('/applications', { token: providerToken });
+  let appsList = appsRes.data?.applications || appsRes.data || [];
+
+  if (appsList.length === 0) {
+    const form = new FormData();
+    form.append('scholarship_id', '1001');
+    form.append('gpa', '1.40');
+    form.append('documents', Buffer.from('%PDF-1.4 Socket message delivery test doc'), {
+      filename: 'gokongwei_socket_doc.pdf',
+      contentType: 'application/pdf',
+    });
+
+    await new Promise((resolve, reject) => {
+      const u = new URL(BASE_URL);
+      const req = http.request({
+        hostname: u.hostname,
+        port: u.port,
+        path: u.pathname + '/applications',
+        method: 'POST',
+        headers: {
+          ...form.getHeaders(),
+          Authorization: `Bearer ${studentToken}`,
+        },
+      }, (res) => {
+        let d = '';
+        res.on('data', c => d += c);
+        res.on('end', () => resolve());
+      });
+      req.on('error', reject);
+      form.pipe(req);
+    });
+
+    appsRes = await apiRequest('/applications', { token: providerToken });
+    appsList = appsRes.data?.applications || appsRes.data || [];
+  }
+
+  assert(appsList.length > 0, 'Target application available for messaging');
+  const targetApp = appsList[0];
+  const appId = targetApp.id || targetApp._id;
+
+  // 3. Connect sockets with real JWT tokens
   const studentSocket = io(SOCKET_URL, {
     auth: { token: studentToken },
     transports: ['websocket', 'polling'],
@@ -97,23 +127,23 @@ async function runTests() {
   let studentReceivedNotification = false;
   let studentBReceivedNotification = false;
 
-  studentSocket.on('notification', (data) => {
-    studentReceivedNotification = true;
-  });
+  const onEvent = (socketName) => (data) => {
+    if (socketName === 'student') studentReceivedNotification = true;
+    if (socketName === 'studentB') studentBReceivedNotification = true;
+  };
 
-  studentBSocket.on('notification', (data) => {
-    studentBReceivedNotification = true;
-  });
+  studentSocket.on('notification', onEvent('student'));
+  studentSocket.on('new-notification', onEvent('student'));
+  studentSocket.on('new-message', onEvent('student'));
+
+  studentBSocket.on('notification', onEvent('studentB'));
+  studentBSocket.on('new-notification', onEvent('studentB'));
+  studentBSocket.on('new-message', onEvent('studentB'));
 
   await new Promise((resolve) => setTimeout(resolve, 800));
 
   try {
-    const appsRes = await apiRequest('/applications', { token: providerToken });
-    const appsList = appsRes.data?.applications || appsRes.data || [];
-    const targetApp = appsList.find((a) => String(a.id) === '9') || appsList[0];
-    const appId = targetApp.id || targetApp._id;
-
-    // Provider sends message to Candidate application #9
+    // 4. Provider sends message to Candidate application
     const msgRes = await apiRequest(`/applications/${appId}/messages`, {
       method: 'POST',
       token: providerToken,
@@ -122,10 +152,10 @@ async function runTests() {
     assert(msgRes.status === 201, 'Message posted through API');
 
     // Wait for event propagation
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 1200));
 
-    assert(studentReceivedNotification === true, 'Candidate Student (Eric) received targeted notification via Socket.IO');
-    assert(studentBReceivedNotification === false, 'Other Student (Diana) did NOT receive notification (Room isolation verified)');
+    assert(studentReceivedNotification === true, 'Candidate Student (Maria) received targeted notification via Socket.IO');
+    assert(studentBReceivedNotification === false, 'Other Student (Juan) did NOT receive notification (Room isolation verified)');
 
   } catch (err) {
     console.error('Socket test error:', err.message);

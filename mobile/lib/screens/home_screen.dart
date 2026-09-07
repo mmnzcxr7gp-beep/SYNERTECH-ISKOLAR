@@ -40,6 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _currentUser = widget.user;
     _loadVerificationStatus();
+    _refreshProfile();
   }
 
   Future<void> _loadVerificationStatus() async {
@@ -48,9 +49,16 @@ class _HomeScreenState extends State<HomeScreen> {
         token: widget.token,
       );
       if (mounted) {
+        final parsed = VerificationStatus.fromJson(response);
         setState(() {
-          _verificationStatus = VerificationStatus.fromJson(response);
+          _verificationStatus = parsed;
           _loadingVerification = false;
+          if (parsed.isVerified || parsed.status.toLowerCase() == 'verified') {
+            _currentUser = _currentUser.copyWith(
+              studentVerified: true,
+              verificationStatus: 'verified',
+            );
+          }
         });
       }
     } catch (e) {
@@ -64,7 +72,12 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final user = await AuthService.fetchProfile(widget.token);
       if (mounted) {
-        setState(() => _currentUser = user);
+        setState(() {
+          _currentUser = user;
+          if (user.isVerified) {
+            _loadingVerification = false;
+          }
+        });
       }
     } catch (_) {}
   }

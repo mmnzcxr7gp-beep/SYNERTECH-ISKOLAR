@@ -27,9 +27,9 @@ function createToken(payload) {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
 }
 
-// Authorized Provider (Gokongwei Foundation, id: 9)
-const providerToken = createToken({
-  id: 9,
+// Authorized Provider (Gokongwei Foundation, id: 101)
+let providerToken = createToken({
+  id: 101,
   role: 'sponsor',
   email: 'gokongwei.brothers@iskolar.ph',
   name: 'Gokongwei Brothers Foundation',

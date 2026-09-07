@@ -15,9 +15,73 @@ const {
   getAuditLogs,
   blockAuditLogMutation,
   blockPrivateMessageMutation,
+  listAccounts,
+  getAccountDetails,
+  editAccount,
+  verifyAccount,
+  rejectAccount,
+  requestMoreInfo,
+  suspendAccount,
+  reactivateAccount,
+  archiveAccount,
+  softDeleteAccount,
+  permanentDeleteAccount,
+  restoreAccount,
+  revokeAccountSessions,
+  getAccountHistory,
+  previewAccountDocument,
 } = require('../controllers/adminController');
 
 const router = express.Router();
+
+// Account Lifecycle Management (Students, Providers, Admins)
+router.get('/accounts', authMiddleware, roleMiddleware(['admin']), listAccounts);
+router.get('/accounts/:id', authMiddleware, roleMiddleware(['admin']), getAccountDetails);
+router.get('/accounts/:id/documents/:docId/preview', authMiddleware, roleMiddleware(['admin']), previewAccountDocument);
+router.get('/accounts/:id/documents/:docId/file', authMiddleware, roleMiddleware(['admin']), previewAccountDocument);
+router.patch('/accounts/:id', authMiddleware, roleMiddleware(['admin']), editAccount);
+router.put('/accounts/:id', authMiddleware, roleMiddleware(['admin']), editAccount);
+
+router.patch('/accounts/:id/verify', authMiddleware, roleMiddleware(['admin']), verifyAccount);
+router.put('/accounts/:id/verify', authMiddleware, roleMiddleware(['admin']), verifyAccount);
+
+router.patch('/accounts/:id/reject', authMiddleware, roleMiddleware(['admin']), rejectAccount);
+router.put('/accounts/:id/reject', authMiddleware, roleMiddleware(['admin']), rejectAccount);
+
+router.patch('/accounts/:id/request-info', authMiddleware, roleMiddleware(['admin']), requestMoreInfo);
+router.post('/accounts/:id/request-info', authMiddleware, roleMiddleware(['admin']), requestMoreInfo);
+
+router.patch('/accounts/:id/suspend', authMiddleware, roleMiddleware(['admin']), suspendAccount);
+router.put('/accounts/:id/suspend', authMiddleware, roleMiddleware(['admin']), suspendAccount);
+router.post('/accounts/:id/suspend', authMiddleware, roleMiddleware(['admin']), suspendAccount);
+
+router.post('/users/:id/status', authMiddleware, roleMiddleware(['admin']), (req, res, next) => {
+  if (req.body.status === 'SUSPENDED') return suspendAccount(req, res, next);
+  if (req.body.status === 'ACTIVE') return reactivateAccount(req, res, next);
+  return editAccount(req, res, next);
+});
+router.patch('/users/:id/status', authMiddleware, roleMiddleware(['admin']), (req, res, next) => {
+  if (req.body.status === 'SUSPENDED') return suspendAccount(req, res, next);
+  if (req.body.status === 'ACTIVE') return reactivateAccount(req, res, next);
+  return editAccount(req, res, next);
+});
+
+router.patch('/accounts/:id/reactivate', authMiddleware, roleMiddleware(['admin']), reactivateAccount);
+router.put('/accounts/:id/reactivate', authMiddleware, roleMiddleware(['admin']), reactivateAccount);
+router.post('/accounts/:id/reactivate', authMiddleware, roleMiddleware(['admin']), reactivateAccount);
+
+router.patch('/accounts/:id/archive', authMiddleware, roleMiddleware(['admin']), archiveAccount);
+router.put('/accounts/:id/archive', authMiddleware, roleMiddleware(['admin']), archiveAccount);
+
+router.post('/accounts/:id/delete-request', authMiddleware, roleMiddleware(['admin']), softDeleteAccount);
+router.post('/accounts/:id/soft-delete', authMiddleware, roleMiddleware(['admin']), softDeleteAccount);
+router.delete('/accounts/:id', authMiddleware, roleMiddleware(['admin']), permanentDeleteAccount);
+
+router.post('/accounts/:id/restore', authMiddleware, roleMiddleware(['admin']), restoreAccount);
+router.patch('/accounts/:id/restore', authMiddleware, roleMiddleware(['admin']), restoreAccount);
+
+router.post('/accounts/:id/revoke-sessions', authMiddleware, roleMiddleware(['admin']), revokeAccountSessions);
+router.get('/accounts/:id/history', authMiddleware, roleMiddleware(['admin']), getAccountHistory);
 
 // Overview stats & provider management
 router.get('/overview', authMiddleware, roleMiddleware(['admin']), getOverview);

@@ -25,8 +25,8 @@ const logAuditEvent = async ({
   req = null,
 }) => {
   try {
-    const ip = req ? req.ip || req.headers['x-forwarded-for'] || '' : '';
-    const userAgent = req ? req.headers['user-agent'] || '' : '';
+    const ip = req ? req.ip || req.headers?.['x-forwarded-for'] || '' : '';
+    const userAgent = req ? req.headers?.['user-agent'] || '' : '';
 
     await AuditLog.create({
       actorUserId: actorUserId || '000000000000000000000000',

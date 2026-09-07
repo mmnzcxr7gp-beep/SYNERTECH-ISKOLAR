@@ -26,7 +26,22 @@ const triggerN8nWebhook = async (eventType, payload) => {
     data: payload,
   };
 
-  console.log(`⚡ [n8n Automation] Triggering Event: "${eventType}" for [${payload?.email || payload?.student_email || payload?.to || 'system'}]`);
+  const maskEmail = (email) => {
+    if (!email || typeof email !== 'string') return 'system';
+    const parts = email.split('@');
+    if (parts.length !== 2) return '***';
+    const name = parts[0];
+    const domain = parts[1];
+    const maskedName = name.length <= 2 ? `${name[0]}*` : `${name.slice(0, 2)}***${name.slice(-1)}`;
+    return `${maskedName}@${domain}`;
+  };
+
+  const rawTarget = payload?.email || payload?.student_email || payload?.to || 'system';
+  console.log(`⚡ [n8n Automation] Triggering Event: "${eventType}" for [${maskEmail(rawTarget)}]`);
+
+  if (process.env.NODE_ENV === 'test' || process.env.N8N_DISABLED === 'true') {
+    return { success: true, simulated: true, eventData };
+  }
 
   if (!webhookUrl) {
     console.log(`ℹ️ [n8n Automation] N8N_WEBHOOK_URL is not configured in .env. Event logged to system.`);

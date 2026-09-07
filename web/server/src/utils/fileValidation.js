@@ -131,11 +131,15 @@ function detectDangerousSignatures(buffer, filename) {
  * @param {string} originalName - Original filename from client
  * @param {string} declaredMimeType - MIME type from multipart header
  * @param {object} options - Optional overrides (maxSize)
- * @returns {{ valid: boolean, error?: string, hash?: string, mimeType?: string, extension?: string, size?: number }}
+ * @returns {{ valid: boolean, code?: string, error?: string, hash?: string, mimeType?: string, extension?: string, size?: number }}
  */
 function validateFile(buffer, originalName, declaredMimeType, options = {}) {
   if (!buffer || !(buffer instanceof Buffer) || buffer.length === 0) {
-    return { valid: false, error: 'Empty or invalid file buffer provided' };
+    return {
+      valid: false,
+      code: 'FILE_REQUIRED',
+      error: 'Empty or invalid file buffer provided',
+    };
   }
 
   const size = buffer.length;
@@ -143,6 +147,7 @@ function validateFile(buffer, originalName, declaredMimeType, options = {}) {
   if (size > maxSize) {
     return {
       valid: false,
+      code: 'FILE_TOO_LARGE',
       error: `File size (${Math.round(size / 1024 / 1024 * 10) / 10}MB) exceeds allowed limit of ${Math.round(maxSize / 1024 / 1024)}MB`,
     };
   }
@@ -150,7 +155,11 @@ function validateFile(buffer, originalName, declaredMimeType, options = {}) {
   // 1. Check for dangerous signatures
   const dangerousReason = detectDangerousSignatures(buffer, originalName);
   if (dangerousReason) {
-    return { valid: false, error: dangerousReason };
+    return {
+      valid: false,
+      code: 'FILE_SIGNATURE_INVALID',
+      error: dangerousReason,
+    };
   }
 
   // 2. Validate Extension
@@ -158,6 +167,7 @@ function validateFile(buffer, originalName, declaredMimeType, options = {}) {
   if (!rawExt || !ALLOWED_EXTENSIONS.has(rawExt)) {
     return {
       valid: false,
+      code: 'FILE_TYPE_NOT_ALLOWED',
       error: `File extension "${rawExt}" is not allowed. Supported formats: PDF, JPG, JPEG, PNG, WEBP.`,
     };
   }
@@ -167,6 +177,7 @@ function validateFile(buffer, originalName, declaredMimeType, options = {}) {
   if (!detected) {
     return {
       valid: false,
+      code: 'FILE_SIGNATURE_INVALID',
       error: 'File signature verification failed: Corrupt or unrecognized document format.',
     };
   }
@@ -177,6 +188,7 @@ function validateFile(buffer, originalName, declaredMimeType, options = {}) {
   if (!isExtMatch) {
     return {
       valid: false,
+      code: 'FILE_SIGNATURE_INVALID',
       error: `Disguised file detected: File declared as "${rawExt}" but binary content is "${detected.ext}".`,
     };
   }

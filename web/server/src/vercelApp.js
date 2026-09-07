@@ -24,28 +24,42 @@ const ocrRoutes = require('./routes/ocr');
 const notificationRoutes = require('./routes/notifications');
 const privacyPolicyRoutes = require('./routes/privacyPolicy');
 const n8nRoutes = require('./routes/n8n');
+const chatbotRoutes = require('./routes/chatbot');
 
 /* ================= CORS CONFIG ================= */
+const isProd = process.env.NODE_ENV === 'production';
+
 const allowedOrigins = (process.env.CORS_ORIGINS || '')
   .split(',')
   .map((o) => o.trim())
   .filter(Boolean);
 
-// Always allow common local dev origins (Web Admin, Flutter Web, Mobile Emulators)
-const defaultOrigins = [
+// Local dev origins (Web Admin, Flutter Web, Mobile Emulators) only allowed in non-production
+const defaultDevOrigins = [
   'http://localhost:5173',
   'http://localhost:8080',
   'http://localhost:8081',
+  'http://localhost:8088',
   'http://localhost:4000',
   'http://localhost:3000',
   'http://127.0.0.1:5173',
   'http://127.0.0.1:8080',
   'http://127.0.0.1:8081',
+  'http://127.0.0.1:8088',
   'http://127.0.0.1:4000',
   'http://10.0.2.2:4000',
 ];
 
-const origins = [...new Set([...defaultOrigins, ...allowedOrigins])];
+const defaultProdOrigins = [
+  'https://iskolar.vercel.app',
+  'https://iskolar.ph',
+  'https://iskolar.pages.dev',
+];
+
+// Directive 6: Production must only use explicit approved web domains; omit local dev origins
+const origins = isProd
+  ? (allowedOrigins.length > 0 ? allowedOrigins : defaultProdOrigins)
+  : [...new Set([...defaultDevOrigins, ...allowedOrigins])];
 
 /* ================= BUILD APP ================= */
 const buildApp = () => {
@@ -88,19 +102,23 @@ const buildApp = () => {
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-  // Lazy serverless DB initialization & cross-instance state synchronization middleware
+  // Cold-start serverless DB initialization middleware (runs once or when uninitialized with cooldown)
   const { connectDb, db } = require('./config/db');
+  let lastDbInitAttempt = 0;
+  const DB_INIT_COOLDOWN_MS = 5000;
+
   app.use(async (_req, _res, next) => {
     try {
-      await connectDb();
-      if (db.collection) {
-        await db.read();
+      const now = Date.now();
+      if (!db.collection && process.env.MONGO_URI && (now - lastDbInitAttempt >= DB_INIT_COOLDOWN_MS)) {
+        lastDbInitAttempt = now;
+        await connectDb();
       }
-      if (process.env.MONGO_URI && !process.env.MONGO_URI.includes('<db_password>')) {
+      if (process.env.MONGO_URI && !process.env.MONGO_URI.includes('<db_password>') && mongoose.connection.readyState === 0) {
         await connectMongoose();
       }
     } catch (e) {
-      console.warn('⚠️ Serverless DB middleware warning:', e?.message || e);
+      console.warn('⚠️ Serverless DB initialization notice:', e?.message || e);
     }
     next();
   });
@@ -197,6 +215,56 @@ const buildApp = () => {
       timestamp: new Date().toISOString(),
     });
   };
+  // Root & Health handlers
+  app.get('/', (req, res) => {
+    // If request accepts HTML, render a clean status page with link to frontend
+    if (req.accepts('html')) {
+      return res.send(`
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>ISKOLAR 2.0 API Server</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0B0F17; color: #F1F5F9; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+            .card { background: #131B2A; border: 1px solid #1E293B; border-radius: 16px; padding: 32px; max-width: 520px; width: 100%; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center; }
+            h1 { font-size: 24px; margin: 0 0 8px; color: #FF6D29; }
+            p { color: #94A3B8; font-size: 14px; line-height: 1.5; margin: 0 0 24px; }
+            .badge { display: inline-block; background: #064E3B; color: #34D399; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 999px; margin-bottom: 20px; border: 1px solid #059669; }
+            .btn-group { display: flex; gap: 12px; flex-direction: column; }
+            .btn { display: block; text-decoration: none; font-weight: 600; font-size: 14px; padding: 12px 20px; border-radius: 10px; transition: all 0.2s ease; }
+            .btn-primary { background: #FF6D29; color: #FFFFFF; }
+            .btn-primary:hover { background: #E85B19; }
+            .btn-secondary { background: #1E293B; color: #E2E8F0; border: 1px solid #334155; }
+            .btn-secondary:hover { background: #334155; }
+          </style>
+        </head>
+        <body>
+          <div class="card">
+            <span class="badge">● Backend API Online</span>
+            <h1>ISKOLAR 2.0 API Server</h1>
+            <p>The backend REST API and Socket.IO engine is running on port 4000. Open the web portal below:</p>
+            <div class="btn-group">
+              <a href="http://localhost:5173" class="btn btn-primary">Open Local Web Client (Port 5173) →</a>
+              <a href="https://client-gamma-hazel-97.vercel.app" class="btn btn-secondary" target="_blank">Open Live Vercel Deployment →</a>
+              <a href="/api/health/readiness" class="btn btn-secondary">Check API Readiness Status</a>
+            </div>
+          </div>
+        </body>
+        </html>
+      `);
+    }
+    res.json({
+      service: 'ISKOLAR 2.0 API',
+      status: 'healthy',
+      readiness: '/api/health/readiness',
+      frontendUrl: 'http://localhost:5173',
+      vercelDeployment: 'https://client-gamma-hazel-97.vercel.app',
+      timestamp: new Date().toISOString()
+    });
+  });
+
   app.get('/api', healthHandler);
   app.get('/health', healthHandler);
   app.get('/api/health', healthHandler);
@@ -205,6 +273,7 @@ const buildApp = () => {
   const { deepHealthHandler, livenessHandler, readinessHandler, storageHealthHandler } = require('./utils/healthCheck');
   app.get('/api/health/liveness', livenessHandler);
   app.get('/api/health/readiness', readinessHandler);
+  app.get('/health/readiness', readinessHandler);
   app.get('/api/health/deep', deepHealthHandler);
   app.get('/api/health/storage', storageHealthHandler);
 
@@ -228,6 +297,7 @@ const buildApp = () => {
   app.use('/api/privacy-policy', privacyPolicyRoutes);
   app.use('/api/n8n', n8nRoutes);
   app.use('/api/webhooks/n8n', n8nRoutes);
+  app.use('/api/chatbot', chatbotRoutes);
 
   // Versioned v1 route aliases
   app.use('/api/v1/auth', authRoutes);
@@ -243,6 +313,19 @@ const buildApp = () => {
   app.use('/api/v1/privacy-policy', privacyPolicyRoutes);
   app.get('/api/v1/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
+  // Test-only controlled security-store outage endpoint (Directive 4)
+  if (process.env.NODE_ENV === 'test' && process.env.ALLOW_TEST_OVERRIDE === 'true') {
+    app.post('/api/test/induce-outage', (req, res) => {
+      const { target, enabled } = req.body || {};
+      global._simulatedStoreOutage = enabled ? (target || 'all') : null;
+      res.json({
+        status: 'ok',
+        simulatedStoreOutage: global._simulatedStoreOutage,
+        timestamp: new Date().toISOString(),
+      });
+    });
+  }
+
   // Error handling
   const { errorHandler } = require('./middleware/errorMiddleware');
   app.use(errorHandler);
@@ -251,34 +334,87 @@ const buildApp = () => {
 };
 
 /* ================= MONGOOSE ================= */
+let mongooseListenersAttached = false;
+let lastMongooseAttempt = 0;
+const MONGOOSE_RETRY_COOLDOWN_MS = 30000;
+
 const connectMongoose = async () => {
   if (mongoose.connection.readyState === 1 || mongoose.connection.readyState === 2) {
     return; // Already connected or connecting
   }
 
+  const now = Date.now();
+  if (now - lastMongooseAttempt < MONGOOSE_RETRY_COOLDOWN_MS) {
+    return; // Within cooldown period after recent failure
+  }
+  lastMongooseAttempt = now;
+
   const uri = process.env.MONGO_URI;
   if (!uri || uri.includes('<db_password>')) {
     console.warn('⚠️ MONGO_URI not configured or contains placeholder. Mongoose skipped.');
+    if (process.env.NODE_ENV === 'production' || process.env.RENDER === 'true') {
+      throw new Error('FATAL: Valid MONGO_URI is required for Mongoose in production.');
+    }
     return;
+  }
+
+  if (process.env.NODE_ENV === 'production' || process.env.RENDER === 'true') {
+    const lower = uri.toLowerCase();
+    if (lower.includes('localhost') || lower.includes('127.0.0.1') || lower.includes('::1')) {
+      throw new Error('FATAL: Local MongoDB (localhost/127.0.0.1) is strictly forbidden in deployed configuration.');
+    }
+  }
+
+  const { resolveDbName } = require('./config/db');
+  const targetDbName = resolveDbName(uri);
+
+  if (!mongooseListenersAttached) {
+    mongoose.connection.on('connected', () => {
+      console.log('✓ [Mongoose] connected to', mongoose.connection.name);
+    });
+    mongoose.connection.on('disconnected', () => {
+      console.warn('⚠️ [Mongoose] disconnected');
+      setTimeout(() => {
+        connectMongoose().catch(() => {});
+      }, 2000);
+    });
+    mongoose.connection.on('reconnected', () => {
+      console.log('🔄 [Mongoose] reconnecting / reconnected');
+    });
+    mongoose.connection.on('error', (err) => {
+      console.error('✗ [Mongoose] connection error:', err?.message || err);
+    });
+    mongooseListenersAttached = true;
   }
 
   try {
     await mongoose.connect(uri, {
-      maxPoolSize: 5,
-      serverSelectionTimeoutMS: 5000,
+      dbName: targetDbName,
+      maxPoolSize: 20,
+      minPoolSize: 2,
+      serverSelectionTimeoutMS: 15000,
+      retryWrites: true,
+      retryReads: true,
     });
-    console.log('✓ Mongoose connected to', mongoose.connection.name);
+    console.log('✓ [Mongoose] connected to', mongoose.connection.name);
 
-    // Phase 6: Ensure MongoDB indexes on startup
+    // Ensure MongoDB indexes on startup
     try {
       const { ensureIndexes } = require('./utils/ensureIndexes');
       await ensureIndexes(mongoose);
     } catch (indexErr) {
-      console.warn('⚠️ Index migration warning:', indexErr?.message);
+      if (indexErr.name === 'MandatoryUniqueIndexError' && (process.env.NODE_ENV === 'production' || process.env.FAIL_ON_INDEX_ERROR === 'true')) {
+        console.error('CRITICAL: Mandatory unique index failed during startup:', indexErr);
+        throw indexErr;
+      }
+      console.warn('⚠️ Index migration notice:', indexErr?.message);
     }
   } catch (err) {
     console.error('✗ Mongoose connection failed:', err?.message || err);
-    console.warn('⚠️ Continuing without Mongoose (in-memory mode)');
+    if (process.env.NODE_ENV === 'production') {
+      throw err; // Fail closed in production if MongoDB connection fails
+    }
+    console.warn('⚠️ Continuing with fallback mode');
   }
 };
 
@@ -288,18 +424,30 @@ const setupSocketIO = (server) => {
   const jwt = require('jsonwebtoken');
   const { normalizeRole } = require('./config/constants');
 
+  if (!process.env.REDIS_URL) {
+    console.warn('⚠️ [REALTIME DEPLOYMENT RESTRICTION]: Redis adapter is not configured (REDIS_URL missing). Socket.IO is strictly restricted to ONE realtime backend instance. Horizontal scaling beyond 1 instance without Redis adapter will cause non-delivery of cross-instance websocket events.');
+  }
+
   const io = new Server(server, {
     cors: { origin: origins, credentials: true },
   });
 
   // Socket authentication middleware
-  io.use((socket, next) => {
+  io.use(async (socket, next) => {
     const authHeader = socket.handshake.auth?.token || socket.handshake.headers?.authorization;
     if (authHeader) {
       const token = authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : authHeader;
       try {
+        const { isTokenRevoked } = require('./middleware/authMiddleware');
+        if (await isTokenRevoked(token)) {
+          return next(new Error('Authentication error: Token revoked'));
+        }
         const secret = process.env.JWT_SECRET || 'iskolar-dev-secret-key';
         const decoded = jwt.verify(token, secret);
+        if (decoded && decoded.purpose === 'mfa') {
+          return next(new Error('Authentication error: MFA incomplete'));
+        }
+        socket.token = token;
         socket.user = {
           id: decoded.id,
           role: normalizeRole(decoded.role),
@@ -325,7 +473,7 @@ const setupSocketIO = (server) => {
       if (role === 'student') {
         socket.join(`student_room_${userId}`);
         console.log(`📡 Student ${userId} joined room student_room_${userId}`);
-      } else if (role === 'sponsor') {
+      } else if (role === 'sponsor' || role === 'provider') {
         socket.join(`sponsor_room_${userId}`);
         console.log(`📡 Sponsor ${userId} joined room sponsor_room_${userId}`);
       } else if (role === 'admin') {
@@ -334,30 +482,81 @@ const setupSocketIO = (server) => {
       }
     }
 
-    // Authenticated room join handlers for client explicit requests
-    socket.on('join-user', (requestedUserId) => {
-      const targetId = socket.user?.id || requestedUserId;
-      if (targetId) {
+    // Authenticated room join handlers for client explicit requests (strictly authorized)
+    socket.on('join-user', () => {
+      if (socket.user && socket.user.id) {
+        const targetId = socket.user.id;
         socket.join(`user_${targetId}`);
-        if (socket.user?.role === 'student' || !socket.user) {
+        if (socket.user.role === 'student') {
           socket.join(`student_room_${targetId}`);
         }
-        if (socket.user?.role === 'sponsor') {
+        if (socket.user.role === 'sponsor' || socket.user.role === 'provider') {
           socket.join(`sponsor_room_${targetId}`);
         }
       }
     });
 
-    socket.on('join-admin', (requestedAdminId) => {
-      if (socket.user?.role === 'admin' || !socket.user) {
+    socket.on('join-admin', () => {
+      if (socket.user && socket.user.role === 'admin') {
         socket.join('admin_room');
       }
+    });
+
+    // Intercept every socket event to enforce token revocation across distributed instances
+    socket.use(async ([event, ...args], next) => {
+      if (socket.token) {
+        try {
+          const { isTokenRevoked } = require('./middleware/authMiddleware');
+          if (await isTokenRevoked(socket.token)) {
+            socket.emit('session_revoked', { reason: 'Token revoked' });
+            socket.disconnect(true);
+            return next(new Error('Authentication error: Token revoked'));
+          }
+        } catch (_) {}
+      }
+      next();
     });
 
     socket.on('disconnect', () => {
       console.log('🔌 Socket disconnected:', socket.id);
     });
   });
+
+  // Cross-Instance Revocation Watcher: Disconnect sockets on this instance when token is revoked in MongoDB
+  try {
+    const { RevokedToken } = require('./models');
+    if (RevokedToken && typeof RevokedToken.watch === 'function') {
+      const watcher = RevokedToken.watch();
+      watcher.on('change', (change) => {
+        const doc = change.fullDocument;
+        if (doc) {
+          for (const [id, s] of io.of('/').sockets) {
+            const matchToken = s.token && s.token === doc.token;
+            const matchUser = doc.userId && s.user && String(s.user.id) === String(doc.userId);
+            if (matchToken || matchUser) {
+              s.emit('session_revoked', { reason: doc.reason || 'revoked' });
+              s.disconnect(true);
+            }
+          }
+        }
+      });
+      watcher.on('error', () => {}); // Fallback to interval sweep
+    }
+  } catch (_) {}
+
+  // Periodic active socket verification sweep for cross-instance revocation
+  const sweepInterval = setInterval(async () => {
+    try {
+      const { isTokenRevoked } = require('./middleware/authMiddleware');
+      for (const [id, s] of io.of('/').sockets) {
+        if (s.token && (await isTokenRevoked(s.token))) {
+          s.emit('session_revoked', { reason: 'Token revoked' });
+          s.disconnect(true);
+        }
+      }
+    } catch (_) {}
+  }, 2500);
+  if (sweepInterval.unref) sweepInterval.unref();
 
   // Store io instance for notification services
   global._io = io;

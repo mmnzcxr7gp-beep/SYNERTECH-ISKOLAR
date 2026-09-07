@@ -18,6 +18,7 @@ const notificationSchema = new mongoose.Schema(
     type: {
       type: String,
       enum: [
+        'otp_sent',
         'application_submitted',
         'application_approved',
         'application_rejected',
@@ -42,6 +43,15 @@ const notificationSchema = new mongoose.Schema(
         'verification_approved',
         'verification_rejected',
         'verification_pending',
+        'ACCOUNT_VERIFIED',
+        'ACCOUNT_SUSPENDED',
+        'ACCOUNT_REJECTED',
+        'ACCOUNT_REACTIVATED',
+        'ACCOUNT_ARCHIVED',
+        'ACCOUNT_RESTORED',
+        'ACCOUNT_DELETION_PENDING',
+        'ACCOUNT_DELETED',
+        'INFORMATION_REQUIRED',
         'transaction_completed',
         'transaction_failed',
         'transaction_created',

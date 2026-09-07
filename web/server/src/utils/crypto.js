@@ -55,7 +55,16 @@ function decryptField(encryptedText) {
   }
 }
 
+/**
+ * Generates a cryptographically secure 6-digit numeric OTP.
+ * @returns {string}
+ */
+function generateSecureOTP() {
+  return crypto.randomInt(100000, 1000000).toString();
+}
+
 module.exports = {
   encryptField,
   decryptField,
+  generateSecureOTP,
 };

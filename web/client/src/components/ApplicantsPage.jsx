@@ -92,6 +92,66 @@ export default function ApplicantsPage({ token }) {
   // Document preview state
   const [previewDocument, setPreviewDocument] = useState(null)
   const [downloadingDocId, setDownloadingDocId] = useState(null)
+  const [checkingRules, setCheckingRules] = useState(false)
+
+  const handleRecheckRules = async (appId) => {
+    if (!appId) return
+    setCheckingRules(true)
+    try {
+      const res = await fetch(`/api/applications/${appId}/check-rules`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data && data.evaluation) {
+          setSelectedApplicant((prev) => ({
+            ...prev,
+            automated_recommendation: data.evaluation.recommendation,
+            automated_check_summary: {
+              passedCount: data.evaluation.passedCount,
+              totalRulesEvaluated: data.evaluation.totalRulesEvaluated,
+              failedCount: data.evaluation.failedCount,
+              warningCount: data.evaluation.warningCount,
+              evaluatedAt: data.evaluation.evaluatedAt,
+            },
+            rule_results: data.evaluation.ruleResults,
+            documents: (data.application?.documents && data.application.documents.length > 0)
+              ? data.application.documents
+              : (prev?.documents || []),
+          }))
+          setApplications((prev) =>
+            prev.map((a) =>
+              (a.id === appId || a._id === appId)
+                ? {
+                    ...a,
+                    automated_recommendation: data.evaluation.recommendation,
+                    automated_check_summary: {
+                      passedCount: data.evaluation.passedCount,
+                      totalRulesEvaluated: data.evaluation.totalRulesEvaluated,
+                      failedCount: data.evaluation.failedCount,
+                      warningCount: data.evaluation.warningCount,
+                      evaluatedAt: data.evaluation.evaluatedAt,
+                    },
+                    rule_results: data.evaluation.ruleResults,
+                    documents: (data.application?.documents && data.application.documents.length > 0)
+                      ? data.application.documents
+                      : (a.documents || []),
+                  }
+                : a
+            )
+          )
+        }
+      }
+    } catch (err) {
+      console.warn('Recheck rules notice:', err.message)
+    } finally {
+      setCheckingRules(false)
+    }
+  }
 
   // Load URL query parameters on initial mount (e.g. ?scholarship=123)
   useEffect(() => {
@@ -106,20 +166,23 @@ export default function ApplicantsPage({ token }) {
     setLoading(true)
     setError(null)
     try {
-      const [applicationsRes, scholarshipsRes] = await Promise.all([
+      const [applicationsRes, scholarshipsRes] = await Promise.allSettled([
         fetch('/api/applications', { headers: { Authorization: `Bearer ${token}` } }),
         fetch('/api/scholarships', { headers: { Authorization: `Bearer ${token}` } }),
       ])
 
-      if (!applicationsRes.ok) throw new Error('Failed to load applications')
-      if (!scholarshipsRes.ok) throw new Error('Failed to load scholarships')
+      let appList = []
+      if (applicationsRes.status === 'fulfilled' && applicationsRes.value.ok) {
+        const applicationsBody = await applicationsRes.value.json()
+        appList = applicationsBody.applications || []
+      }
 
-      const applicationsBody = await applicationsRes.json()
-      const scholarshipsBody = await scholarshipsRes.json()
+      if (scholarshipsRes.status === 'fulfilled' && scholarshipsRes.value.ok) {
+        const scholarshipsBody = await scholarshipsRes.value.json()
+        setScholarships(scholarshipsBody.scholarships || [])
+      }
 
-      const appList = applicationsBody.applications || []
       setApplications(appList)
-      setScholarships(scholarshipsBody.scholarships || [])
 
       if (appList.length > 0) {
         setSelectedApplicant((prev) => {
@@ -129,7 +192,9 @@ export default function ApplicantsPage({ token }) {
         })
       }
     } catch (err) {
-      setError(err.message)
+      console.warn('Applicants load notice:', err.message)
+      setError(null)
+      setApplications([])
     } finally {
       setLoading(false)
     }
@@ -864,9 +929,30 @@ export default function ApplicantsPage({ token }) {
                           <span className="font-bold truncate" style={{ color: 'var(--text-heading)' }}>
                             {doc.requirement_name || doc.originalname || 'Document'}
                           </span>
-                          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                            OCR Verified
-                          </span>
+                          {(() => {
+                            const isExtracted = doc.ocr_status === 'VERIFIED' || doc.ocr_status === 'EXTRACTED' || doc.ocrStatus === 'EXTRACTED' || (doc.ocr_result && doc.ocr_result.status === 'VERIFIED_MATCH');
+                            const isFailed = doc.ocr_status === 'FAILED' || doc.ocrStatus === 'FAILED';
+
+                            if (isExtracted) {
+                              return (
+                                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                                  ✓ OCR Extracted
+                                </span>
+                              );
+                            }
+                            if (isFailed) {
+                              return (
+                                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+                                  ✕ OCR Failed
+                                </span>
+                              );
+                            }
+                            return (
+                              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                                ⏳ Pending OCR Scan
+                              </span>
+                            );
+                          })()}
                         </div>
                         <div className="flex items-center justify-between pt-1 text-[11px]">
                           <span style={{ color: 'var(--text-muted)' }}>{formatDate(doc.uploaded_at)}</span>
@@ -898,32 +984,129 @@ export default function ApplicantsPage({ token }) {
 
               {/* Center & Right Column (8 cols): OCR Cross-Check, Rules Outcomes & Workflow Actions */}
               <div className="lg:col-span-8 p-6 space-y-6 overflow-y-auto">
-                {/* Explainable OCR Cross-Check Result */}
-                <div className="rounded-2xl border p-4 space-y-3" style={{ backgroundColor: 'rgba(16, 185, 129, 0.04)', borderColor: 'rgba(16, 185, 129, 0.25)' }}>
-                  <div className="flex items-center justify-between pb-2 border-b border-emerald-500/20">
+                {/* Explainable OCR Cross-Check & Automated Rules Result */}
+                <div className="rounded-2xl border p-4 space-y-3" style={{
+                  backgroundColor: selectedApplicant.automated_recommendation === 'INELIGIBLE_FLAGGED'
+                    ? 'rgba(239, 68, 68, 0.04)'
+                    : selectedApplicant.automated_recommendation === 'NEEDS_RESUBMISSION_RECOMMENDED'
+                    ? 'rgba(245, 158, 11, 0.04)'
+                    : 'rgba(16, 185, 129, 0.04)',
+                  borderColor: selectedApplicant.automated_recommendation === 'INELIGIBLE_FLAGGED'
+                    ? 'rgba(239, 68, 68, 0.25)'
+                    : selectedApplicant.automated_recommendation === 'NEEDS_RESUBMISSION_RECOMMENDED'
+                    ? 'rgba(245, 158, 11, 0.25)'
+                    : 'rgba(16, 185, 129, 0.25)'
+                }}>
+                  <div className="flex items-center justify-between pb-2 border-b" style={{ borderColor: 'var(--border)' }}>
                     <div className="flex items-center gap-2">
-                      <ShieldIcon className="w-4 h-4 text-emerald-500" />
-                      <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                      <ShieldIcon className={`w-4 h-4 ${
+                        selectedApplicant.automated_recommendation === 'INELIGIBLE_FLAGGED'
+                          ? 'text-rose-500'
+                          : selectedApplicant.automated_recommendation === 'NEEDS_RESUBMISSION_RECOMMENDED'
+                          ? 'text-amber-500'
+                          : 'text-emerald-500'
+                      }`} />
+                      <span className="text-xs font-extrabold uppercase tracking-wider text-[var(--text-heading)]">
                         Automated OCR & Rules Verification Result
                       </span>
                     </div>
-                    <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                      INFORMATION MATCH PASSED
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleRecheckRules(selectedApplicant.id || selectedApplicant._id)}
+                        disabled={checkingRules}
+                        className="px-2 py-0.5 rounded-lg border text-[10px] font-bold transition hover:bg-[var(--bg-card)] disabled:opacity-50 cursor-pointer"
+                        style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+                        title="Re-run 16 automated eligibility rules"
+                      >
+                        {checkingRules ? 'Evaluating…' : '⚡ Re-run Rules'}
+                      </button>
+                      <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${
+                        selectedApplicant.automated_recommendation === 'INELIGIBLE_FLAGGED'
+                          ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30'
+                          : selectedApplicant.automated_recommendation === 'NEEDS_RESUBMISSION_RECOMMENDED'
+                          ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                          : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                      }`}>
+                        {selectedApplicant.automated_recommendation
+                          ? selectedApplicant.automated_recommendation.replace(/_/g, ' ')
+                          : 'ELIGIBLE FOR REVIEW'}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="grid sm:grid-cols-3 gap-2.5 text-xs">
+                    {/* 1. Name Consistency */}
                     <div className="p-2.5 rounded-xl bg-[var(--bg-input)] border" style={{ borderColor: 'var(--border)' }}>
                       <p className="text-[10px] font-semibold" style={{ color: 'var(--text-muted)' }}>Name Consistency</p>
-                      <p className="font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">✓ 100% Match</p>
+                      {(() => {
+                        const docs = selectedApplicant.documents || []
+                        const ocrNameFound = docs.some((d) => Boolean(d.extractedFields?.fullName || d.extractedFields?.name || d.ocr_result?.extracted_fields?.student_name))
+                        const nameRule = selectedApplicant.rule_results?.find((r) => r.ruleId === 'RULE_NAME_CONSISTENCY')
+
+                        if (docs.length === 0) {
+                          return <p className="font-bold text-rose-500 mt-0.5">⚠️ No ID Uploaded</p>
+                        }
+                        if (nameRule?.actualResult === 'FAIL') {
+                          return <p className="font-bold text-rose-500 mt-0.5">✕ Discrepancy Flagged</p>
+                        }
+                        if (nameRule?.actualResult === 'PASS' || (ocrNameFound && nameRule?.passed)) {
+                          return <p className="font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">✓ Profile Matches ID</p>
+                        }
+                        return <p className="font-bold text-amber-500 dark:text-amber-400 mt-0.5">⏳ Pending OCR Scan</p>
+                      })()}
                     </div>
+
+                    {/* 2. GPA Extraction */}
                     <div className="p-2.5 rounded-xl bg-[var(--bg-input)] border" style={{ borderColor: 'var(--border)' }}>
                       <p className="text-[10px] font-semibold" style={{ color: 'var(--text-muted)' }}>GPA Extraction</p>
-                      <p className="font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">✓ Compliant ({selectedApplicant.student_profile?.gpa ?? '1.50'})</p>
+                      {(() => {
+                        const docs = selectedApplicant.documents || []
+                        const ocrGpa = docs.find((d) => d.extractedFields?.gwa || d.ocr_result?.extracted_fields?.gpa)
+                        const profileGpa = selectedApplicant.student_profile?.gpa ?? selectedApplicant.gpa
+
+                        if (ocrGpa) {
+                          return <p className="font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">✓ OCR Verified ({ocrGpa.extractedFields?.gwa || ocrGpa.ocr_result?.extracted_fields?.gpa})</p>
+                        }
+                        if (profileGpa != null) {
+                          return <p className="font-bold text-amber-500 dark:text-amber-400 mt-0.5">⏳ Profile ({profileGpa}) • Unscanned</p>
+                        }
+                        return <p className="font-bold text-rose-500 mt-0.5">⚠️ Missing GPA</p>
+                      })()}
                     </div>
+
+                    {/* 3. Rules Evaluated */}
                     <div className="p-2.5 rounded-xl bg-[var(--bg-input)] border" style={{ borderColor: 'var(--border)' }}>
-                      <p className="text-[10px] font-semibold" style={{ color: 'var(--text-muted)' }}>Validation Status</p>
-                      <p className="font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">✓ Passed File Check</p>
+                      <p className="text-[10px] font-semibold" style={{ color: 'var(--text-muted)' }}>Rules Evaluated</p>
+                      {(() => {
+                        const summary = selectedApplicant.automated_check_summary
+                        const passedCount = summary?.passedCount
+                        const total = summary?.totalRulesEvaluated || 16
+                        const failedCount = summary?.failedCount || 0
+                        const warningCount = summary?.warningCount || 0
+
+                        if (passedCount == null) {
+                          return <p className="font-bold text-amber-500 dark:text-amber-400 mt-0.5">⚡ Evaluation Pending</p>
+                        }
+                        if (failedCount > 0) {
+                          return (
+                            <p className="font-bold text-rose-500 mt-0.5" title={`${failedCount} rules failed, ${warningCount} warnings`}>
+                              ✕ {passedCount}/{total} Rules Passed
+                            </p>
+                          )
+                        }
+                        if (warningCount > 0 || passedCount < total) {
+                          return (
+                            <p className="font-bold text-amber-500 dark:text-amber-400 mt-0.5" title={`${warningCount} rules awaiting OCR/manual scan`}>
+                              ⏳ {passedCount}/{total} Rules Passed
+                            </p>
+                          )
+                        }
+                        return (
+                          <p className="font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                            ✓ {passedCount}/{total} Rules Passed
+                          </p>
+                        )
+                      })()}
                     </div>
                   </div>
 
@@ -937,8 +1120,22 @@ export default function ApplicantsPage({ token }) {
                   applicant={selectedApplicant}
                   token={token}
                   onApplicationUpdated={(updated) => {
-                    setSelectedApplicant(updated)
-                    setApplications((prev) => prev.map((a) => (a.id === updated.id || a._id === updated._id ? updated : a)))
+                    setSelectedApplicant((prev) => ({
+                      ...prev,
+                      ...updated,
+                      documents: (updated.documents && updated.documents.length > 0) ? updated.documents : (prev?.documents || []),
+                    }))
+                    setApplications((prev) =>
+                      prev.map((a) =>
+                        (a.id === updated.id || a._id === updated._id)
+                          ? {
+                              ...a,
+                              ...updated,
+                              documents: (updated.documents && updated.documents.length > 0) ? updated.documents : (a.documents || []),
+                            }
+                          : a
+                      )
+                    )
                   }}
                 />
               </div>

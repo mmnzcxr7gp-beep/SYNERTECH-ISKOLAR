@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTheme } from './ThemeContext'
 import IskolarLogo from './IskolarLogo'
@@ -29,15 +30,19 @@ import {
   XIcon,
   ExternalLinkIcon
 } from './Icons'
-import ApplicantsPage from './ApplicantsPage'
-import ScholarshipCreatePage from './ScholarshipCreatePage'
-import ScholarshipsPage from './ScholarshipsPage'
-import ScholarshipEditPage from './ScholarshipEditPage'
-import ReportsPage from './ReportsPage'
-import SettingsPage from './SettingsPage'
-import SchedulingPage from './SchedulingPage'
-import DocumentVerificationPage from './DocumentVerificationPage'
-import PrivacyPolicyPage from './PrivacyPolicyPage'
+const ApplicantsPage = React.lazy(() => import('./ApplicantsPage'))
+const ScholarshipCreatePage = React.lazy(() => import('./ScholarshipCreatePage'))
+const ScholarshipsPage = React.lazy(() => import('./ScholarshipsPage'))
+const ScholarshipEditPage = React.lazy(() => import('./ScholarshipEditPage'))
+const ReportsPage = React.lazy(() => import('./ReportsPage'))
+const SettingsPage = React.lazy(() => import('./SettingsPage'))
+const SchedulingPage = React.lazy(() => import('./SchedulingPage'))
+const DocumentVerificationPage = React.lazy(() => import('./DocumentVerificationPage'))
+const PrivacyPolicyPage = React.lazy(() => import('./PrivacyPolicyPage'))
+import NotificationCenter from './NotificationCenter'
+import AdminAccountDetailModal from './AdminAccountDetailModal'
+import AccountActionsMenu from './AccountActionsMenu'
+import { API_BASE_URL } from '../config/api'
 
 // Provider Navigation Matrix
 const providerNavItems = [
@@ -71,10 +76,12 @@ function AdminProviderApprovalsView({ token }) {
   const [providers, setProviders] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [actionLoading, setActionLoading] = useState(null)
-  const [filter, setFilter] = useState('all') // all, pending, verified
+  const [filter, setFilter] = useState('all') // 'all' | 'pending' | 'verified'
+  const [selectedAccountId, setSelectedAccountId] = useState(null)
+  const [modalInitialTab, setModalInitialTab] = useState('overview')
+  const [modalInitialAction, setModalInitialAction] = useState(null)
 
-  const fetchProviders = async () => {
+  const loadProviders = async () => {
     setLoading(true)
     setError('')
     try {
@@ -92,43 +99,8 @@ function AdminProviderApprovalsView({ token }) {
   }
 
   useEffect(() => {
-    fetchProviders()
+    loadProviders()
   }, [token])
-
-  const handleApprove = async (providerId) => {
-    setActionLoading(`approve-${providerId}`)
-    try {
-      const res = await fetch(`/api/admin/providers/${providerId}/approve`, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-      })
-      if (!res.ok) throw new Error('Failed to approve provider')
-      await fetchProviders()
-    } catch (err) {
-      alert(`Approval error: ${err.message}`)
-    } finally {
-      setActionLoading(null)
-    }
-  }
-
-  const handleVerifyOrg = async (providerId) => {
-    setActionLoading(`verify-${providerId}`)
-    try {
-      const res = await fetch(`/api/admin/providers/${providerId}/verify`, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-      })
-      if (!res.ok) {
-        const body = await res.json()
-        throw new Error(body.message || 'Verification failed')
-      }
-      await fetchProviders()
-    } catch (err) {
-      alert(`Verification error: ${err.message}`)
-    } finally {
-      setActionLoading(null)
-    }
-  }
 
   const filteredProviders = providers.filter((p) => {
     if (filter === 'pending') return !p.sponsor_verified || !p.organization_verified
@@ -136,8 +108,26 @@ function AdminProviderApprovalsView({ token }) {
     return true
   })
 
+  const handleViewAccount = (prov, tab = 'overview') => {
+    setSelectedAccountId(prov.id)
+    setModalInitialTab(tab)
+    setModalInitialAction(null)
+  }
+
+  const handleTriggerAction = (prov, actionName) => {
+    setSelectedAccountId(prov.id)
+    if (actionName === 'edit') {
+      setModalInitialTab('overview')
+      setModalInitialAction('edit')
+    } else {
+      setModalInitialTab('actions')
+      setModalInitialAction(actionName)
+    }
+  }
+
   return (
     <div className="w-full space-y-6">
+      {/* Header */}
       <div className="border-b pb-6" style={{ borderColor: 'var(--border)' }}>
         <span
           className="inline-flex items-center gap-2 rounded-full px-3.5 py-1 text-xs font-extrabold uppercase tracking-wider border mb-2"
@@ -150,10 +140,10 @@ function AdminProviderApprovalsView({ token }) {
           Administrator Control
         </span>
         <h1 className="text-2xl sm:text-3xl font-black tracking-tight" style={{ color: 'var(--text-heading)' }}>
-          Provider Verification & Approvals
+          Provider Verification & Directory
         </h1>
         <p className="mt-1 text-xs sm:text-sm font-normal" style={{ color: 'var(--text-secondary)' }}>
-          Audit scholarship sponsor credentials, check corporate registration, and grant platform publishing authority.
+          Audit scholarship sponsor credentials, inspect submitted grant programs, verify corporate registration, and manage accounts with contextual actions.
         </p>
       </div>
 
@@ -164,7 +154,7 @@ function AdminProviderApprovalsView({ token }) {
       )}
 
       {/* Filter Tabs */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         {[
           { id: 'all', label: `All Providers (${providers.length})` },
           { id: 'pending', label: `Pending Review (${providers.filter(p => !p.sponsor_verified || !p.organization_verified).length})` },
@@ -190,11 +180,7 @@ function AdminProviderApprovalsView({ token }) {
       </div>
 
       {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2" aria-busy="true">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="skeleton h-44 rounded-2xl" />
-          ))}
-        </div>
+        <div className="p-8 text-center text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>Loading provider records…</div>
       ) : filteredProviders.length === 0 ? (
         <SpotlightCard className="p-12 text-center">
           <p className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
@@ -202,86 +188,104 @@ function AdminProviderApprovalsView({ token }) {
           </p>
         </SpotlightCard>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredProviders.map((prov) => (
-            <SpotlightCard key={prov.id} className="p-5 flex flex-col justify-between space-y-4">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#FF6D29]">
-                    ID #{prov.id}
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${
-                      prov.sponsor_verified
-                        ? 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30'
-                        : 'bg-amber-500/15 text-amber-500 border-amber-500/30'
-                    }`}>
-                      {prov.sponsor_verified ? 'Account Approved' : 'Pending Account'}
-                    </span>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${
-                      prov.organization_verified
-                        ? 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30'
-                        : 'bg-slate-500/15 text-slate-400 border-slate-500/30'
-                    }`}>
-                      {prov.organization_verified ? 'Org Verified' : 'Org Unverified'}
-                    </span>
-                  </div>
-                </div>
+        <div className="overflow-x-auto rounded-2xl border" style={{ borderColor: 'var(--border)' }}>
+          <table className="w-full text-left">
+            <thead className="border-b" style={{ backgroundColor: 'var(--color-surface-panel)', borderColor: 'var(--border)' }}>
+              <tr>
+                <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Name</th>
+                <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Email</th>
+                <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Role</th>
+                <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Verification Status</th>
+                <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Account Status</th>
+                <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Registration Date</th>
+                <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-right" style={{ color: 'var(--text-secondary)' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
+              {filteredProviders.map((prov) => {
+                const regDate = prov.created_at || prov.createdAt
+                  ? new Date(prov.created_at || prov.createdAt).toLocaleDateString()
+                  : 'N/A'
+                const isVerified = prov.sponsor_verified && prov.organization_verified
+                const accStatus = prov.accountStatus || (prov.isDeleted ? 'DELETION_PENDING' : prov.isSuspended ? 'SUSPENDED' : 'ACTIVE')
 
-                <h3 className="text-base font-black truncate" style={{ color: 'var(--text-heading)' }}>
-                  {prov.name || 'Provider Account'}
-                </h3>
-                <p className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>
-                  {prov.email}
-                </p>
-                {prov.company && (
-                  <p className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
-                    Company: <strong style={{ color: 'var(--text-heading)' }}>{prov.company}</strong>
-                  </p>
-                )}
-                {prov.organization_website && (
-                  <a
-                    href={prov.organization_website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs font-bold underline flex items-center gap-1 text-[#FF6D29]"
+                return (
+                  <tr
+                    key={prov.id}
+                    onClick={() => handleViewAccount(prov, 'overview')}
+                    className="transition hover:bg-[#FF6D29]/10 cursor-pointer group"
                   >
-                    <span>{prov.organization_website}</span>
-                    <ExternalLinkIcon className="w-3 h-3" />
-                  </a>
-                )}
-              </div>
-
-              <div className="pt-3 border-t flex items-center gap-2" style={{ borderColor: 'var(--border)' }}>
-                {!prov.sponsor_verified && (
-                  <button
-                    onClick={() => handleApprove(prov.id)}
-                    disabled={actionLoading === `approve-${prov.id}`}
-                    className="btn-primary flex-1 py-1.5 text-xs font-bold shadow-sm cursor-pointer disabled:opacity-50"
-                  >
-                    {actionLoading === `approve-${prov.id}` ? '...' : 'Approve Sponsor'}
-                  </button>
-                )}
-                {!prov.organization_verified && (
-                  <button
-                    onClick={() => handleVerifyOrg(prov.id)}
-                    disabled={actionLoading === `verify-${prov.id}`}
-                    className="btn-secondary flex-1 py-1.5 text-xs font-extrabold cursor-pointer disabled:opacity-50"
-                  >
-                    {actionLoading === `verify-${prov.id}` ? '...' : 'Verify Org'}
-                  </button>
-                )}
-                {prov.sponsor_verified && prov.organization_verified && (
-                  <div className="text-xs font-bold text-emerald-500 flex items-center gap-1.5 py-1">
-                    <CheckCircleIcon className="w-4 h-4" />
-                    <span>Authorized Provider</span>
-                  </div>
-                )}
-              </div>
-            </SpotlightCard>
-          ))}
+                    <td className="px-4 py-3.5 text-xs font-bold group-hover:text-[#FF6D29] transition" style={{ color: 'var(--text-heading)' }}>
+                      <div>{prov.name || prov.company || `Provider #${prov.id}`}</div>
+                      {prov.company && <div className="text-[10px] text-slate-400 font-normal">{prov.company}</div>}
+                    </td>
+                    <td className="px-4 py-3.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                      {prov.email}
+                    </td>
+                    <td className="px-4 py-3.5 text-xs">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-white/10 text-white border border-white/20">
+                        {prov.role || 'Provider'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${
+                        isVerified
+                          ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                          : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                      }`}>
+                        {isVerified ? 'Verified' : 'Pending Review'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${
+                        accStatus === 'ACTIVE'
+                          ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                          : accStatus === 'SUSPENDED'
+                          ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+                          : accStatus === 'ARCHIVED'
+                          ? 'bg-slate-500/15 text-slate-400 border-slate-500/30'
+                          : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                      }`}>
+                        {accStatus}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                      {regDate}
+                    </td>
+                    <td className="px-4 py-3.5 text-right">
+                      <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => handleViewAccount(prov, 'overview')}
+                          className="px-2.5 py-1 rounded-lg text-xs font-bold bg-[var(--primary)] text-white hover:opacity-90 transition cursor-pointer shadow-sm"
+                        >
+                          View
+                        </button>
+                        <AccountActionsMenu
+                          account={{ ...prov, role: prov.role || 'provider' }}
+                          onViewAccount={handleViewAccount}
+                          onTriggerAction={handleTriggerAction}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       )}
+
+      {/* Account Detail & Lifecycle Control Modal */}
+      <AdminAccountDetailModal
+        accountId={selectedAccountId}
+        isOpen={!!selectedAccountId}
+        onClose={() => { setSelectedAccountId(null); setModalInitialAction(null); }}
+        token={token}
+        onAccountUpdated={loadProviders}
+        initialTab={modalInitialTab}
+        initialActionDialog={modalInitialAction}
+      />
     </div>
   )
 }
@@ -291,33 +295,66 @@ function AdminStudentsOversightView({ token }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('ALL') // 'ALL' | 'ACTIVE' | 'PENDING' | 'SUSPENDED'
+  const [selectedAccountId, setSelectedAccountId] = useState(null)
+  const [modalInitialTab, setModalInitialTab] = useState('overview')
+  const [modalInitialAction, setModalInitialAction] = useState(null)
+
+  const loadStudents = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch('/api/admin/students', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (!res.ok) throw new Error('Failed to load student profiles')
+      const body = await res.json()
+      setStudents(body.students || [])
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    async function load() {
-      setLoading(true)
-      try {
-        const res = await fetch('/api/admin/students', {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        if (!res.ok) throw new Error('Failed to load student profiles')
-        const body = await res.json()
-        setStudents(body.students || [])
-      } catch (err) {
-        setError(err.message)
-      } finally {
-        setLoading(false)
-      }
-    }
-    load()
+    loadStudents()
   }, [token])
 
   const filtered = students.filter((s) => {
     const q = search.toLowerCase()
-    return (s.name || '').toLowerCase().includes(q) ||
+    const matchQuery =
+      (s.name || '').toLowerCase().includes(q) ||
       (s.email || '').toLowerCase().includes(q) ||
-      (s.schoolName || '').toLowerCase().includes(q) ||
+      (s.schoolName || s.school || '').toLowerCase().includes(q) ||
+      (s.course || '').toLowerCase().includes(q) ||
       (s.lrn || '').toLowerCase().includes(q)
+
+    if (!matchQuery) return false
+
+    if (statusFilter === 'ACTIVE') return s.accountStatus === 'ACTIVE' || s.isVerified
+    if (statusFilter === 'PENDING') return s.accountStatus === 'PENDING_ADMIN_REVIEW' || (!s.isVerified && s.accountStatus !== 'SUSPENDED')
+    if (statusFilter === 'SUSPENDED') return s.accountStatus === 'SUSPENDED' || s.isSuspended
+
+    return true
   })
+
+  const handleViewAccount = (st, tab = 'overview') => {
+    setSelectedAccountId(st.id)
+    setModalInitialTab(tab)
+    setModalInitialAction(null)
+  }
+
+  const handleTriggerAction = (st, actionName) => {
+    setSelectedAccountId(st.id)
+    if (actionName === 'edit') {
+      setModalInitialTab('overview')
+      setModalInitialAction('edit')
+    } else {
+      setModalInitialTab('actions')
+      setModalInitialAction(actionName)
+    }
+  }
 
   return (
     <div className="w-full space-y-6">
@@ -336,7 +373,7 @@ function AdminStudentsOversightView({ token }) {
           Student Candidate Oversight
         </h1>
         <p className="mt-1 text-xs sm:text-sm font-normal" style={{ color: 'var(--text-secondary)' }}>
-          Monitor registered applicant profiles, verify school credentials, and inspect student records.
+          Monitor registered applicant profiles, verify school credentials, inspect submitted scholarship applications and documents, and manage account lifecycles.
         </p>
       </div>
 
@@ -346,68 +383,157 @@ function AdminStudentsOversightView({ token }) {
         </div>
       )}
 
-      <input
-        type="search"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search student candidates by name, email, LRN, or school..."
-        className="w-full rounded-xl border p-3 text-xs font-medium focus:outline-none"
-        style={{
-          backgroundColor: 'var(--color-surface-panel)',
-          borderColor: 'var(--border)',
-          color: 'var(--text-primary)'
-        }}
-      />
+      {/* Filter and Search Bar */}
+      <div className="flex flex-col sm:flex-row items-center gap-3">
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search student candidates by name, email, LRN, degree course, or school..."
+          className="w-full flex-1 rounded-xl border p-3 text-xs font-medium focus:outline-none"
+          style={{
+            backgroundColor: 'var(--color-surface-panel)',
+            borderColor: 'var(--border)',
+            color: 'var(--text-primary)'
+          }}
+        />
+
+        <div className="flex items-center gap-1.5 self-start sm:self-auto overflow-x-auto w-full sm:w-auto">
+          {[
+            { id: 'ALL', label: `All (${students.length})` },
+            { id: 'ACTIVE', label: 'Active / Verified' },
+            { id: 'PENDING', label: 'Pending Review' },
+            { id: 'SUSPENDED', label: 'Suspended' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setStatusFilter(tab.id)}
+              className={`px-3 py-2 rounded-xl text-xs font-bold transition border cursor-pointer whitespace-nowrap ${
+                statusFilter === tab.id
+                  ? 'bg-[var(--primary)] text-white border-[var(--primary)]'
+                  : 'hover:bg-[var(--color-surface-panel)]'
+              }`}
+              style={{
+                backgroundColor: statusFilter === tab.id ? 'var(--primary)' : 'var(--color-surface-panel)',
+                borderColor: statusFilter === tab.id ? 'var(--primary)' : 'var(--border)',
+                color: statusFilter === tab.id ? '#FFFFFF' : 'var(--text-secondary)'
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {loading ? (
         <div className="p-8 text-center text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>Loading student records…</div>
       ) : filtered.length === 0 ? (
         <SpotlightCard className="p-8 text-center">
-          <p className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>No student records found.</p>
+          <p className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>No student records found matching search or filter.</p>
         </SpotlightCard>
       ) : (
         <div className="overflow-x-auto rounded-2xl border" style={{ borderColor: 'var(--border)' }}>
           <table className="w-full text-left">
             <thead className="border-b" style={{ backgroundColor: 'var(--color-surface-panel)', borderColor: 'var(--border)' }}>
               <tr>
-                <th className="px-5 py-3 text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Student Candidate</th>
-                <th className="px-5 py-3 text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Email</th>
-                <th className="px-5 py-3 text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>School / LRN</th>
-                <th className="px-5 py-3 text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>GPA</th>
-                <th className="px-5 py-3 text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Verification Status</th>
+                <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Name</th>
+                <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Email</th>
+                <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Role</th>
+                <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Verification Status</th>
+                <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Account Status</th>
+                <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Registration Date</th>
+                <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-right" style={{ color: 'var(--text-secondary)' }}>Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
-              {filtered.map((st) => (
-                <tr key={st.id} className="transition hover:bg-[var(--color-surface-panel)]">
-                  <td className="px-5 py-3.5 text-xs font-bold" style={{ color: 'var(--text-heading)' }}>
-                    {st.name || `Student #${st.id}`}
-                  </td>
-                  <td className="px-5 py-3.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                    {st.email}
-                  </td>
-                  <td className="px-5 py-3.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                    <div>{st.schoolName || 'N/A'}</div>
-                    {st.lrn && <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>LRN: {st.lrn}</div>}
-                  </td>
-                  <td className="px-5 py-3.5 text-xs font-bold" style={{ color: 'var(--primary)' }}>
-                    {st.gpa ?? 'N/A'}
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${
-                      st.isVerified
-                        ? 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30'
-                        : 'bg-amber-500/15 text-amber-500 border-amber-500/30'
-                    }`}>
-                      {st.isVerified ? 'Verified' : 'Pending'}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              {filtered.map((st) => {
+                const regDate = st.created_at || st.createdAt
+                  ? new Date(st.created_at || st.createdAt).toLocaleDateString()
+                  : 'N/A'
+                const accStatus = st.accountStatus || (st.isDeleted ? 'DELETION_PENDING' : st.isSuspended ? 'SUSPENDED' : 'ACTIVE')
+                const isVerified = st.isVerified || accStatus === 'ACTIVE'
+
+                return (
+                  <tr
+                    key={st.id}
+                    onClick={() => handleViewAccount(st, 'overview')}
+                    className="transition hover:bg-[#FF6D29]/10 cursor-pointer group"
+                  >
+                    <td className="px-4 py-3.5 text-xs font-bold group-hover:text-[#FF6D29] transition" style={{ color: 'var(--text-heading)' }}>
+                      <div>{st.name || `Student #${st.id}`}</div>
+                      {(st.schoolName || st.school) && (
+                        <div className="text-[10px] text-slate-400 font-normal">
+                          {st.schoolName || st.school} {st.course ? `• ${st.course}` : ''}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                      {st.email}
+                    </td>
+                    <td className="px-4 py-3.5 text-xs">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-white/10 text-white border border-white/20">
+                        {st.role || 'Student'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${
+                        isVerified
+                          ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                          : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                      }`}>
+                        {isVerified ? 'Verified' : 'Pending Review'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${
+                        accStatus === 'ACTIVE'
+                          ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                          : accStatus === 'SUSPENDED'
+                          ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+                          : accStatus === 'ARCHIVED'
+                          ? 'bg-slate-500/15 text-slate-400 border-slate-500/30'
+                          : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                      }`}>
+                        {accStatus}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                      {regDate}
+                    </td>
+                    <td className="px-4 py-3.5 text-right">
+                      <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => handleViewAccount(st, 'overview')}
+                          className="px-2.5 py-1 rounded-lg text-xs font-bold bg-[var(--primary)] text-white hover:opacity-90 transition cursor-pointer shadow-sm"
+                        >
+                          View
+                        </button>
+                        <AccountActionsMenu
+                          account={{ ...st, role: st.role || 'student' }}
+                          onViewAccount={handleViewAccount}
+                          onTriggerAction={handleTriggerAction}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
       )}
+
+      {/* Account Detail & Lifecycle Control Modal */}
+      <AdminAccountDetailModal
+        accountId={selectedAccountId}
+        isOpen={!!selectedAccountId}
+        onClose={() => { setSelectedAccountId(null); setModalInitialAction(null); }}
+        token={token}
+        onAccountUpdated={loadStudents}
+        initialTab={modalInitialTab}
+        initialActionDialog={modalInitialAction}
+      />
     </div>
   )
 }
@@ -416,6 +542,7 @@ function AdminAuditLogsView({ token }) {
   const [logs, setLogs] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [selectedLog, setSelectedLog] = useState(null)
 
   useEffect(() => {
     async function load() {
@@ -436,6 +563,18 @@ function AdminAuditLogsView({ token }) {
     load()
   }, [token])
 
+  const getActionDescription = (action) => {
+    const a = String(action || '').toUpperCase()
+    if (a.includes('VERIFY')) return 'Verified user account or submitted credentials after human administrative review.'
+    if (a.includes('REJECT')) return 'Rejected registration or verification submission with administrative reason recording.'
+    if (a.includes('REVOKE') || a.includes('SESSION')) return 'Revoked active session tokens and invalidated bearer authorization keys.'
+    if (a.includes('REACTIVATE')) return 'Restored suspended account status to active operational standing.'
+    if (a.includes('SUSPEND')) return 'Suspended account due to compliance, security flag, or administrative request.'
+    if (a.includes('FILE_ACCESS') || a.includes('DOWNLOAD')) return 'Authorized confidential document preview and decrypted download stream.'
+    if (a.includes('STATUS_UPDATE') || a.includes('DOCUMENT')) return 'Updated document verification pipeline status and recorded OCR validation flags.'
+    return 'System-recorded administrative security event.'
+  }
+
   return (
     <div className="w-full space-y-6">
       <div className="border-b pb-6" style={{ borderColor: 'var(--border)' }}>
@@ -453,7 +592,7 @@ function AdminAuditLogsView({ token }) {
           Security & System Audit Logs
         </h1>
         <p className="mt-1 text-xs sm:text-sm font-normal" style={{ color: 'var(--text-secondary)' }}>
-          Immutable ledger of system events, authentication, human decisions, and data access.
+          Immutable ledger of system events, authentication, human decisions, and data access. Click any row to inspect full event payload.
         </p>
       </div>
 
@@ -479,29 +618,154 @@ function AdminAuditLogsView({ token }) {
                 <th className="px-5 py-3 text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Timestamp</th>
                 <th className="px-5 py-3 text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Action</th>
                 <th className="px-5 py-3 text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Actor</th>
-                <th className="px-5 py-3 text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Details</th>
+                <th className="px-5 py-3 text-xs font-bold uppercase tracking-wider text-right" style={{ color: 'var(--text-secondary)' }}>Action Details</th>
               </tr>
             </thead>
             <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
               {logs.map((log, idx) => (
-                <tr key={log._id || idx} className="transition hover:bg-[var(--color-surface-panel)]">
-                  <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+                <tr
+                  key={log._id || idx}
+                  onClick={() => setSelectedLog(log)}
+                  className="transition hover:bg-[var(--color-surface-panel)] cursor-pointer group"
+                >
+                  <td className="px-5 py-3.5 text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
                     {new Date(log.createdAt || log.timestamp).toLocaleString()}
                   </td>
-                  <td className="px-5 py-3 text-xs font-bold" style={{ color: 'var(--primary)' }}>
-                    {log.action || log.event || 'SYSTEM_ACTION'}
+                  <td className="px-5 py-3.5 text-xs font-bold" style={{ color: 'var(--primary)' }}>
+                    <span className="inline-flex items-center gap-1.5 font-mono">
+                      <ShieldIcon className="w-3.5 h-3.5 opacity-80" />
+                      {log.action || log.event || 'SYSTEM_ACTION'}
+                    </span>
                   </td>
-                  <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-heading)' }}>
-                    {log.actorUserId?.email || log.actorRole || 'System'}
+                  <td className="px-5 py-3.5 text-xs font-medium" style={{ color: 'var(--text-heading)' }}>
+                    {log.actorUserId?.email || log.actorEmail || log.actorRole || 'System Administrator'}
                   </td>
-                  <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                    {typeof log.details === 'object' ? JSON.stringify(log.details) : String(log.details || log.description || '—')}
+                  <td className="px-5 py-3.5 text-xs text-right">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setSelectedLog(log)
+                      }}
+                      className="px-2.5 py-1 rounded-lg border text-[11px] font-bold transition group-hover:border-[#FF6D29] group-hover:text-[#FF6D29]"
+                      style={{
+                        backgroundColor: 'var(--color-surface-panel)',
+                        borderColor: 'var(--border)',
+                        color: 'var(--text-secondary)'
+                      }}
+                    >
+                      Inspect →
+                    </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Audit Log Detail Modal */}
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {selectedLog && (
+            <div
+              className="fixed inset-0 z-[99999] flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md overflow-y-auto"
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                width: '100vw',
+                height: '100vh',
+                zIndex: 99999,
+              }}
+              onClick={() => setSelectedLog(null)}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0, y: 15 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: 15 }}
+                onClick={(e) => e.stopPropagation()}
+                className="w-full max-w-lg rounded-2xl border p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto text-left my-auto"
+                style={{
+                  backgroundColor: '#131B2A',
+                  borderColor: '#1E293B',
+                  color: '#F1F5F9',
+                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.9)'
+                }}
+              >
+                <div className="flex items-start justify-between gap-3 border-b border-slate-700/60 pb-4">
+                  <div>
+                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-[#FF6D29]/20 text-[#FF6D29] border border-[#FF6D29]/30">
+                      Audit Event Record
+                    </span>
+                    <h3 className="text-base font-black mt-1 font-mono text-white">
+                      {selectedLog.action || selectedLog.event || 'SYSTEM_ACTION'}
+                    </h3>
+                    <p className="text-[11px] text-slate-400">
+                      {new Date(selectedLog.createdAt || selectedLog.timestamp || Date.now()).toLocaleString()}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedLog(null)}
+                    className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+                  >
+                    <XIcon className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Event Description */}
+                <div className="p-3.5 rounded-xl border border-slate-800 bg-slate-900/80 text-xs leading-relaxed text-slate-200">
+                  <div className="font-bold text-[10px] uppercase text-slate-400 mb-1">Event Summary</div>
+                  <p className="text-xs text-white leading-normal">
+                    {getActionDescription(selectedLog.action || selectedLog.event)}
+                  </p>
+                </div>
+
+                {/* Actor & Target Grid */}
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="p-3 rounded-xl border border-slate-800 bg-slate-900/60">
+                    <div className="text-[10px] font-bold uppercase text-slate-400">Performed By (Actor)</div>
+                    <div className="font-bold text-white mt-0.5 truncate">
+                      {selectedLog.actorUserId?.email || selectedLog.actorEmail || selectedLog.actorRole || 'System'}
+                    </div>
+                    <div className="text-[10px] text-slate-400">Role: {selectedLog.actorRole || 'admin'}</div>
+                  </div>
+
+                  <div className="p-3 rounded-xl border border-slate-800 bg-slate-900/60">
+                    <div className="text-[10px] font-bold uppercase text-slate-400">Target Entity / User</div>
+                    <div className="font-bold text-white mt-0.5 truncate">
+                      {selectedLog.targetUserId || selectedLog.details?.targetUserId || selectedLog.details?.email || 'N/A'}
+                    </div>
+                    <div className="text-[10px] text-emerald-400 font-semibold">Status: Confirmed</div>
+                  </div>
+                </div>
+
+                {/* Payload Metadata */}
+                <div className="p-3 rounded-xl border border-slate-800 bg-black/60 font-mono text-[11px] space-y-1 overflow-x-auto">
+                  <div className="font-bold text-[10px] uppercase text-[#FF6D29]">Raw Event Details & Context</div>
+                  <pre className="text-[10px] text-slate-300 leading-relaxed">
+                    {JSON.stringify(selectedLog.details || selectedLog, null, 2)}
+                  </pre>
+                </div>
+
+                <div className="pt-2 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedLog(null)}
+                    className="px-5 py-2 rounded-xl text-xs font-bold bg-[#FF6D29] text-white hover:brightness-110 shadow-lg cursor-pointer transition"
+                  >
+                    Close Inspection
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
       )}
     </div>
   )
@@ -540,8 +804,7 @@ const routeMap = {
 
 export default function ProviderDashboard({ onLogout }) {
   const { theme, toggleTheme } = useTheme()
-  const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-  const baseUrl = isLocal ? 'http://localhost:4000' : (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL ? import.meta.env.VITE_API_URL : 'http://localhost:4000')
+  const baseUrl = API_BASE_URL
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -910,16 +1173,8 @@ export default function ProviderDashboard({ onLogout }) {
               <span>+ Post Grant</span>
             </button>
 
-            {/* Notification Bell */}
-            <button
-              onClick={() => { window.location.hash = isAdmin ? '#admin/audit' : '#providers/applicants' }}
-              className="p-2 rounded-xl border relative transition hover:bg-[var(--color-surface-panel)] cursor-pointer"
-              style={{ backgroundColor: 'var(--color-surface-panel)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
-              aria-label="Notifications"
-            >
-              <BellIcon className="w-4 h-4" />
-              <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-[#FF6D29] ring-2 ring-[var(--bg-primary)]" />
-            </button>
+            {/* Notification Center */}
+            <NotificationCenter token={token} isAdmin={isAdmin} />
 
             {/* Profile Dropdown */}
             <div className="relative" ref={profileRef}>
@@ -1204,13 +1459,21 @@ export default function ProviderDashboard({ onLogout }) {
           {/* Sub-Page Content Component */}
           {PageComponent && (
             <div className="animate-fadeIn">
-              <PageComponent
-                token={token}
-                user={user}
-                onUpdate={handleUpdate}
-                dashboard={dashboard}
-                {...pageProps}
-              />
+              <React.Suspense
+                fallback={
+                  <div className="flex items-center justify-center p-12 min-h-[350px]">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: 'var(--primary, #FF6D29)' }} />
+                  </div>
+                }
+              >
+                <PageComponent
+                  token={token}
+                  user={user}
+                  onUpdate={handleUpdate}
+                  dashboard={dashboard}
+                  {...pageProps}
+                />
+              </React.Suspense>
             </div>
           )}
         </main>

@@ -1,9 +1,9 @@
 require('dotenv').config();
 
 // Backward-compatible export so other tooling can still import the app.
-// NOTE: For Vercel, you should deploy `backend/api.js` which exports a Vercel handler.
+// Authoritative backend runtime is hosted as a long-running Node.js process on Render (server.js).
 
-const { buildApp } = require('./vercelApp')
+const { buildApp } = require('./vercelApp');
 
 module.exports = buildApp()
 

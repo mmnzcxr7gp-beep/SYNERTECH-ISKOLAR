@@ -60,13 +60,15 @@ async function runScript(scriptPath) {
   });
 }
 
-function waitForServer(port, timeout = 15000) {
+function waitForServer(port, timeout = 30000) {
   return new Promise((resolve, reject) => {
     const start = Date.now();
     const interval = setInterval(() => {
-      const req = http.request({ host: 'localhost', port, path: '/api/health', timeout: 1000 }, () => {
-        clearInterval(interval);
-        resolve();
+      const req = http.request({ host: '127.0.0.1', port, path: '/api/health', timeout: 2000 }, (res) => {
+        if (res.statusCode === 200) {
+          clearInterval(interval);
+          resolve();
+        }
       });
       req.on('error', () => {
         if (Date.now() - start > timeout) {

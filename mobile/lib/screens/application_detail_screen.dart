@@ -1009,11 +1009,15 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
               _buildInfoRow(
                 context,
                 'Score',
-                application.score.toStringAsFixed(2),
+                application.score > 0 ? application.score.toStringAsFixed(2) : 'Under Review',
               ),
-              const SizedBox(height: 8),
-              _buildInfoRow(context, 'Submitted', application.appliedAt),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
+              _buildInfoRow(
+                context,
+                'Submitted',
+                _formatDate(application.appliedAt),
+              ),
+              const SizedBox(height: 10),
               _buildInfoRow(
                 context,
                 'Student',
@@ -1021,14 +1025,16 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
                     ? application.studentName
                     : application.studentEmail,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
               Text(
                 'Supporting details',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.pureWhite,
+                      fontSize: 16,
+                    ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               _buildDetailCard(context, 'GPA', application.gpa),
               const SizedBox(height: 10),
               _buildDetailCard(
@@ -1042,28 +1048,33 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
                 'Achievements',
                 application.achievements,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
 
               // ─── ATTACHED DOCUMENTS SECTION ─────────────────────────
               Text(
                 'Attached Documents',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.pureWhite,
+                      fontSize: 16,
+                    ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
 
               if (documents.isEmpty)
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.panelDark,
                     borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.08),
+                    ),
                   ),
                   child: const Text(
                     'No attached documents found for this application.',
-                    style: TextStyle(color: AppColors.textSecondary),
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 13),
                   ),
                 )
               else
@@ -1079,26 +1090,29 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
                     return Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: AppColors.panelDark,
                         borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.03),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.08),
+                        ),
                       ),
                       child: Row(
                         children: [
-                          Icon(
-                            doc.isImage
-                                ? Icons.image
-                                : doc.isPdf
-                                ? Icons.picture_as_pdf
-                                : Icons.insert_drive_file,
-                            color: AppColors.primary,
-                            size: 32,
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryOrange.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              doc.isImage
+                                  ? Icons.image_rounded
+                                  : doc.isPdf
+                                  ? Icons.picture_as_pdf_rounded
+                                  : Icons.insert_drive_file_rounded,
+                              color: AppColors.primaryOrange,
+                              size: 24,
+                            ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -1111,27 +1125,29 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
                                       : 'Document #${doc.id}',
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w700,
-                                    color: AppColors.textPrimary,
+                                    color: AppColors.pureWhite,
                                     fontSize: 14,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
+                                const SizedBox(height: 3),
                                 Text(
                                   doc.originalname,
                                   style: const TextStyle(
                                     color: AppColors.textSecondary,
                                     fontSize: 12,
                                   ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ],
                             ),
                           ),
+                          const SizedBox(width: 8),
                           ElevatedButton(
                             onPressed: isDownloading
                                 ? null
                                 : () => _viewDocument(doc),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
+                              backgroundColor: AppColors.primaryOrange,
                               foregroundColor: Colors.white,
                               elevation: 0,
                               padding: const EdgeInsets.symmetric(
@@ -1155,6 +1171,7 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
                                     'View',
                                     style: TextStyle(
                                       fontWeight: FontWeight.w700,
+                                      fontSize: 13,
                                     ),
                                   ),
                           ),
@@ -1185,11 +1202,12 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.surfaceDark,
+                  backgroundColor: AppColors.panelDark,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
                   ),
                 ),
               ),
@@ -1200,12 +1218,32 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
     );
   }
 
+  static String _formatDate(String rawDate) {
+    if (rawDate.isEmpty) return 'Recent';
+    try {
+      final parsed = DateTime.parse(rawDate);
+      final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      final month = months[parsed.month - 1];
+      final day = parsed.day;
+      final year = parsed.year;
+      final hour = parsed.hour % 12 == 0 ? 12 : parsed.hour % 12;
+      final minute = parsed.minute.toString().padLeft(2, '0');
+      final period = parsed.hour >= 12 ? 'PM' : 'AM';
+      return '$month $day, $year • $hour:$minute $period';
+    } catch (_) {
+      return rawDate;
+    }
+  }
+
   Widget _buildInfoRow(BuildContext context, String label, String value) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        color: AppColors.panelDark,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.08),
+        ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1215,13 +1253,19 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
             style: const TextStyle(
               fontWeight: FontWeight.w600,
               color: AppColors.textSecondary,
+              fontSize: 13,
             ),
           ),
-          Text(
-            value,
-            style: const TextStyle(
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                color: AppColors.pureWhite,
+                fontSize: 13,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -1230,12 +1274,16 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
   }
 
   Widget _buildDetailCard(BuildContext context, String title, String content) {
+    final bool hasContent = content.trim().isNotEmpty && content.toLowerCase() != 'null';
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.panelDark,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.08),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1243,18 +1291,20 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
           Text(
             title,
             style: const TextStyle(
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
               color: AppColors.textSecondary,
-              fontSize: 13,
+              fontSize: 12,
+              letterSpacing: 0.2,
             ),
           ),
           const SizedBox(height: 6),
           Text(
-            content.isNotEmpty ? content : 'Not provided',
-            style: const TextStyle(
+            hasContent ? content : 'Not provided',
+            style: TextStyle(
               fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+              color: hasContent ? AppColors.pureWhite : AppColors.textMuted,
               fontSize: 14,
+              fontStyle: hasContent ? FontStyle.normal : FontStyle.italic,
             ),
           ),
         ],
@@ -1262,3 +1312,4 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
     );
   }
 }
+

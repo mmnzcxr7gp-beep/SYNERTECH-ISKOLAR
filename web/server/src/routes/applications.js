@@ -54,16 +54,49 @@ router.get('/my-applications', authMiddleware, getApplications);
 router.get('/user', authMiddleware, getApplications);
 router.get('/student', authMiddleware, getApplications);
 router.get('/student/list', authMiddleware, getApplications);
+router.get('/provider', authMiddleware, getApplications);
+router.get('/provider/list', authMiddleware, getApplications);
 
 
 // Explainable Automated Document & Eligibility Rules Checking
 router.post('/:id/check-rules', authMiddleware, roleMiddleware(['sponsor', 'provider', 'admin']), checkApplicationRules);
+router.get('/:id/check-rules', authMiddleware, roleMiddleware(['sponsor', 'provider', 'admin']), checkApplicationRules);
+router.get('/:id/rules', authMiddleware, roleMiddleware(['sponsor', 'provider', 'admin']), checkApplicationRules);
 
 // Human-Controlled Decision Authorization
-router.get('/:id', authMiddleware, (req, res, next) => {
-  const app = (db.data.applications || []).find((a) => String(a.id) === String(req.params.id));
-  if (!app) return res.status(404).json({ message: 'Application not found' });
-  return res.json({ application: app, ...app });
+router.get('/:id', authMiddleware, async (req, res, next) => {
+  try {
+    let app = null;
+    if (db.collections?.applications) {
+      const id = req.params.id;
+      const orClauses = [{ id }, { id: Number(id) }, { _id: id }];
+      try {
+        const { ObjectId } = require('mongodb');
+        if (ObjectId.isValid(id)) {
+          orClauses.push({ _id: new ObjectId(id) });
+        }
+      } catch (_) {}
+      app = await db.collections.applications.findOne({ $or: orClauses });
+    }
+    if (!app) {
+      const mongoose = require('mongoose');
+      if (mongoose.connection.readyState === 1) {
+        const { ScholarshipApplication } = require('../models');
+        if (ScholarshipApplication) {
+          app = await ScholarshipApplication.findOne({
+            $or: [{ _id: req.params.id }, { id: req.params.id }],
+          }).lean().catch(() => null);
+        }
+      }
+    }
+    if (!app && db.data?.applications) {
+      app = (db.data.applications || []).find((a) => String(a.id) === String(req.params.id) || String(a._id) === String(req.params.id));
+    }
+    if (!app) return res.status(404).json({ message: 'Application not found' });
+    return res.json({ application: app, ...app });
+  } catch (err) {
+    next(err);
+  }
 });
 router.put('/:id/status', authMiddleware, roleMiddleware(['sponsor', 'provider', 'admin']), sponsorVerification, updateApplicationStatus);
 router.patch('/:id/status', authMiddleware, roleMiddleware(['sponsor', 'provider', 'admin']), sponsorVerification, updateApplicationStatus);
@@ -78,7 +111,9 @@ router.post('/:id/review-action', authMiddleware, roleMiddleware(['sponsor', 'pr
 
 // Student Interactive Follow-ups
 router.post('/:id/more-info-response', authMiddleware, roleMiddleware(['student']), workflowController.respondToMoreInformation);
+router.post('/:id/more-information-response', authMiddleware, roleMiddleware(['student']), workflowController.respondToMoreInformation);
 router.post('/:id/resubmit-document', authMiddleware, roleMiddleware(['student']), workflowController.resubmitDocument);
+router.post('/:id/document-resubmission', authMiddleware, roleMiddleware(['student']), workflowController.resubmitDocument);
 router.post('/:id/acknowledge-schedule', authMiddleware, roleMiddleware(['student']), workflowController.acknowledgeSchedule);
 router.post('/:id/acknowledge-approval', authMiddleware, roleMiddleware(['student']), workflowController.acknowledgeApproval);
 

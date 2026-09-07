@@ -22,11 +22,61 @@ const UserSchema = new mongoose.Schema(
     },
     accountStatus: {
       type: String,
-      enum: ['ACTIVE', 'PENDING_EMAIL_VERIFICATION', 'PENDING_ADMIN_REVIEW', 'SUSPENDED', 'DEACTIVATED'],
+      enum: [
+        'PENDING_EMAIL_VERIFICATION',
+        'PENDING_ADMIN_REVIEW',
+        'ACTIVE',
+        'SUSPENDED',
+        'REJECTED',
+        'ARCHIVED',
+        'DELETION_PENDING',
+        'DELETED',
+        'DEACTIVATED',
+      ],
       default: 'ACTIVE',
     },
     emailVerifiedAt: {
       type: Date,
+      default: null,
+    },
+    isSuspended: {
+      type: Boolean,
+      default: false,
+    },
+    suspendedAt: {
+      type: Date,
+      default: null,
+    },
+    suspendedBy: {
+      type: String,
+      default: null,
+    },
+    suspensionReason: {
+      type: String,
+      default: null,
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
+    deletedBy: {
+      type: String,
+      default: null,
+    },
+    deletionReason: {
+      type: String,
+      default: null,
+    },
+    retentionUntil: {
+      type: Date,
+      default: null,
+    },
+    rejectionReason: {
+      type: String,
       default: null,
     },
     mfaEnabled: {

@@ -62,23 +62,26 @@ async function evaluateApplicationRules({
   // 2. Supported File Formats & 3. Size Limits & 4. Readability
   const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.webp'];
   const maxBytes = 10 * 1024 * 1024; // 10MB
+  const hasDocuments = documents.length > 0;
 
-  let allFormatsValid = true;
-  let allSizesValid = true;
-  let allReadable = true;
+  let allFormatsValid = hasDocuments;
+  let allSizesValid = hasDocuments;
+  let allReadable = hasDocuments;
 
-  for (const doc of documents) {
-    const ext = path.extname(doc.filename || doc.name || doc.originalname || '').toLowerCase();
-    const size = Number(doc.size || doc.fileSize || 0);
+  if (hasDocuments) {
+    for (const doc of documents) {
+      const ext = path.extname(doc.filename || doc.name || doc.originalname || '').toLowerCase();
+      const size = Number(doc.size || doc.fileSize || 0);
 
-    if (ext && !allowedExtensions.includes(ext)) {
-      allFormatsValid = false;
-    }
-    if (size > maxBytes) {
-      allSizesValid = false;
-    }
-    if (size === 0 && !doc.buffer && !doc.path) {
-      allReadable = false;
+      if (ext && !allowedExtensions.includes(ext)) {
+        allFormatsValid = false;
+      }
+      if (size > maxBytes) {
+        allSizesValid = false;
+      }
+      if (size === 0 && !doc.buffer && !doc.path) {
+        allReadable = false;
+      }
     }
   }
 
@@ -91,7 +94,9 @@ async function evaluateApplicationRules({
     expectedCondition: 'Files must be in PDF, JPG, PNG, or WebP format',
     actualResult: allFormatsValid ? 'PASS' : 'FAIL',
     passed: allFormatsValid,
-    explanation: allFormatsValid
+    explanation: !hasDocuments
+      ? 'No documents attached to verify format.'
+      : allFormatsValid
       ? 'All attached document files match allowlisted extensions (PDF/JPEG/PNG/WebP).'
       : 'One or more attached files use an unsupported file extension.',
   });
@@ -105,7 +110,9 @@ async function evaluateApplicationRules({
     expectedCondition: 'Each uploaded document file size must not exceed 10MB',
     actualResult: allSizesValid ? 'PASS' : 'FAIL',
     passed: allSizesValid,
-    explanation: allSizesValid
+    explanation: !hasDocuments
+      ? 'No documents attached to check file sizes.'
+      : allSizesValid
       ? 'All attached document file sizes are within the 10MB limit.'
       : 'One or more attached documents exceed the maximum file size of 10MB.',
   });
@@ -119,7 +126,9 @@ async function evaluateApplicationRules({
     expectedCondition: 'All document streams/buffers must be non-empty and readable',
     actualResult: allReadable ? 'PASS' : 'FAIL',
     passed: allReadable,
-    explanation: allReadable
+    explanation: !hasDocuments
+      ? 'No documents attached to verify file readability.'
+      : allReadable
       ? 'All files contain valid, readable binary data.'
       : 'One or more files appear corrupted or empty (0 bytes).',
   });
@@ -171,9 +180,12 @@ async function evaluateApplicationRules({
   });
 
   // 7. Required Extracted OCR Fields
-  const primaryOcr = ocrExtractions[0] || {};
-  const extracted = primaryOcr.extractedFields || {};
-  const hasExtractedName = Boolean(extracted.fullName || extracted.name || student?.name || student?.firstName);
+  const primaryOcr =
+    (ocrExtractions && ocrExtractions[0]) ||
+    documents.find((d) => (d.extractedFields && Object.keys(d.extractedFields).length > 0) || (d.ocrData && Object.keys(d.ocrData).length > 0)) ||
+    {};
+  const extracted = primaryOcr.extractedFields || primaryOcr.ocrData || {};
+  const hasExtractedName = Boolean(extracted.fullName || extracted.name);
 
   results.push({
     applicationId: appId,
@@ -186,13 +198,14 @@ async function evaluateApplicationRules({
     passed: hasExtractedName,
     explanation: hasExtractedName
       ? 'OCR successfully extracted identity fields for verification.'
-      : 'OCR could not automatically extract all required fields; manual reviewer inspection is required.',
+      : 'Document has not been scanned with OCR yet, or OCR could not extract identity fields; manual reviewer inspection is required.',
   });
 
   // 8. Name Consistency
   const profileName = (student?.name || `${student?.firstName || ''} ${student?.lastName || ''}`).trim().toLowerCase();
   const ocrName = (extracted.fullName || extracted.name || '').trim().toLowerCase();
-  const nameMatches = !ocrName || !profileName || profileName.includes(ocrName) || ocrName.includes(profileName);
+  const hasOcrName = Boolean(ocrName);
+  const nameMatches = hasOcrName && (!profileName || profileName.includes(ocrName) || ocrName.includes(profileName));
 
   results.push({
     applicationId: appId,
@@ -201,9 +214,11 @@ async function evaluateApplicationRules({
     ruleCategory: 'OCR_CONSISTENCY',
     input: { profileName, ocrName },
     expectedCondition: 'Applicant name on document must match registered student profile name',
-    actualResult: nameMatches ? 'PASS' : 'FAIL',
-    passed: nameMatches,
-    explanation: nameMatches
+    actualResult: !hasOcrName ? 'WARN' : nameMatches ? 'PASS' : 'FAIL',
+    passed: !hasOcrName ? false : nameMatches,
+    explanation: !hasOcrName
+      ? 'Identity document has not been scanned with OCR yet; name matching pending document scan or manual review.'
+      : nameMatches
       ? 'Applicant name on document is consistent with student profile.'
       : `Name discrepancy detected: Profile states "${profileName}", document states "${ocrName}".`,
   });
@@ -211,7 +226,8 @@ async function evaluateApplicationRules({
   // 9. Student Number Consistency
   const profileLrn = (student?.studentNumber || student?.lrn || '').trim();
   const ocrLrn = (extracted.studentNumber || extracted.idNumber || '').trim();
-  const lrnMatches = !ocrLrn || !profileLrn || profileLrn === ocrLrn;
+  const hasOcrLrn = Boolean(ocrLrn);
+  const lrnMatches = hasOcrLrn && (!profileLrn || profileLrn === ocrLrn);
 
   results.push({
     applicationId: appId,
@@ -220,17 +236,20 @@ async function evaluateApplicationRules({
     ruleCategory: 'OCR_CONSISTENCY',
     input: { profileLrn, ocrLrn },
     expectedCondition: 'Student number/LRN on document must match student profile',
-    actualResult: lrnMatches ? 'PASS' : 'WARN',
-    passed: lrnMatches,
-    explanation: lrnMatches
+    actualResult: !hasOcrLrn ? 'WARN' : lrnMatches ? 'PASS' : 'WARN',
+    passed: !hasOcrLrn ? false : lrnMatches,
+    explanation: !hasOcrLrn
+      ? 'Student identification number not detected in document OCR; awaiting OCR scan or manual review.'
+      : lrnMatches
       ? 'Student identification number is consistent.'
       : `Student number discrepancy: Profile (${profileLrn}) vs Document (${ocrLrn}).`,
   });
 
   // 10. School Consistency
-  const profileSchool = (student?.schoolName || student?.university || '').trim().toLowerCase();
+  const profileSchool = (student?.schoolName || student?.university || student?.school || '').trim().toLowerCase();
   const ocrSchool = (extracted.school || extracted.university || '').trim().toLowerCase();
-  const schoolMatches = !ocrSchool || !profileSchool || profileSchool.includes(ocrSchool) || ocrSchool.includes(profileSchool);
+  const hasOcrSchool = Boolean(ocrSchool);
+  const schoolMatches = hasOcrSchool && (!profileSchool || profileSchool.includes(ocrSchool) || ocrSchool.includes(profileSchool));
 
   results.push({
     applicationId: appId,
@@ -239,9 +258,11 @@ async function evaluateApplicationRules({
     ruleCategory: 'OCR_CONSISTENCY',
     input: { profileSchool, ocrSchool },
     expectedCondition: 'Institution name on document must match student profile school',
-    actualResult: schoolMatches ? 'PASS' : 'WARN',
-    passed: schoolMatches,
-    explanation: schoolMatches
+    actualResult: !hasOcrSchool ? 'WARN' : schoolMatches ? 'PASS' : 'WARN',
+    passed: !hasOcrSchool ? false : schoolMatches,
+    explanation: !hasOcrSchool
+      ? 'Institution name not detected in document OCR; awaiting OCR scan or manual review.'
+      : schoolMatches
       ? 'School/university affiliation matches between document and profile.'
       : 'School name on academic document differs from profile institution.',
   });
@@ -294,7 +315,8 @@ async function evaluateApplicationRules({
 
   // 13. Document Issue Date
   const docDate = extracted.documentDate ? new Date(extracted.documentDate) : null;
-  const docDateValid = !docDate || docDate <= new Date();
+  const hasDocDate = Boolean(docDate && !Number.isNaN(docDate.getTime()));
+  const docDateValid = hasDocDate && docDate <= new Date();
 
   results.push({
     applicationId: appId,
@@ -303,16 +325,19 @@ async function evaluateApplicationRules({
     ruleCategory: 'FILE_INTEGRITY',
     input: { documentDate: docDate ? docDate.toISOString() : null },
     expectedCondition: 'Document issue date must not be in the future',
-    actualResult: docDateValid ? 'PASS' : 'FAIL',
-    passed: docDateValid,
-    explanation: docDateValid
+    actualResult: !hasDocDate ? 'WARN' : docDateValid ? 'PASS' : 'FAIL',
+    passed: !hasDocDate ? false : docDateValid,
+    explanation: !hasDocDate
+      ? 'Document issuance date not detected by OCR; manual inspection required.'
+      : docDateValid
       ? 'Document issuance date is valid.'
       : 'Document issuance date is in the future, indicating invalid or forged metadata.',
   });
 
   // 14. Expiration Date
   const expDate = extracted.expirationDate ? new Date(extracted.expirationDate) : null;
-  const notExpired = !expDate || expDate >= new Date();
+  const hasExpDate = Boolean(expDate && !Number.isNaN(expDate.getTime()));
+  const notExpired = hasExpDate && expDate >= new Date();
 
   results.push({
     applicationId: appId,
@@ -321,9 +346,11 @@ async function evaluateApplicationRules({
     ruleCategory: 'FILE_INTEGRITY',
     input: { expirationDate: expDate ? expDate.toISOString() : null },
     expectedCondition: 'Uploaded identification/credential must not be expired',
-    actualResult: notExpired ? 'PASS' : 'FAIL',
-    passed: notExpired,
-    explanation: notExpired
+    actualResult: !hasExpDate ? 'WARN' : notExpired ? 'PASS' : 'FAIL',
+    passed: !hasExpDate ? false : notExpired,
+    explanation: !hasExpDate
+      ? 'Document expiration date not detected by OCR; manual inspection required.'
+      : notExpired
       ? 'Uploaded identification/credential is active and unexpired.'
       : `Identification document expired on ${expDate ? expDate.toISOString().split('T')[0] : ''}.`,
   });

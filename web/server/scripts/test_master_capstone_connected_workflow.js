@@ -23,31 +23,12 @@
  */
 
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '../.env') });
+const http = require('http');
 const jwt = require('jsonwebtoken');
+const { startTestServer, generateTestUser, scopedCleanup, assertDatabaseIsolation } = require('./testHelper');
 
-const BASE_URL = process.env.TEST_API_URL || 'http://localhost:4000/api';
-const JWT_SECRET = process.env.JWT_SECRET || 'replace-with-a-long-random-secret';
-
-function createToken(payload) {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '2h' });
-}
-
-// Pre-seeded verified Admin (id: 1)
-const adminToken = createToken({
-  id: 1,
-  role: 'admin',
-  email: 'admin@iskolar.ph',
-  name: 'System Administrator',
-});
-
-// Pre-seeded verified Provider (Gokongwei Foundation, id: 9)
-const providerToken = createToken({
-  id: 9,
-  role: 'sponsor',
-  email: 'gokongwei.brothers@iskolar.ph',
-  name: 'Gokongwei Brothers Foundation',
-});
+let BASE_URL = '';
+let inProcessServer = null;
 
 async function apiRequest(endpoint, options = {}) {
   const url = `${BASE_URL}${endpoint}`;
@@ -82,6 +63,7 @@ async function runMasterDefenseConnectedWorkflow() {
 
   let passed = 0;
   let failed = 0;
+  let testEnv = null;
 
   function assert(condition, description) {
     if (condition) {
@@ -94,6 +76,38 @@ async function runMasterDefenseConnectedWorkflow() {
   }
 
   try {
+    testEnv = await startTestServer();
+    BASE_URL = `${testEnv.baseUrl}/api`;
+    const JWT_SECRET = testEnv.jwtSecret;
+    const db = testEnv.db;
+
+    function createToken(payload) {
+      return jwt.sign(payload, JWT_SECRET, { expiresIn: '2h' });
+    }
+
+    // Isolated test admin account
+    const adminDoc = generateTestUser('admin', {
+      name: 'System Administrator (Isolated Test)',
+    });
+    if (db.collections?.users) {
+      await db.collections.users.insertOne({ ...adminDoc });
+    }
+    const adminToken = createToken(adminDoc);
+
+    // Isolated test provider account
+    const providerDoc = generateTestUser('provider', {
+      name: 'Megaworld Foundation Test Provider',
+      company: 'Megaworld Foundation',
+      organization_name: 'Megaworld Foundation',
+      sponsor_verified: true,
+      organization_verified: true,
+      isVerified: true,
+    });
+    if (db.collections?.users) {
+      await db.collections.users.insertOne({ ...providerDoc });
+    }
+    const providerToken = createToken(providerDoc);
+
     const timestamp = Date.now();
 
     // -------------------------------------------------------------------------
@@ -113,6 +127,7 @@ async function runMasterDefenseConnectedWorkflow() {
         criteria_json: JSON.stringify({ gpa: 40, need: 30, exam: 30 }),
       },
     });
+    console.log('   [Step 1 Debug] Status:', schRes.status, 'Response:', JSON.stringify(schRes.data));
     assert(schRes.status === 200 || schRes.status === 201, 'Provider published scholarship');
     const scholarshipId = schRes.data?.scholarship?.id || schRes.data?.id;
     console.log(`   Created Scholarship ID: ${scholarshipId}`);
@@ -121,7 +136,7 @@ async function runMasterDefenseConnectedWorkflow() {
     // STEP 2: Student Registration & Authentication (Mobile)
     // -------------------------------------------------------------------------
     console.log('\n📋 Step 2: Student Registration & Role Verification on Mobile');
-    const studentEmail = `scholar.candidate.${timestamp}@iskolar.ph`;
+    const studentEmail = `scholar.candidate.${timestamp}@iskolar.test`;
     const regRes = await apiRequest('/auth/register', {
       method: 'POST',
       platform: 'mobile',
@@ -351,6 +366,14 @@ async function runMasterDefenseConnectedWorkflow() {
   } catch (error) {
     console.error('Fatal Connected Workflow test error:', error.message);
     failed++;
+  } finally {
+    if (testEnv && testEnv.server) {
+      try { testEnv.server.close(); } catch (_) {}
+    }
+    if (inProcessServer) {
+      try { inProcessServer.close(); } catch (_) {}
+    }
+    await scopedCleanup().catch(() => {});
   }
 
   console.log(`\n================================================================`);
@@ -358,6 +381,7 @@ async function runMasterDefenseConnectedWorkflow() {
   console.log(`================================================================\n`);
 
   if (failed > 0) process.exit(1);
+  process.exit(0);
 }
 
 runMasterDefenseConnectedWorkflow();

@@ -1,3 +1,4 @@
+require('dotenv').config();
 const nodemailer = require('nodemailer');
 
 let transporter = null;
@@ -28,7 +29,8 @@ const initTransporter = async () => {
           pass: emailPass,
         },
       });
-      console.log(`✓ Email service initialized via Gmail SMTP (${emailHost}:${emailPort}, secure: ${emailSecure}) for user [${emailUser}]`);
+      const maskedUser = emailUser.includes('@') ? `${emailUser.slice(0, 2)}***@${emailUser.split('@')[1]}` : 'configured-user';
+      console.log(`✓ Email service initialized via Gmail SMTP (${emailHost}:${emailPort}, secure: ${emailSecure}) for user [${maskedUser}]`);
       isEthereal = false;
       return transporter;
     } catch (err) {
@@ -36,7 +38,12 @@ const initTransporter = async () => {
     }
   }
 
-  // Fallback: Automatic Ethereal Test Account for development & testing
+  // Fallback: Automatic Ethereal Test Account for development & testing ONLY
+  if (process.env.NODE_ENV === 'production') {
+    console.error('✗ [Email] Production SMTP configuration missing. Ethereal fallback is disabled in production (fail-closed).');
+    return null;
+  }
+
   try {
     const testAccount = await nodemailer.createTestAccount();
     transporter = nodemailer.createTransport({
@@ -61,16 +68,23 @@ const initTransporter = async () => {
 // Initialize transporter asynchronously on startup
 const transporterPromise = initTransporter();
 
+const maskEmail = (email) => {
+  if (!email || typeof email !== 'string') return '***';
+  const parts = email.split('@');
+  if (parts.length !== 2) return '***';
+  const name = parts[0];
+  const domain = parts[1];
+  const maskedName = name.length <= 2 ? `${name[0]}***` : `${name.slice(0, 2)}***${name.slice(-1)}`;
+  return `${maskedName}@${domain}`;
+};
+
 /**
  * Generic send mail handler with n8n Cloud dispatch & real-time live override
  */
 const sendMail = async ({ to, subject, html }) => {
   try {
-    console.log(`\n================================================================`);
-    console.log(`📧 [LIVE REAL-TIME EMAIL DISPATCH]`);
-    console.log(` ➔ Recipient: [${to}]`);
-    console.log(` ➔ Subject:   "${subject}"`);
-    console.log(`================================================================\n`);
+    const masked = maskEmail(to);
+    console.log(`📧 [EMAIL DISPATCH] Recipient: [${masked}] | Subject: "${subject}"`);
 
     // 1. Dispatch live payload to active n8n Cloud workflow (non-blocking)
     setImmediate(() => {
@@ -80,7 +94,7 @@ const sendMail = async ({ to, subject, html }) => {
       } catch (e) {}
     });
 
-    // 2. Try Nodemailer transport if available — Phase 4 & 5: with retry logic
+    // 2. Try Nodemailer transport if available
     const activeTransporter = transporter || (await Promise.race([
       transporterPromise,
       new Promise((resolve) => setTimeout(() => resolve(null), 2000)),
@@ -90,7 +104,7 @@ const sendMail = async ({ to, subject, html }) => {
       const { withRetry } = require('./resilience');
       const fromAddress = process.env.EMAIL_FROM || (process.env.EMAIL_USER ? `ISKOLAR Official <${process.env.EMAIL_USER}>` : 'ISKOLAR Official <iskolar.official@gmail.com>');
 
-      const info = await withRetry(
+      const sendResult = await withRetry(
         () => activeTransporter.sendMail({ from: fromAddress, to, subject, html }),
         { retries: 3, baseDelayMs: 1000, name: 'email.send' }
       ).catch((err) => {
@@ -98,17 +112,17 @@ const sendMail = async ({ to, subject, html }) => {
         return null;
       });
 
-      if (info && isEthereal) {
-        const previewUrl = nodemailer.getTestMessageUrl(info);
+      if (isEthereal && sendResult) {
+        const previewUrl = nodemailer.getTestMessageUrl(sendResult);
         if (previewUrl) {
-          console.log(`👉 LIVE EMAIL ONLINE PREVIEW LINK: ${previewUrl}\n`);
+          console.log(`📬 [Ethereal Test Inbox URL]: ${previewUrl}`);
         }
       }
     }
 
     return true;
   } catch (err) {
-    console.log(`ℹ️ Live Email Dispatch handled for ${to}: ${err.message}`);
+    console.log(`ℹ️ Email Dispatch handled for ${maskEmail(to)}: ${err.message}`);
     return true;
   }
 };
@@ -117,7 +131,7 @@ const sendMail = async ({ to, subject, html }) => {
  * Send OTP Code Email
  */
 const sendOtpEmail = async (recipientEmail, otp) => {
-  const subject = `Your ISKOLAR Verification Code: ${otp}`;
+  const subject = 'Your ISKOLAR Verification Code';
   const html = `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; background: #0F172A; color: #FFFFFF; border-radius: 16px;">
       <h2 style="color: #6366F1; text-align: center; margin-bottom: 24px;">ISKOLAR Verification</h2>

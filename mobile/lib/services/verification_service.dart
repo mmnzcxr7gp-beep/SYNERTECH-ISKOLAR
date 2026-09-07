@@ -1,8 +1,5 @@
-import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:mime/mime.dart';
 
 import '../utils/app_constants.dart';
 import 'api_service.dart';
@@ -13,9 +10,9 @@ class VerificationService {
     required String token,
     required String lrn,
     required String schoolName,
-    File? governmentId,
-    File? selfieWithId,
-    File? certificateOfRegistration,
+    dynamic governmentId,
+    dynamic selfieWithId,
+    dynamic certificateOfRegistration,
     String? gcashNumber,
     String? gcashAccountName,
     String? payMayaNumber,
@@ -51,50 +48,21 @@ class VerificationService {
 
       // Add file fields
       if (governmentId != null) {
-        request.files.add(
-          await http.MultipartFile.fromPath(
-            'governmentId',
-            governmentId.path,
-            contentType: _mimeTypeForFile(governmentId.path),
-          ),
-        );
+        final mf = await ApiService.createMultipartFile('governmentId', governmentId);
+        if (mf != null) request.files.add(mf);
       }
 
       if (selfieWithId != null) {
-        request.files.add(
-          await http.MultipartFile.fromPath(
-            'selfieWithId',
-            selfieWithId.path,
-            contentType: _mimeTypeForFile(selfieWithId.path),
-          ),
-        );
+        final mf = await ApiService.createMultipartFile('selfieWithId', selfieWithId);
+        if (mf != null) request.files.add(mf);
       }
 
       if (certificateOfRegistration != null) {
-        request.files.add(
-          await http.MultipartFile.fromPath(
-            'certificateOfRegistration',
-            certificateOfRegistration.path,
-            contentType: _mimeTypeForFile(certificateOfRegistration.path),
-          ),
-        );
+        final mf = await ApiService.createMultipartFile('certificateOfRegistration', certificateOfRegistration);
+        if (mf != null) request.files.add(mf);
       }
 
       debugPrint('[VerificationService.submitStudentVerification] sending multipart...');
-
-      // Build a log-friendly summary of what we are sending (avoid huge logs)
-      debugPrint('[VerificationService.submitStudentVerification] lrn=$lrn schoolName=$schoolName');
-      debugPrint('[VerificationService.submitStudentVerification] optional gcashNumber=${gcashNumber != null} gcashAccountName=${gcashAccountName != null} payMayaNumber=${payMayaNumber != null} payMayaAccountName=${payMayaAccountName != null}');
-      debugPrint('[VerificationService.submitStudentVerification] bankDetailsPresent=${bankDetails != null}');
-
-      String fileSummary(File? f) {
-        if (f == null) return 'null';
-        return 'path=${f.path} exists=${f.existsSync()} sizeBytes=${f.lengthSync()}';
-      }
-
-      debugPrint('[VerificationService.submitStudentVerification] governmentId=${fileSummary(governmentId)}');
-      debugPrint('[VerificationService.submitStudentVerification] selfieWithId=${fileSummary(selfieWithId)}');
-      debugPrint('[VerificationService.submitStudentVerification] certificateOfRegistration=${fileSummary(certificateOfRegistration)}');
 
       final response = await request.send();
       final responseBody = await response.stream.bytesToString();
@@ -115,9 +83,9 @@ class VerificationService {
     required String organizationName,
     required String industry,
     required String registrationNumber,
-    File? businessRegistration,
-    File? businessPermit,
-    File? taxIdentificationNumber,
+    dynamic businessRegistration,
+    dynamic businessPermit,
+    dynamic taxIdentificationNumber,
     Map<String, String>? bankDetails,
   }) async {
     final uri = Uri.parse(
@@ -140,33 +108,18 @@ class VerificationService {
 
       // Add file fields
       if (businessRegistration != null) {
-        request.files.add(
-          await http.MultipartFile.fromPath(
-            'businessRegistration',
-            businessRegistration.path,
-            contentType: _mimeTypeForFile(businessRegistration.path),
-          ),
-        );
+        final mf = await ApiService.createMultipartFile('businessRegistration', businessRegistration);
+        if (mf != null) request.files.add(mf);
       }
 
       if (businessPermit != null) {
-        request.files.add(
-          await http.MultipartFile.fromPath(
-            'businessPermit',
-            businessPermit.path,
-            contentType: _mimeTypeForFile(businessPermit.path),
-          ),
-        );
+        final mf = await ApiService.createMultipartFile('businessPermit', businessPermit);
+        if (mf != null) request.files.add(mf);
       }
 
       if (taxIdentificationNumber != null) {
-        request.files.add(
-          await http.MultipartFile.fromPath(
-            'taxIdentificationNumber',
-            taxIdentificationNumber.path,
-            contentType: _mimeTypeForFile(taxIdentificationNumber.path),
-          ),
-        );
+        final mf = await ApiService.createMultipartFile('taxIdentificationNumber', taxIdentificationNumber);
+        if (mf != null) request.files.add(mf);
       }
 
       final response = await request.send();
@@ -194,13 +147,6 @@ class VerificationService {
   // Helper functions
   static String bankDetailsToJson(Map<String, String> details) {
     return '{"bankName":"${details['bankName'] ?? ''}","accountNumber":"${details['accountNumber'] ?? ''}","accountName":"${details['accountName'] ?? ''}"}';
-  }
-
-  static http.MediaType? _mimeTypeForFile(String path) {
-    final mimeType = lookupMimeType(path);
-    if (mimeType == null) return null;
-    final parts = mimeType.split('/');
-    return http.MediaType(parts[0], parts[1]);
   }
 }
 

@@ -5,10 +5,13 @@
  * and subsequent API calls using the old token are rejected with HTTP 401 Unauthorized.
  */
 
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 const assert = require('assert');
 const http = require('http');
 
-const BASE = 'http://localhost:4000';
+let BASE = 'http://127.0.0.1:4000';
+let inProcessServer = null;
 
 function request(method, urlPath, body, headers = {}) {
   return new Promise((resolve, reject) => {
@@ -48,6 +51,17 @@ async function runTest() {
   console.log('========================================================');
   console.log('🧪 RUNNING JWT LOGOUT REVOCATION TEST');
   console.log('========================================================\n');
+
+  const { buildApp } = require('../src/vercelApp');
+  const { connectDb } = require('../src/config/db');
+  await connectDb();
+  const probe = await fetch(`${BASE}/api/health`, { signal: AbortSignal.timeout(1000) }).catch(() => null);
+  if (!probe || !probe.ok) {
+    const app = buildApp();
+    inProcessServer = http.createServer(app);
+    await new Promise((resolve) => inProcessServer.listen(0, resolve));
+    BASE = `http://127.0.0.1:${inProcessServer.address().port}`;
+  }
 
   // 1. Register / login test student
   const email = `logout_test_${Date.now()}@iskolar.ph`;
@@ -90,7 +104,9 @@ async function runTest() {
   console.log('========================================================\n');
 }
 
-runTest().catch((err) => {
+runTest()
+  .then(() => process.exit(0))
+  .catch((err) => {
   console.error('❌ Logout revocation test failed:', err);
   process.exit(1);
 });

@@ -1,10 +1,41 @@
-import React from 'react'
+import React, { lazy, Suspense } from 'react'
+import { useTheme } from './ThemeContext'
 import { CheckIcon, BoltIcon, PhoneIcon } from './Icons'
+import ParticleText from './effects/ParticleText'
+import EffectErrorBoundary from './effects/EffectErrorBoundary'
+
+const Dither = lazy(() => import('./effects/Dither'))
 
 export default function Hero({ onLogin }) {
+  const { theme } = useTheme()
+  const isDark = theme === 'dark'
+
   return (
-    <section id="home" className="pt-8 pb-16 md:pt-12 md:pb-24 relative" aria-label="Introduction">
-      <div className="max-w-7xl mx-auto px-4 md:px-8">
+    <section
+      id="home"
+      className="home-hero pt-8 pb-16 md:pt-12 md:pb-24 relative overflow-hidden"
+      aria-labelledby="home-hero-title"
+    >
+      {/* Decorative Dither Background (Zero Keyboard/Pointer Interference) */}
+      <div className="home-hero__effect" aria-hidden="true">
+        <EffectErrorBoundary fallback={<div className="dither-fallback" />}>
+          <Suspense fallback={<div className="dither-fallback" />}>
+            <Dither
+              waveColor={isDark ? [0.95, 0.42, 0.14] : [0.79, 0.28, 0.06]}
+              disableAnimation={false}
+              enableMouseInteraction={false}
+              mouseRadius={0.2}
+              colorNum={4}
+              pixelSize={3}
+              waveAmplitude={0.18}
+              waveFrequency={2.2}
+              waveSpeed={0.022}
+            />
+          </Suspense>
+        </EffectErrorBoundary>
+      </div>
+
+      <div className="home-hero__content max-w-7xl mx-auto px-4 md:px-8 relative z-10">
         
         {/* Main 2-Column Hero Grid */}
         <div className="grid gap-12 lg:grid-cols-[1.15fr_1fr] items-center">
@@ -26,10 +57,43 @@ export default function Hero({ onLogin }) {
               <span>Academic Scholarship Platform</span>
             </div>
 
-            {/* Main Headline */}
-            <h1 className="hero-heading">
-              Scholarship applications made clearer.
+            {/* Visible & Accessible Heading for Users, Screen Readers & SEO */}
+            <h1 id="home-hero-title" className="home-hero__semantic-title text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-[var(--color-text-heading)] leading-[1.12]">
+              Scholarship Applications{' '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF6D29] via-[#FF8552] to-[#FFB800]">
+                Made Clearer
+              </span>
             </h1>
+
+            {/* Visual Interactive Particle Accent */}
+            <div className="home-hero__particle-title" aria-hidden="true">
+              <EffectErrorBoundary
+                fallback={
+                  <div className="text-xs font-semibold text-[var(--color-text-muted)] tracking-wider">
+                    CENTRALIZED • VERIFIED • REAL-TIME
+                  </div>
+                }
+              >
+                <ParticleText
+                  text="✦ Centralized • Verified • Real-Time ✦"
+                  particleSize={1.4}
+                  density={2}
+                  color={isDark ? '#94A3B8' : '#64748B'}
+                  highlightColor={isDark ? '#FF8552' : '#C9470F'}
+                  scatter={15}
+                  gatherDuration={800}
+                  stagger={100}
+                  pointerRepel={15}
+                  repelRadius={60}
+                  idleDrift={0.15}
+                  trigger="mount"
+                  fontSize="clamp(0.875rem, 1.8vw, 1.05rem)"
+                  fontWeight={700}
+                  fontFamily="VT323, 'Anonymous Pro', monospace, sans-serif"
+                  glow={false}
+                />
+              </EffectErrorBoundary>
+            </div>
 
             {/* Supporting Paragraph */}
             <p className="body-text text-base md:text-lg leading-relaxed max-w-xl">
@@ -68,16 +132,16 @@ export default function Hero({ onLogin }) {
               }}
             >
               {/* Card Window Header */}
-              <div className="flex items-center justify-between pb-4 border-b" style={{ borderColor: 'var(--color-border)' }}>
-                <div className="flex items-center gap-2">
-                  <div className="h-2.5 w-2.5 rounded-full bg-rose-400"></div>
-                  <div className="h-2.5 w-2.5 rounded-full bg-amber-400"></div>
-                  <div className="h-2.5 w-2.5 rounded-full bg-emerald-400"></div>
-                  <span className="font-mono text-xs ml-1 font-semibold" style={{ color: 'var(--color-text-muted)' }}>
+              <div className="flex items-center justify-between pb-4 border-b gap-2 overflow-hidden" style={{ borderColor: 'var(--color-border)' }}>
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="h-2.5 w-2.5 rounded-full bg-rose-400 shrink-0"></div>
+                  <div className="h-2.5 w-2.5 rounded-full bg-amber-400 shrink-0"></div>
+                  <div className="h-2.5 w-2.5 rounded-full bg-emerald-400 shrink-0"></div>
+                  <span className="font-mono text-xs ml-1 font-semibold truncate" style={{ color: 'var(--color-text-muted)' }}>
                     evaluation-workspace / APP-2026-09
                   </span>
                 </div>
-                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 shrink-0">
                   Active Review
                 </span>
               </div>

@@ -120,21 +120,23 @@ function assert(condition, label, detail) {
   }
 }
 
+const { getSyntheticPasswordForEmail } = require('../src/config/syntheticCredentials');
+
 const TS = Date.now();
 const TEST_STUDENT_EMAIL = `e2e.student.${TS}@test.iskolar.ph`;
 const TEST_STUDENT_NAME = 'E2E Test Student';
-const TEST_STUDENT_PASS = 'TestPass123!';
+const TEST_STUDENT_PASS = 'TestPass123!Secure#2026';
 
 const TEST_PROVIDER_EMAIL = `e2e.provider.${TS}@test.iskolar.ph`;
 const TEST_PROVIDER_NAME = 'E2E Test Provider Corp';
-const TEST_PROVIDER_PASS = 'ProvPass123!';
+const TEST_PROVIDER_PASS = 'ProvPass123!Secure#2026';
 
 const SEEDED_STUDENT_EMAIL = 'juan.delacruz@iskolar.ph';
-const SEEDED_STUDENT_PASS = 'Password123!';
-const SEEDED_PROVIDER_EMAIL = 'provider@iskolar.ph';
-const SEEDED_PROVIDER_PASS = 'Password123!';
+const SEEDED_STUDENT_PASS = getSyntheticPasswordForEmail(SEEDED_STUDENT_EMAIL) || 'TestPass123!Secure#2026';
+const SEEDED_PROVIDER_EMAIL = 'megaworld.foundation@iskolar.ph';
+const SEEDED_PROVIDER_PASS = getSyntheticPasswordForEmail(SEEDED_PROVIDER_EMAIL) || 'ProvPass123!Secure#2026';
 const SEEDED_ADMIN_EMAIL = 'admin@iskolar.ph';
-const SEEDED_ADMIN_PASS = 'Password123!';
+const SEEDED_ADMIN_PASS = getSyntheticPasswordForEmail(SEEDED_ADMIN_EMAIL) || 'AdminPass123!Secure#2026';
 
 /* ================= MAIN TEST ================= */
 (async () => {
@@ -362,6 +364,7 @@ const SEEDED_ADMIN_PASS = 'Password123!';
     status: 'open',
     slots: 10,
     totalSlots: 10,
+    requirements: [],
     applicationDeadline: '2027-12-31T23:59:59.000Z',
     deadline: '2027-12-31',
     allowance: 5000,
@@ -398,19 +401,39 @@ const SEEDED_ADMIN_PASS = 'Password123!';
   const targetSchId = testScholarshipId || firstScholarship?.id;
 
   if (targetSchId) {
-    const appSubmit = await POST('/api/applications/submit', {
-      scholarship_id: targetSchId,
-      scholarshipId: targetSchId,
-      answers: { motivation: 'E2E test application', gpa: '1.25' },
-    }, { Authorization: `Bearer ${seededStudentToken}`, 'X-Client-Platform': 'mobile' });
+    const appSubmit = await multipartUpload(
+      '/api/applications/submit',
+      {
+        scholarship_id: String(targetSchId),
+        scholarshipId: String(targetSchId),
+        answers: JSON.stringify({ motivation: 'E2E test application', gpa: '1.25' }),
+      },
+      [{
+        field: 'file_0',
+        filename: 'student_id.pdf',
+        content: Buffer.from('%PDF-1.4 e2e test document'),
+        mime: 'application/pdf',
+      }],
+      { Authorization: `Bearer ${seededStudentToken}`, 'X-Client-Platform': 'mobile' }
+    );
     assert(appSubmit.status === 200 || appSubmit.status === 201, 'Application submission succeeds', `got ${appSubmit.status}: ${JSON.stringify(appSubmit.body).slice(0, 200)}`);
 
     // 9c: Duplicate submission check
     if (appSubmit.status === 200 || appSubmit.status === 201) {
-      const dupApp = await POST('/api/applications/submit', {
-        scholarship_id: targetSchId,
-        scholarshipId: targetSchId,
-      }, { Authorization: `Bearer ${seededStudentToken}`, 'X-Client-Platform': 'mobile' });
+      const dupApp = await multipartUpload(
+        '/api/applications/submit',
+        {
+          scholarship_id: String(targetSchId),
+          scholarshipId: String(targetSchId),
+        },
+        [{
+          field: 'file_0',
+          filename: 'student_id.pdf',
+          content: Buffer.from('%PDF-1.4 e2e test document'),
+          mime: 'application/pdf',
+        }],
+        { Authorization: `Bearer ${seededStudentToken}`, 'X-Client-Platform': 'mobile' }
+      );
       assert(dupApp.status === 409 || dupApp.status === 400, 'Duplicate application rejected', `got ${dupApp.status}`);
     }
   }

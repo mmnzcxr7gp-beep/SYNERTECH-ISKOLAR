@@ -259,14 +259,24 @@ async function processProviderReviewAction({
   await db.write();
 
   // Also update corresponding document record in db.data.documents if present
+  const humanVerificationStatus = decision === 'VERIFIED' ? 'VERIFIED_BY_HUMAN' : decision === 'REJECTED' ? 'REJECTED_BY_HUMAN' : 'PENDING_HUMAN_REVIEW';
+  const humanManualReviewStatus = (decision === 'VERIFIED' || decision === 'REJECTED') ? 'COMPLETED' : 'PENDING';
+
   if (db.data.documents) {
     const doc = db.data.documents.find((d) => String(d.id) === String(documentId));
     if (doc) {
       doc.status = newStatus;
-      doc.verificationStatus = newStatus;
+      doc.verificationStatus = humanVerificationStatus;
+      doc.manualReviewStatus = humanManualReviewStatus;
       doc.reviewed_by = reviewerId;
       doc.review_reason = reason;
       doc.reviewed_at = new Date().toISOString();
+      doc.verifiedByHuman = {
+        reviewerId: Number(reviewerId),
+        reviewerRole,
+        reviewedAt: new Date(),
+        reason,
+      };
     }
   }
 
@@ -296,6 +306,26 @@ async function processProviderReviewAction({
         );
       }
 
+      if (Document) {
+        await Document.findOneAndUpdate(
+          { $or: [{ documentId: String(documentId) }, { _id: mongoose.Types.ObjectId.isValid(documentId) ? documentId : null }].filter(Boolean) },
+          {
+            $set: {
+              verificationStatus: humanVerificationStatus,
+              manualReviewStatus: humanManualReviewStatus,
+              status: newStatus,
+              reviewReason: reason,
+              verifiedByHuman: {
+                reviewerId: Number(reviewerId),
+                reviewerRole,
+                reviewedAt: new Date(),
+                reason,
+              },
+            },
+          }
+        );
+      }
+
       if (AuditLog) {
         await AuditLog.create({
           actorUserId: Number(reviewerId),
@@ -304,7 +334,7 @@ async function processProviderReviewAction({
           targetType: 'Document',
           targetId: String(documentId),
           beforeSummary: { status: previousStatus },
-          afterSummary: { status: newStatus, reason },
+          afterSummary: { status: newStatus, verificationStatus: humanVerificationStatus, reason },
           reason,
         });
       }

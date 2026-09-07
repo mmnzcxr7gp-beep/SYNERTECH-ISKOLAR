@@ -25,6 +25,8 @@ const emitToUser = (userId, event, data) => {
   // Emit to all room formats for backward compat
   io.to(`user_${userId}`).emit(event, data);
   io.to(`student_room_${userId}`).emit(event, data);
+  io.to(`sponsor_room_${userId}`).emit(event, data);
+  io.to(`provider_room_${userId}`).emit(event, data);
 };
 
 const emitToAdminRoom = (event, data) => {
@@ -218,6 +220,7 @@ const notifyApplicationCreated = async (providerId, application, studentId, scho
 module.exports = {
   init,
   getIO,
+  createNotification,
   notifyVerificationStatusChange,
   notifyTransactionStatusChange,
   notifyAdminNewVerification,

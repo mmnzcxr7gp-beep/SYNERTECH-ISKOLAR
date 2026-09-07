@@ -92,7 +92,9 @@ async function runTest() {
   process.exit(0)
 }
 
-runTest().catch((err) => {
+runTest()
+  .then(() => process.exit(0))
+  .catch((err) => {
   console.error('Test failure:', err)
   process.exit(1)
 })

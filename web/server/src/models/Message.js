@@ -75,7 +75,6 @@ const messageSchema = new mongoose.Schema(
     },
     idempotencyKey: {
       type: String,
-      index: true,
     },
   },
   {

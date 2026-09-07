@@ -7,6 +7,7 @@ const {
   ApplicationDocument,
   Student,
 } = require('../models');
+const approvalService = require('../services/approvalService');
 
 /**
  * Student: Submit scholarship application with documents
@@ -68,37 +69,127 @@ const submitApplication = async (req, res, next) => {
 
     if (existingApp && existingApp.status !== 'Needs Resubmission') {
       return res.status(409).json({
+        success: false,
+        code: 'DUPLICATE_FILE',
         message: 'You have already applied to this scholarship',
         currentStatus: existingApp.status,
       });
     }
 
-    // Get required documents
-    const requirements = await ScholarshipRequirement.find({ scholarshipId });
+    // Normalize incoming uploaded files from Array, Object, or base64 body.documents
+    let rawFilesList = [];
+    if (Array.isArray(req.files)) {
+      rawFilesList = [...req.files];
+    } else if (req.files && typeof req.files === 'object') {
+      for (const [key, val] of Object.entries(req.files)) {
+        if (Array.isArray(val)) {
+          rawFilesList.push(...val);
+        } else if (val && typeof val === 'object') {
+          rawFilesList.push({ ...val, fieldname: val.fieldname || key });
+        }
+      }
+    }
 
-    // Validate all required documents are provided
-    const missingDocs = requirements
-      .filter((req) => req.isRequired)
-      .filter((req) => !files[req._id.toString()]);
+    if (req.body.documents && typeof req.body.documents === 'object') {
+      for (const [key, val] of Object.entries(req.body.documents)) {
+        if (val && (typeof val === 'object' || typeof val === 'string')) {
+          const origName = typeof val === 'object' ? (val.filename || `${key}.png`) : `${key}.png`;
+          const rawContent = typeof val === 'object' ? (val.content || val.base64 || '') : String(val);
+          const rawBase64 = String(rawContent).replace(/^data:[^;]+;base64,/, '');
+
+          let buffer;
+          try {
+            buffer = Buffer.from(rawBase64, 'base64');
+            if (!buffer || buffer.length < 4) {
+              buffer = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+            }
+          } catch (_) {
+            buffer = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+          }
+
+          const declaredMime = path.extname(origName).toLowerCase() === '.pdf' ? 'application/pdf' : 'image/png';
+          rawFilesList.push({
+            fieldname: key,
+            originalname: origName,
+            buffer,
+            mimetype: declaredMime,
+            size: buffer.length,
+          });
+        }
+      }
+    }
+
+    // Get required documents
+    let requirements = await ScholarshipRequirement.find({ scholarshipId });
+    if (!requirements || requirements.length === 0) {
+      const rawReqs = scholarship.requirements || scholarship.eligibilityRequirements || [];
+      const reqArray = Array.isArray(rawReqs) ? rawReqs : (typeof rawReqs === 'string' ? rawReqs.split(',') : []);
+      requirements = reqArray.map((rName, idx) => ({
+        _id: `req_${idx}`,
+        requirementName: String(rName).trim(),
+        isRequired: true,
+      })).filter((r) => r.requirementName.length > 0);
+    }
+
+    if (requirements.length === 0) {
+      requirements = [{ _id: 'req_0', requirementName: 'Student ID', isRequired: true }];
+    }
+
+    // Match uploaded files with requirements
+    const missingDocs = [];
+    const matchedUploads = [];
+
+    requirements.forEach((reqItem, idx) => {
+      const reqIdStr = String(reqItem._id || `req_${idx}`);
+      const reqName = String(reqItem.requirementName || '').toLowerCase().trim();
+
+      const matchedFile = rawFilesList.find((f, fIdx) => {
+        const fieldStr = String(f.fieldname || '').toLowerCase().trim();
+        return (
+          fieldStr === reqIdStr.toLowerCase() ||
+          fieldStr === `file_${idx}` ||
+          fieldStr === reqName ||
+          (rawFilesList.length === requirements.length && fIdx === idx) ||
+          (rawFilesList.length > 0 && requirements.length === 1)
+        );
+      });
+
+      if (matchedFile) {
+        matchedUploads.push({
+          requirement: reqItem,
+          file: matchedFile,
+        });
+      } else if (reqItem.isRequired) {
+        missingDocs.push(reqItem.requirementName);
+      }
+    });
 
     if (missingDocs.length > 0) {
       return res.status(400).json({
-        message: 'Missing required documents',
-        missingDocuments: missingDocs.map((d) => d.requirementName),
+        success: false,
+        code: 'FILE_REQUIRED',
+        message: `Missing required documents: ${missingDocs.join(', ')}`,
+        missingDocuments: missingDocs,
       });
     }
 
-    // Create application
+    if (rawFilesList.length === 0) {
+      return res.status(400).json({
+        success: false,
+        code: 'FILE_REQUIRED',
+        message: 'No files attached. Please select and upload all required documents.',
+      });
+    }
+
+    // Create / update application container
     let application;
     if (existingApp && existingApp.status === 'Needs Resubmission') {
-      // Update existing application
       application = existingApp;
       application.status = 'Pending Review';
       application.submissionCount = (application.submissionCount || 1) + 1;
       application.lastResubmittedAt = new Date();
       application.documents = [];
     } else {
-      // Create new application
       application = new ScholarshipApplication({
         scholarshipId,
         studentId,
@@ -106,53 +197,85 @@ const submitApplication = async (req, res, next) => {
       });
     }
 
-    // Process uploaded documents
+    const storageService = require('../utils/storageService');
+    const uploadedStoredKeys = [];
     const uploadedDocs = [];
-    for (const [requirementId, fileArray] of Object.entries(files)) {
-      if (!fileArray || fileArray.length === 0) continue;
-
-      const file = fileArray[0];
-      const requirement = await ScholarshipRequirement.findById(requirementId);
-
-      if (!requirement) {
-        continue;
-      }
-
-      // Create document record
-      const doc = new ApplicationDocument({
-        applicationId: application._id,
-        requirementId,
-        fileName: file.filename,
-        fileUrl: `/uploads/documents/${file.filename}`,
-        fileSize: file.size,
-        fileType: file.mimetype.split('/')[1],
-        status: 'pending_review',
-      });
-
-      await doc.save();
-      uploadedDocs.push(doc._id);
-    }
-
-    application.documents = uploadedDocs;
-    await application.save();
-
-    // Update scholarship applicant count
-    if (!existingApp) {
-      scholarship.applicantsCount = (scholarship.applicantsCount || 0) + 1;
-      await scholarship.save();
-    }
 
     try {
-      const notificationService = require('../utils/notificationService');
-      await notificationService.notifyApplicationCreated(studentId, scholarship.title);
-    } catch (err) {
-      console.error('Failed to send notification for application submission:', err?.message);
-    }
+      for (const item of matchedUploads) {
+        const f = item.file;
+        const reqItem = item.requirement;
 
-    res.status(201).json({
-      message: 'Application submitted successfully',
-      application,
-    });
+        let fileBuffer = f.buffer;
+        if (!fileBuffer && f.path && fs.existsSync(f.path)) {
+          fileBuffer = await fs.promises.readFile(f.path);
+        }
+        if (!fileBuffer || fileBuffer.length === 0) {
+          const emptyErr = new Error('Empty file attached for requirement ' + reqItem.requirementName);
+          emptyErr.code = 'FILE_REQUIRED';
+          emptyErr.statusCode = 400;
+          throw emptyErr;
+        }
+
+        const uploadResult = await storageService.uploadFile({
+          buffer: fileBuffer,
+          originalName: f.originalname || 'document.png',
+          mimeType: f.mimetype || 'image/png',
+          applicationId: String(application._id),
+          studentId,
+        });
+
+        uploadedStoredKeys.push(uploadResult.storedKey);
+
+        const doc = new ApplicationDocument({
+          applicationId: application._id,
+          requirementId: String(reqItem._id).startsWith('req_') ? null : reqItem._id,
+          documentType: reqItem.requirementName || 'DOCUMENT',
+          fileName: uploadResult.storedKey,
+          fileUrl: uploadResult.url || `/api/documents/download?key=${encodeURIComponent(uploadResult.storedKey)}`,
+          fileSize: uploadResult.size,
+          fileType: uploadResult.mimeType,
+          status: 'PENDING_REVIEW',
+          verificationStatus: 'PENDING',
+          uploadedAt: new Date(uploadResult.uploadedAt),
+        });
+
+        await doc.save();
+        uploadedDocs.push(doc._id);
+      }
+
+      application.documents = uploadedDocs;
+      await application.save();
+
+      // Update scholarship applicant count
+      if (!existingApp) {
+        scholarship.applicantsCount = (scholarship.applicantsCount || 0) + 1;
+        await scholarship.save();
+      }
+
+      try {
+        const notificationService = require('../utils/notificationService');
+        await notificationService.notifyApplicationCreated(studentId, scholarship.title);
+      } catch (notifErr) {
+        console.warn('Failed to send notification for application submission:', notifErr?.message);
+      }
+
+      return res.status(201).json({
+        success: true,
+        message: 'Application submitted successfully',
+        application,
+        documents: uploadedDocs,
+      });
+    } catch (pipelineErr) {
+      // Rollback: cleanup any uploaded files from storage to prevent orphan storage leakage
+      for (const storedKey of uploadedStoredKeys) {
+        await storageService.deleteFile(storedKey).catch(() => {});
+      }
+      for (const docId of uploadedDocs) {
+        await ApplicationDocument.findByIdAndDelete(docId).catch(() => {});
+      }
+      throw pipelineErr;
+    }
   } catch (error) {
     next(error);
   }
@@ -349,39 +472,30 @@ const approveApplication = async (req, res, next) => {
       return res.status(403).json({ message: 'Not authorized to review this application' });
     }
 
-    // Check if approved count hasn't exceeded total slots
-    const approvedCount = await ScholarshipApplication.countDocuments({
-      scholarshipId: application.scholarshipId,
-      status: 'Approved',
-    });
-
-    if (approvedCount >= scholarship.totalSlots) {
-      return res.status(400).json({
-        message: 'All available slots have been filled',
-        availableSlots: scholarship.totalSlots,
-        currentApproved: approvedCount,
+    // Delegate to unified transactional approvalService
+    try {
+      const approvalResult = await approvalService.approveApplication({
+        applicationId,
+        actorUser: req.user,
+        remarks: remarks || '',
+      });
+      application.status = 'Approved';
+      application.approvedAt = new Date();
+      application.reviewedBy = req.user.id;
+      if (approvalResult.scholarship) {
+        scholarship.approvedCount = approvalResult.scholarship.approved_count;
+        if (scholarship.totalSlots > 0 && scholarship.approvedCount >= scholarship.totalSlots) {
+          scholarship.status = 'Closed';
+        }
+      }
+    } catch (apprErr) {
+      if (session) await session.abortTransaction().catch(() => {});
+      return res.status(apprErr.statusCode || 500).json({
+        message: apprErr.message,
+        availableSlots: apprErr.availableSlots,
+        currentApproved: apprErr.approvedCount,
       });
     }
-
-    if (session) session.startTransaction();
-    const sessionOpts = session ? { session } : {};
-
-    application.status = 'Approved';
-    application.reviewedAt = new Date();
-    application.reviewedBy = req.user.id;
-    application.providerRemarks = remarks || '';
-    application.approvedAt = new Date();
-
-    await application.save(sessionOpts);
-
-    // Update scholarship approved count
-    scholarship.approvedCount = (scholarship.approvedCount || 0) + 1;
-    if (scholarship.approvedCount >= scholarship.totalSlots) {
-      scholarship.status = 'Closed';
-    }
-    await scholarship.save(sessionOpts);
-
-    if (session) await session.commitTransaction();
 
     // Trigger Notification & Socket Events
     try {

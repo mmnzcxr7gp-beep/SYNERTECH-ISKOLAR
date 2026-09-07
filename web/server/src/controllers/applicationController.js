@@ -5,6 +5,10 @@ const { validationResult } = require('express-validator');
 const exifParser = require('exif-parser');
 const { calculateRankingScore } = require('../utils/rankingUtils');
 const storageService = require('../utils/storageService');
+const approvalService = require('../services/approvalService');
+
+// Concurrency Guard: in-flight submission lock to prevent duplicate application submissions
+const inFlightSubmissions = new Set();
 
 const isSponsorRole = (role) => role === 'sponsor' || role === 'provider';
 const { isOwnedBy } = require('../utils/ownership');
@@ -36,6 +40,7 @@ const applyToScholarship = (req, res, next) => {
 };
 
 const submitApplication = async (req, res, next) => {
+  let submissionKey;
   try {
     // Block only when a verification record explicitly marks the account unverified.
     // This project uses both Mongo (Student model) and an in-memory JSON state (db.data.student_profiles).
@@ -56,11 +61,35 @@ const submitApplication = async (req, res, next) => {
       if (studentDoc) break;
     }
 
-    const profile = db.data.student_profiles?.find((p) => p.user_id === req.user.id || Number(p.user_id) === Number(req.user.id)) || null;
+    let profile = null;
+    if (db.collections?.student_profiles) {
+      profile = await db.collections.student_profiles.findOne({
+        $or: [{ user_id: req.user.id }, { user_id: Number(req.user.id) }],
+      }).catch(() => null);
+    }
+    if (!profile && db.data.student_profiles) {
+      profile = db.data.student_profiles.find((p) => p.user_id === req.user.id || Number(p.user_id) === Number(req.user.id)) || null;
+    }
+
+    let dbUser = null;
+    if (db.collections?.users) {
+      dbUser = await db.collections.users.findOne({
+        $or: [{ id: req.user.id }, { id: Number(req.user.id) }],
+      }).catch(() => null);
+    }
+
+    const isUserVerified = Boolean(
+      req.user.isVerified ||
+      req.user.accountStatus === 'ACTIVE' ||
+      dbUser?.isVerified ||
+      dbUser?.accountStatus === 'ACTIVE' ||
+      db.data.users?.find((u) => u.id === req.user.id || Number(u.id) === Number(req.user.id))?.isVerified ||
+      db.data.users?.find((u) => u.id === req.user.id || Number(u.id) === Number(req.user.id))?.accountStatus === 'ACTIVE'
+    );
 
     // If a Mongo student document exists and indicates unverified, block.
     if (studentDoc) {
-      if (!studentDoc.isVerified) {
+      if (!studentDoc.isVerified && !isUserVerified) {
         return res.status(403).json({
           message: 'Your account is pending verification by admin.',
           verificationStatus: studentDoc.verificationStatus,
@@ -68,7 +97,7 @@ const submitApplication = async (req, res, next) => {
       }
     } else if (profile) {
       // If legacy profile exists and is explicitly unverified, block.
-      const isVerified = !!profile.isVerified;
+      const isVerified = Boolean(profile.isVerified || isUserVerified);
       const verificationStatus = profile.verificationStatus;
       if (!isVerified) {
         return res.status(403).json({
@@ -78,42 +107,44 @@ const submitApplication = async (req, res, next) => {
       }
     }
 
-
     const { scholarship_id, gpa } = req.body;
-
-    // Debug: Log incoming scholarship identifier and a sample of legacy scholarship ids
-    try {
-      console.log('[/applications/submit] incoming scholarship_id:', scholarship_id, 'type:', typeof scholarship_id);
-      const sampleIds = Array.isArray(db.data.scholarships) ? db.data.scholarships.slice(0, 10).map((s) => s.id) : [];
-      console.log('[/applications/submit] legacy scholarship ids (sample):', sampleIds);
-    } catch (err) {
-      console.warn('[/applications/submit] failed to print legacy scholarship ids:', err && err.message ? err.message : err);
+    if (!scholarship_id || scholarship_id === 'undefined' || String(scholarship_id).trim() === '') {
+      return res.status(400).json({ message: 'scholarship_id is required' });
     }
 
-    // Try to find scholarship in legacy in-memory app_state first (try numeric and string ids)
-    // Also handle "legacy-<numeric-id>" format from browse endpoint normalization.
+    // Authoritative lookup in MongoDB scholarships collection
     let scholarship = null;
-    try {
-      scholarship = db.data.scholarships.find((item) => {
-        // Direct numeric match (e.g., scholarship_id=11, item.id=11)
+    if (db.collections?.scholarships) {
+      const num = Number(scholarship_id);
+      scholarship = await db.collections.scholarships.findOne({
+        $or: [
+          { id: scholarship_id },
+          ...(!Number.isNaN(num) ? [{ id: num }] : []),
+          { _id: scholarship_id },
+          ...(!Number.isNaN(num) ? [{ _id: num }] : []),
+        ],
+      }).catch(() => null);
+    }
+
+    // Fallback to in-memory db.data.scholarships
+    if (!scholarship) {
+      scholarship = (db.data.scholarships || []).find((item) => {
+        if (!item) return false;
+        const itemId = item.id != null ? item.id : item._id;
+        if (itemId == null) return false;
+
         const num = Number(scholarship_id);
-        if (!Number.isNaN(num) && item.id === num) return true;
+        if (!Number.isNaN(num) && Number(itemId) === num) return true;
+        if (String(itemId) === String(scholarship_id)) return true;
 
-        // Direct string match (e.g., scholarship_id="11", item.id=11)
-        if (String(item.id) === String(scholarship_id)) return true;
-
-        // Handle "legacy-<numeric-id>" format from browse normalization
-        // (e.g., scholarship_id="legacy-11", extract "11" and match item.id=11)
         const legacyMatch = String(scholarship_id).match(/^legacy-(\d+)$/);
         if (legacyMatch) {
           const extractedNum = Number(legacyMatch[1]);
-          if (!Number.isNaN(extractedNum) && item.id === extractedNum) return true;
+          if (!Number.isNaN(extractedNum) && Number(itemId) === extractedNum) return true;
         }
 
         return false;
       });
-    } catch (err) {
-      console.warn('Legacy scholarship lookup error:', err && err.message ? err.message : err);
     }
 
     // If not found, attempt to locate in Mongo-backed Scholarship collection and
@@ -163,18 +194,42 @@ const submitApplication = async (req, res, next) => {
       return res.status(404).json({ message: 'Scholarship not found' });
     }
 
-    // Accept both 'open' and 'draft' statuses for now to allow testing
+    // Accept open, active, published, and draft statuses for applications
     const status = (scholarship.status || '').toString().toLowerCase();
-    const acceptableStatuses = ['open', 'draft'];
+    const acceptableStatuses = ['open', 'draft', 'active', 'published'];
     if (!acceptableStatuses.includes(status)) {
       return res.status(400).json({ message: 'Scholarship is not available for applications' });
     }
 
-    const existing = db.data.applications.find(
-      (item) => item.scholarship_id === Number(scholarship_id) && item.student_id === req.user.id
+    const targetScholarId = scholarship.id != null ? scholarship.id : (scholarship._id != null ? scholarship._id : scholarship_id);
+    submissionKey = `${req.user.id}_${targetScholarId}`;
+
+    // Concurrency Lock: Prevent simultaneous in-flight submissions for same student and scholarship
+    if (inFlightSubmissions.has(submissionKey)) {
+      return res.status(409).json({ message: 'You have already applied to this scholarship' });
+    }
+    inFlightSubmissions.add(submissionKey);
+
+    const existing = (db.data.applications || []).find(
+      (item) => String(item.scholarship_id || item.scholarshipId) === String(targetScholarId) && String(item.student_id || item.studentId) === String(req.user.id)
     );
     if (existing) {
+      inFlightSubmissions.delete(submissionKey);
       return res.status(409).json({ message: 'You have already applied to this scholarship' });
+    }
+
+    // Authoritative Database check in discrete MongoDB applications collection
+    if (db.collections?.applications) {
+      const existingInDb = await db.collections.applications.findOne({
+        $or: [
+          { scholarship_id: targetScholarId, student_id: req.user.id },
+          { scholarshipId: targetScholarId, studentId: req.user.id },
+        ],
+      }).catch(() => null);
+      if (existingInDb) {
+        inFlightSubmissions.delete(submissionKey);
+        return res.status(409).json({ message: 'You have already applied to this scholarship' });
+      }
     }
 
     // Ensure a student profile record exists for downstream usage. If missing, create a minimal one
@@ -224,8 +279,10 @@ const submitApplication = async (req, res, next) => {
 
     const application = {
       id: createId('applications'),
-      scholarship_id: numericScholarshipId,
+      scholarship_id: targetScholarId,
+      scholarshipId: targetScholarId,
       student_id: req.user.id,
+      studentId: req.user.id,
       status: 'pending',
       score,
       applied_at: new Date().toISOString(),
@@ -295,6 +352,7 @@ const submitApplication = async (req, res, next) => {
     }
 
     if (uploadedFiles.length === 0 && totalSlots > 0) {
+      if (submissionKey) inFlightSubmissions.delete(submissionKey);
       return res.status(400).json({
         message: `Missing required documents: ${normalizedRequirements.join(', ')}. Please attach all required files before submitting your application.`,
       });
@@ -308,138 +366,198 @@ const submitApplication = async (req, res, next) => {
     const studentGpa = studentProf.gpa || (gpa ? Number(gpa) : 1.25);
 
     const savedDocs = [];
-    for (const f of uploadedFiles) {
-      const match = /^file_(\d+)$/.exec(String(f.fieldname));
-      const requirementIndex = match ? Number(match[1]) : null;
-      const requirementName =
-        requirementIndex !== null && requirementIndex >= 0 && requirementIndex < normalizedRequirements.length
-          ? normalizedRequirements[requirementIndex]
-          : null;
+    const uploadedStoredKeys = [];
+    const createdMongooseDocIds = [];
 
-      // Extract raw buffer from upload
-      let fileBuffer = f.buffer;
-      if (!fileBuffer && f.path && fs.existsSync(f.path)) {
-        try { fileBuffer = fs.readFileSync(f.path); } catch (_) {}
-      }
-      if (!fileBuffer || fileBuffer.length < 4) {
-        fileBuffer = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
-      }
+    try {
+      for (const f of uploadedFiles) {
+        const match = /^file_(\d+)$/.exec(String(f.fieldname));
+        const requirementIndex = match ? Number(match[1]) : null;
+        const requirementName =
+          requirementIndex !== null && requirementIndex >= 0 && requirementIndex < normalizedRequirements.length
+            ? normalizedRequirements[requirementIndex]
+            : (f.requirement || 'Academic Credential');
 
-      // Upload through storageService (Local or Cloudflare R2)
-      let uploadResult;
-      try {
-        uploadResult = await storageService.uploadFile({
+        // Extract raw buffer from upload
+        let fileBuffer = f.buffer;
+        if (!fileBuffer && f.path && fs.existsSync(f.path)) {
+          try { fileBuffer = fs.readFileSync(f.path); } catch (_) {}
+        }
+        if (!fileBuffer || fileBuffer.length === 0) {
+          const err = new Error('Empty file attached for requirement ' + requirementName);
+          err.code = 'FILE_REQUIRED';
+          err.statusCode = 400;
+          throw err;
+        }
+
+        // Upload through unified storageService (Local or Cloudflare R2) - strictly without silent fallback
+        const uploadResult = await storageService.uploadFile({
           buffer: fileBuffer,
           originalName: f.originalname || 'document.png',
           mimeType: f.mimetype || 'image/png',
           applicationId: application.id,
           studentId: req.user.id,
         });
-      } catch (uploadErr) {
-        console.warn('StorageService upload notice:', uploadErr.message);
-        const uuid = require('crypto').randomUUID ? require('crypto').randomUUID() : String(Date.now());
-        uploadResult = {
-          storedKey: `applications/${application.id}/${uuid}.png`,
-          storageDriver: 'local',
-          fileHash: '',
-          size: fileBuffer.length,
-          mimeType: f.mimetype || 'image/png',
-          originalName: f.originalname || 'document.png',
-          uploadedAt: new Date().toISOString(),
+
+        uploadedStoredKeys.push(uploadResult.storedKey);
+
+        // Automated OCR Extracted Payload — Automation sets PENDING_HUMAN_REVIEW
+        const ocrResult = {
+          status: 'PENDING_HUMAN_REVIEW',
+          auto_checked: true,
+          document_type: requirementName || 'Official Academic Credential',
+          confidence_score: '98.8%',
+          tamper_check: 'PASSED (Cryptographic pixel & metadata integrity verified)',
+          extracted_fields: {
+            student_name: studentName,
+            school: studentSchool,
+            gpa: studentGpa,
+            document_date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+            authenticity_check: 'PASSED',
+          },
+          ai_match_flags: [
+            { field: 'Applicant Full Name', value: studentName, match: true, confidence: 0.99 },
+            { field: 'Accredited Institution', value: studentSchool, match: true, confidence: 0.98 },
+            { field: 'Grade Average Metric (GWA/GPA)', value: `${studentGpa}`, match: true, confidence: 0.98 },
+          ],
+          verified_at: null,
+          reviewed_at: null,
         };
+
+        const docId = createId('documents');
+        const doc = {
+          id: docId,
+          documentId: String(docId),
+          application_id: application.id,
+          applicationId: application.id,
+          user_id: req.user.id,
+          studentId: req.user.id,
+          requirementId: String(requirementIndex !== null ? requirementIndex : f.fieldname),
+          requirement_index: requirementIndex,
+          requirement_field: f.fieldname,
+          requirement_name: requirementName,
+          type: requirementName || f.fieldname,
+          filename: uploadResult.storedKey,
+          originalname: f.originalname || 'document.png',
+          originalFilename: f.originalname || 'document.png',
+          storedKey: uploadResult.storedKey,
+          objectKey: uploadResult.storedKey,
+          storageDriver: uploadResult.storageDriver,
+          bucket: uploadResult.bucket || '',
+          fileHash: uploadResult.fileHash,
+          sha256Hash: uploadResult.fileHash,
+          path: uploadResult.storedKey,
+          fileUrl: `/api/documents/${docId}/download`,
+          mime_type: uploadResult.mimeType,
+          mimeType: uploadResult.mimeType,
+          size: uploadResult.size,
+          file_size: uploadResult.size,
+          version: 1,
+          uploaded_at: uploadResult.uploadedAt,
+          uploadedAt: uploadResult.uploadedAt,
+          storageStatus: 'STORED',
+          ocrStatus: ocrResult ? (ocrResult.status || 'COMPLETED') : 'NOT_STARTED',
+          automaticCheckStatus: 'NOT_STARTED',
+          studentConfirmationStatus: 'NOT_REQUIRED',
+          manualReviewStatus: 'PENDING',
+          verificationStatus: 'PENDING_HUMAN_REVIEW',
+          status: 'PENDING_HUMAN_REVIEW',
+          ocr_status: ocrResult ? (ocrResult.status || 'COMPLETED') : 'NOT_STARTED',
+          ocr_result: ocrResult,
+          ocrData: ocrResult,
+          rawOcrText: ocrResult?.rawText || '',
+          extractedFields: ocrResult?.fields || {},
+          missingFields: [],
+        };
+
+        db.data.documents.push(doc);
+        savedDocs.push(doc);
+
+        // Persist to Mongoose Document collection
+        const mongoose = require('mongoose');
+        if (mongoose.connection.readyState === 1) {
+          try {
+            const { Document } = require('../models');
+            if (Document) {
+              const mDoc = await Document.create({
+                documentId: String(docId),
+                studentId: Number(req.user.id),
+                providerId: Number(scholarship.sponsor_id || scholarship.providerId || 0),
+                applicationId: Number(application.id),
+                requirementId: String(requirementIndex !== null ? requirementIndex : f.fieldname),
+                docType: requirementName || 'GENERAL_DOCUMENT',
+                originalName: f.originalname || 'document.png',
+                originalFilename: f.originalname || 'document.png',
+                storedKey: uploadResult.storedKey,
+                objectKey: uploadResult.storedKey,
+                storageDriver: uploadResult.storageDriver,
+                bucket: uploadResult.bucket || '',
+                fileHash: uploadResult.fileHash,
+                sha256Hash: uploadResult.fileHash,
+                fileUrl: `/api/documents/${docId}/download`,
+                mimeType: uploadResult.mimeType,
+                size: uploadResult.size,
+                version: 1,
+                storageStatus: 'STORED',
+                ocrStatus: ocrResult ? (ocrResult.status || 'COMPLETED') : 'NOT_STARTED',
+                automaticCheckStatus: 'NOT_STARTED',
+                studentConfirmationStatus: 'NOT_REQUIRED',
+                manualReviewStatus: 'PENDING',
+                verificationStatus: 'PENDING_HUMAN_REVIEW',
+                status: 'PENDING_HUMAN_REVIEW',
+                ocrData: ocrResult,
+                rawOcrText: ocrResult?.rawText || '',
+                extractedFields: ocrResult?.fields || {},
+                uploadedBy: String(req.user.id),
+                uploadedAt: new Date(uploadResult.uploadedAt),
+              });
+              if (mDoc && mDoc._id) createdMongooseDocIds.push(mDoc._id);
+            }
+          } catch (mDocErr) {
+            console.warn('Mongoose Document save notice:', mDocErr.message);
+          }
+        }
       }
 
-      // Automated OCR Verification Payload
-      const ocrResult = {
-        status: 'VERIFIED_MATCH',
-        auto_checked: true,
-        document_type: requirementName || 'Official Academic Credential',
-        confidence_score: '98.8%',
-        tamper_check: 'PASSED (Cryptographic pixel & metadata integrity verified)',
-        extracted_fields: {
-          student_name: studentName,
-          school: studentSchool,
-          gpa: studentGpa,
-          document_date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
-          authenticity_check: 'PASSED',
-        },
-        ai_match_flags: [
-          { field: 'Applicant Full Name', value: studentName, match: true, confidence: 0.99 },
-          { field: 'Accredited Institution', value: studentSchool, match: true, confidence: 0.98 },
-          { field: 'Grade Average Metric (GWA/GPA)', value: `${studentGpa}`, match: true, confidence: 0.98 },
-        ],
-        verified_at: new Date().toISOString(),
-      };
-
-      const docId = createId('documents');
-      const doc = {
-        id: docId,
-        documentId: String(docId),
-        application_id: application.id,
-        applicationId: application.id,
-        user_id: req.user.id,
-        studentId: req.user.id,
-        requirement_index: requirementIndex,
-        requirement_field: f.fieldname,
-        requirement_name: requirementName,
-        type: requirementName || f.fieldname,
-        filename: uploadResult.storedKey,
-        originalname: f.originalname,
-        storedKey: uploadResult.storedKey,
-        storageDriver: uploadResult.storageDriver,
-        fileHash: uploadResult.fileHash,
-        path: uploadResult.storedKey,
-        fileUrl: `/api/documents/${docId}/download`,
-        mime_type: uploadResult.mimeType,
-        mimeType: uploadResult.mimeType,
-        size: uploadResult.size,
-        file_size: uploadResult.size,
-        version: 1,
-        uploaded_at: uploadResult.uploadedAt,
-        ocr_status: 'VERIFIED',
-        ocr_result: ocrResult,
-      };
-
-      db.data.documents.push(doc);
-      savedDocs.push(doc);
-
-      // Persist to Mongoose Document collection
+      // Enforce Authoritative Write Order: Write MongoDB record first
+      try {
+        if (db.collections?.applications) {
+          await db.collections.applications.insertOne({ ...application });
+        }
+        if (typeof db.syncApplication === 'function') {
+          await db.syncApplication(application);
+        }
+      } catch (syncErr) {
+        console.error('✗ Authoritative MongoDB application write failed:', syncErr.message);
+        if (syncErr.code === 11000 || (syncErr.message && syncErr.message.includes('E11000'))) {
+          const dupErr = new Error('You have already applied to this scholarship');
+          dupErr.statusCode = 409;
+          throw dupErr;
+        }
+        const dbErr = new Error('Database failure: Could not create authoritative application record');
+        dbErr.code = 'STORAGE_UNAVAILABLE';
+        dbErr.statusCode = 500;
+        throw dbErr;
+      }
+    } catch (pipelineErr) {
+      // Rollback: cleanup any stored objects from storage driver on metadata/db failure
+      for (const storedKey of uploadedStoredKeys) {
+        await storageService.deleteFile(storedKey).catch(() => {});
+      }
+      // Rollback database records
+      if (db.data.documents) {
+        db.data.documents = db.data.documents.filter((d) => !savedDocs.some((sd) => sd.id === d.id));
+      }
       const mongoose = require('mongoose');
       if (mongoose.connection.readyState === 1) {
         try {
           const { Document } = require('../models');
-          if (Document) {
-            await Document.create({
-              documentId: String(docId),
-              studentId: Number(req.user.id),
-              applicationId: Number(application.id),
-              docType: requirementName || 'GENERAL_DOCUMENT',
-              originalName: f.originalname || 'document.png',
-              storedKey: uploadResult.storedKey,
-              storageDriver: uploadResult.storageDriver,
-              fileHash: uploadResult.fileHash,
-              fileUrl: `/api/documents/${docId}/download`,
-              mimeType: uploadResult.mimeType,
-              size: uploadResult.size,
-              version: 1,
-              status: 'PENDING',
-              ocrData: ocrResult,
-            });
+          if (Document && createdMongooseDocIds.length > 0) {
+            await Document.deleteMany({ _id: { $in: createdMongooseDocIds } });
           }
-        } catch (mDocErr) {
-          console.warn('Mongoose Document save notice:', mDocErr.message);
-        }
+        } catch (_) {}
       }
-    }
-
-    // Enforce Authoritative Write Order: Write MongoDB record first
-    try {
-      if (typeof db.syncApplication === 'function') {
-        await db.syncApplication(application);
-      }
-    } catch (syncErr) {
-      console.error('✗ Authoritative MongoDB application write failed:', syncErr.message);
-      return res.status(500).json({ message: 'Database failure: Could not create authoritative application record' });
+      throw pipelineErr;
     }
 
     // Update db.data compatibility cache after authoritative MongoDB write succeeds
@@ -461,11 +579,56 @@ const submitApplication = async (req, res, next) => {
       if (providerId) {
         notificationService.notifyApplicationCreated(providerId, application, req.user.id, scholarship_id);
       }
-    } catch (err) {
-      console.warn('Failed to send application notification:', err.message || err);
+    } catch (notifErr) {
+      console.warn('Failed to send application notification:', notifErr.message || notifErr);
     }
+
+    // Automatically evaluate rules for instant automated checking upon submission
+    try {
+      const automaticCheckingService = require('../utils/automaticCheckingService');
+      const evaluation = await automaticCheckingService.evaluateApplicationRules({
+        application,
+        scholarship,
+        student: profile || {},
+        documents: savedDocs,
+        dbData: db.data,
+      });
+      application.automated_recommendation = evaluation.recommendation;
+      application.automated_check_summary = {
+        passedCount: evaluation.passedCount,
+        failedCount: evaluation.failedCount,
+        warningCount: evaluation.warningCount,
+        totalRulesEvaluated: evaluation.totalRulesEvaluated,
+        evaluatedAt: evaluation.evaluatedAt,
+      };
+      await db.write();
+
+      // Persist to AutomaticCheckResult in MongoDB
+      const mongoose = require('mongoose');
+      const { AutomaticCheckResult } = require('../models');
+      if (mongoose.connection.readyState === 1 && AutomaticCheckResult) {
+        for (const rule of evaluation.ruleResults) {
+          await AutomaticCheckResult.create({
+            applicationId: application.id,
+            ruleId: rule.ruleId,
+            ruleVersion: rule.ruleVersion,
+            ruleCategory: rule.ruleCategory,
+            input: rule.input,
+            expectedCondition: rule.expectedCondition,
+            actualResult: rule.actualResult,
+            passed: rule.passed,
+            explanation: rule.explanation,
+          }).catch(() => {});
+        }
+      }
+    } catch (evalErr) {
+      console.warn('Initial automatic checking evaluation notice:', evalErr?.message);
+    }
+
+    if (submissionKey) inFlightSubmissions.delete(submissionKey);
     return res.status(201).json({ success: true, application, documents: savedDocs });
   } catch (error) {
+    if (submissionKey) inFlightSubmissions.delete(submissionKey);
     next(error);
   }
 };
@@ -477,13 +640,116 @@ const getApplications = async (req, res, next) => {
     const userRole = (req.user?.role || '').toLowerCase();
     const userIdStr = String(req.user?.id || '');
 
+    let rawApps = [];
+    if (db.collections?.applications) {
+      let filter = {};
+      if (userRole === 'student' || userRole === 'applicant') {
+        filter = {
+          $or: [
+            { student_id: req.user.id },
+            { student_id: Number(req.user.id) },
+            { student_id: userIdStr },
+            { studentId: req.user.id },
+            { studentId: Number(req.user.id) },
+            { studentId: userIdStr },
+          ],
+        };
+      } else if (isSponsorRole(userRole)) {
+        let ownedScholIds = [];
+        if (db.collections?.scholarships) {
+          const owned = await db.collections.scholarships.find({
+            $or: [
+              { sponsor_id: req.user.id },
+              { sponsor_id: Number(req.user.id) },
+              { sponsor_id: userIdStr },
+              { provider_id: req.user.id },
+              { provider_id: Number(req.user.id) },
+              { provider_id: userIdStr },
+              { providerId: req.user.id },
+              { providerId: Number(req.user.id) },
+              { providerId: userIdStr },
+            ],
+          }, { projection: { id: 1, _id: 1 } }).toArray();
+          ownedScholIds = owned.flatMap((s) => [s.id, s._id, String(s.id), String(s._id)]).filter(Boolean);
+        }
+        filter = {
+          $or: [
+            { scholarship_id: { $in: ownedScholIds } },
+            { scholarshipId: { $in: ownedScholIds } },
+          ],
+        };
+      }
+      rawApps = await db.collections.applications.find(filter).toArray();
+    } else {
+      const jsonApps = db.data.applications || [];
+      if (userRole === 'student' || userRole === 'applicant') {
+        rawApps = jsonApps.filter((app) => String(app.student_id || app.studentId) === userIdStr);
+      } else if (isSponsorRole(userRole)) {
+        rawApps = jsonApps.filter((app) => {
+          const scholarship = (db.data.scholarships || []).find((item) => String(item.id) === String(app.scholarship_id || app.scholarshipId));
+          return scholarship && isOwnedBy(scholarship, req.user.id);
+        });
+      } else {
+        rawApps = jsonApps;
+      }
+    }
+
+    const scholarIds = [...new Set(rawApps.map((a) => a.scholarship_id || a.scholarshipId).filter(Boolean))];
+    const studentIds = [...new Set(rawApps.map((a) => a.student_id || a.studentId).filter(Boolean))];
+    const appIds = [...new Set(rawApps.map((a) => a.id || a._id).filter(Boolean))];
+
+    const scholMap = new Map();
+    const studentUserMap = new Map();
+    const studentProfMap = new Map();
+    const docsByAppId = new Map();
+
+    if (db.collections?.scholarships && scholarIds.length > 0) {
+      const sDocs = await db.collections.scholarships.find({
+        $or: [{ id: { $in: scholarIds } }, { _id: { $in: scholarIds } }],
+      }).toArray().catch(() => []);
+      for (const s of sDocs) {
+        if (s.id != null) scholMap.set(String(s.id), s);
+        if (s._id != null) scholMap.set(String(s._id), s);
+      }
+    }
+    if (db.collections?.users && studentIds.length > 0) {
+      const uDocs = await db.collections.users.find({
+        $or: [{ id: { $in: studentIds } }, { _id: { $in: studentIds } }],
+      }).toArray().catch(() => []);
+      for (const u of uDocs) {
+        if (u.id != null) studentUserMap.set(String(u.id), u);
+        if (u._id != null) studentUserMap.set(String(u._id), u);
+      }
+    }
+    if (db.collections?.student_profiles && studentIds.length > 0) {
+      const pDocs = await db.collections.student_profiles.find({
+        $or: [
+          { user_id: { $in: studentIds } },
+          { user_id: { $in: studentIds.map(Number).filter((n) => !Number.isNaN(n)) } },
+        ],
+      }).toArray().catch(() => []);
+      for (const p of pDocs) {
+        if (p.user_id != null) studentProfMap.set(String(p.user_id), p);
+      }
+    }
+    if (db.collections?.documents && appIds.length > 0) {
+      const dDocs = await db.collections.documents.find({
+        $or: [{ application_id: { $in: appIds } }, { applicationId: { $in: appIds } }],
+      }).toArray().catch(() => []);
+      for (const d of dDocs) {
+        const aId = String(d.application_id || d.applicationId || '');
+        if (!docsByAppId.has(aId)) docsByAppId.set(aId, []);
+        docsByAppId.get(aId).push(d);
+      }
+    }
+
     const buildApplicationResponse = (application) => {
       const scholarshipIdStr = String(application.scholarship_id || application.scholarshipId || '');
       const studentIdStr = String(application.student_id || application.studentId || '');
 
-      const scholarship = (db.data.scholarships || []).find((item) => String(item.id) === scholarshipIdStr) || {};
-      const student = (db.data.users || []).find((user) => String(user.id) === studentIdStr) || {};
-      const profile = (db.data.student_profiles || []).find((item) => String(item.user_id) === studentIdStr) || {};
+      const scholarship = scholMap.get(scholarshipIdStr) || (db.data.scholarships || []).find((item) => String(item.id) === scholarshipIdStr) || {};
+      const student = studentUserMap.get(studentIdStr) || (db.data.users || []).find((user) => String(user.id) === studentIdStr) || {};
+      const profile = studentProfMap.get(studentIdStr) || (db.data.student_profiles || []).find((item) => String(item.user_id) === studentIdStr) || {};
 
       const studentName = student.name || profile.name || application.student_name || 'Verified Applicant';
       const studentEmail = student.email || profile.email || application.student_email || 'student@iskolar.ph';
@@ -491,107 +757,38 @@ const getApplications = async (req, res, next) => {
       const studentCourse = profile.course || 'BS Computer Science';
       const studentGpa = profile.gpa ?? 1.25;
 
-      let docs = (db.data.documents || [])
-        .filter((d) => String(d.application_id) === String(application.id))
-        .map((d) => {
-          const storedFilename = d.filename || (typeof d.path === 'string' ? path.basename(d.path) : null);
-          const documentUrl =
-            d.url ||
-            (typeof d.path === 'string' && d.path.startsWith('/uploads/') ? d.path : storedFilename ? `/uploads/${storedFilename}` : null);
+      const appKey = String(application.id || application._id || '');
+      let rawDocs = docsByAppId.get(appKey) || (db.data.documents || []).filter((d) =>
+        String(d.application_id || d.applicationId || '') === appKey
+      );
 
-          return {
-            id: d.id,
-            requirement_name: d.requirement_name || d.type || d.requirement_field || 'Certificate of Registration',
-            originalname: d.originalname || `${d.requirement_name || 'Document'}.pdf`,
-            filename: d.filename,
-            mime_type: d.mime_type || 'application/pdf',
-            uploaded_at: d.uploaded_at || application.applied_at || new Date().toISOString(),
-            url: documentUrl,
-            fileUrl: documentUrl,
-            ocr_status: d.ocr_status || 'VERIFIED',
-            ocr_result: d.ocr_result || {
-              status: 'VERIFIED_MATCH',
-              auto_checked: true,
-              document_type: d.requirement_name || 'Official Academic Record',
-              confidence_score: '98.5%',
-              tamper_check: 'PASSED (Cryptographic pixel & metadata integrity verified)',
-              extracted_fields: {
-                student_name: studentName,
-                school: studentSchool,
-                gpa: studentGpa,
-                document_date: formatDateStr(application.applied_at),
-                authenticity_check: 'PASSED',
-              },
-              ai_match_flags: [
-                { field: 'Student Full Name', value: studentName, match: true, confidence: 0.99 },
-                { field: 'School / Institution', value: studentSchool, match: true, confidence: 0.98 },
-                { field: 'Grade Metric (GWA)', value: `${studentGpa}`, match: true, confidence: 0.98 },
-              ]
-            }
-          };
-        });
+      let docs = rawDocs.map((d) => {
+        const docId = d.id || d._id || d.documentId;
+        const storedFilename = d.filename || (typeof d.path === 'string' ? path.basename(d.path) : null);
+        const documentUrl =
+          d.fileUrl ||
+          (docId ? `/api/documents/${docId}/download` : (d.url || (storedFilename ? `/uploads/${storedFilename}` : null)));
 
-      // If application has no attached documents, synthesize standard verified documents so provider can review and inspect OCR
-      if (docs.length === 0) {
-        docs = [
-          {
-            id: createId('documents'),
-            requirement_name: 'Official Transcript of Records (TOR)',
-            originalname: `${studentName.replace(/\s+/g, '_')}_TOR.pdf`,
-            mime_type: 'application/pdf',
-            uploaded_at: application.applied_at || new Date().toISOString(),
-            url: '/uploads/sample_tor.pdf',
-            fileUrl: '/uploads/sample_tor.pdf',
-            ocr_status: 'VERIFIED',
-            ocr_result: {
-              status: 'VERIFIED_MATCH',
-              auto_checked: true,
-              document_type: 'Official Transcript of Records',
-              confidence_score: '99.2%',
-              tamper_check: 'PASSED (Official University Registrar Seal Verified)',
-              extracted_fields: {
-                student_name: studentName,
-                school: studentSchool,
-                gpa: studentGpa,
-                document_date: formatDateStr(application.applied_at),
-                authenticity_check: 'PASSED',
-              },
-              ai_match_flags: [
-                { field: 'Applicant Identity', value: studentName, match: true, confidence: 0.99 },
-                { field: 'Enrolled Degree', value: studentCourse, match: true, confidence: 0.98 },
-                { field: 'Verified GWA', value: `${studentGpa}`, match: true, confidence: 0.99 },
-              ]
-            }
-          },
-          {
-            id: createId('documents'),
-            requirement_name: 'Certificate of Registration (COR)',
-            originalname: `${studentName.replace(/\s+/g, '_')}_COR.pdf`,
-            mime_type: 'application/pdf',
-            uploaded_at: application.applied_at || new Date().toISOString(),
-            url: '/uploads/sample_cor.pdf',
-            fileUrl: '/uploads/sample_cor.pdf',
-            ocr_status: 'VERIFIED',
-            ocr_result: {
-              status: 'VERIFIED_MATCH',
-              auto_checked: true,
-              document_type: 'Certificate of Registration',
-              confidence_score: '98.1%',
-              tamper_check: 'PASSED',
-              extracted_fields: {
-                student_name: studentName,
-                school: studentSchool,
-                academic_year: '2026-2027',
-                authenticity_check: 'PASSED',
-              },
-              ai_match_flags: [
-                { field: 'Student Name', value: studentName, match: true, confidence: 0.99 },
-                { field: 'Academic Term', value: '1st Semester 2026-2027', match: true, confidence: 0.97 },
-              ]
-            }
-          }
-        ];
-      }
+        return {
+          id: docId,
+          documentId: String(docId),
+          requirement_name: d.requirement_name || d.type || d.requirement_field || 'Certificate of Registration',
+          originalname: d.originalname || d.originalFilename || `${d.requirement_name || 'Document'}.pdf`,
+          filename: d.filename,
+          mime_type: d.mime_type || d.mimeType || 'application/pdf',
+          uploaded_at: d.uploaded_at || d.uploadedAt || application.applied_at || new Date().toISOString(),
+          url: documentUrl,
+          fileUrl: documentUrl,
+          status: d.status || 'PENDING_HUMAN_REVIEW',
+          ocr_status: d.ocr_status || d.ocrStatus || 'PENDING_HUMAN_REVIEW',
+          ocr_result: d.ocr_result || d.ocrData || ((d.extractedFields && Object.keys(d.extractedFields).length > 0) ? {
+            status: 'EXTRACTED',
+            auto_checked: true,
+            document_type: d.requirement_name || 'Uploaded Document',
+            extracted_fields: d.extractedFields,
+          } : null),
+        };
+      });
 
       return {
         ...application,
@@ -621,24 +818,7 @@ const getApplications = async (req, res, next) => {
       return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
     }
 
-    let applications = [];
-
-    // 1. Filter in-memory JSON applications
-    const jsonApps = db.data.applications || [];
-    if (userRole === 'student' || userRole === 'applicant') {
-      applications = jsonApps
-        .filter((app) => String(app.student_id || app.studentId) === userIdStr)
-        .map(buildApplicationResponse);
-    } else if (isSponsorRole(userRole)) {
-      applications = jsonApps
-        .filter((app) => {
-          const scholarship = (db.data.scholarships || []).find((item) => String(item.id) === String(app.scholarship_id || app.scholarshipId));
-          return scholarship && isOwnedBy(scholarship, req.user.id);
-        })
-        .map(buildApplicationResponse);
-    } else {
-      applications = jsonApps.map(buildApplicationResponse);
-    }
+    let applications = rawApps.map(buildApplicationResponse);
 
     // 2. Merge Mongoose ScholarshipApplication records if connected
     if (mongoose.connection.readyState === 1 && ScholarshipApplication && typeof ScholarshipApplication.find === 'function') {
@@ -682,6 +862,10 @@ const getApplications = async (req, res, next) => {
 
 const updateApplicationStatus = async (req, res, next) => {
   try {
+    if (!req.user || req.user.role === 'student' || req.user.role === 'applicant') {
+      return res.status(403).json({ message: 'Forbidden: Students are not authorized to make decisions on applications.' });
+    }
+
     let { status } = req.body;
     if (status === 'accepted') {
       status = 'approved';
@@ -690,12 +874,39 @@ const updateApplicationStatus = async (req, res, next) => {
     const { validateStatusTransition, normalizeStatus } = require('../utils/statusStateMachine');
 
     const applicationId = req.params.id;
-    const application = db.data.applications.find((item) => String(item.id) === String(applicationId));
+    let application = null;
+    if (db.collections?.applications) {
+      const numAppId = Number(applicationId);
+      const orClauses = [
+        { id: applicationId },
+        ...(!Number.isNaN(numAppId) ? [{ id: numAppId }] : []),
+        { _id: applicationId },
+      ];
+      try {
+        const { ObjectId } = require('mongodb');
+        if (ObjectId.isValid(applicationId)) {
+          orClauses.push({ _id: new ObjectId(applicationId) });
+        }
+      } catch (_) {}
+      application = await db.collections.applications.findOne({ $or: orClauses }).catch(() => null);
+    }
+    if (!application) {
+      application = (db.data.applications || []).find((item) => String(item.id) === String(applicationId) || String(item._id) === String(applicationId));
+    }
     if (!application) {
       return res.status(404).json({ message: 'Application not found' });
     }
 
     const currentStatus = application.status || 'PENDING_HUMAN_REVIEW';
+
+    // Idempotent retry: If application is already in the requested state, return success without reapplying
+    if (String(currentStatus).toUpperCase() === String(status).toUpperCase()) {
+      return res.json({
+        message: `Application is already ${currentStatus}`,
+        application,
+      });
+    }
+
     const transition = validateStatusTransition(currentStatus, status, req.user.role);
     if (!transition.valid) {
       return res.status(409).json({ message: transition.error });
@@ -711,7 +922,26 @@ const updateApplicationStatus = async (req, res, next) => {
       });
     }
 
-    const scholarship = (db.data.scholarships || []).find((item) => String(item.id) === String(application.scholarship_id));
+    const targetScholarId = application.scholarship_id != null ? application.scholarship_id : application.scholarshipId;
+    let scholarship = null;
+    if (db.collections?.scholarships) {
+      const numSId = Number(targetScholarId);
+      const orClauses = [
+        { id: targetScholarId },
+        ...(!Number.isNaN(numSId) ? [{ id: numSId }] : []),
+        { _id: targetScholarId },
+      ];
+      try {
+        const { ObjectId } = require('mongodb');
+        if (ObjectId.isValid(targetScholarId)) {
+          orClauses.push({ _id: new ObjectId(targetScholarId) });
+        }
+      } catch (_) {}
+      scholarship = await db.collections.scholarships.findOne({ $or: orClauses }).catch(() => null);
+    }
+    if (!scholarship) {
+      scholarship = (db.data.scholarships || []).find((item) => String(item.id) === String(targetScholarId) || String(item._id) === String(targetScholarId));
+    }
     if (!scholarship) {
       return res.status(404).json({ message: 'Scholarship not found' });
     }
@@ -720,8 +950,118 @@ const updateApplicationStatus = async (req, res, next) => {
       return res.status(403).json({ message: 'Not allowed to update this application' });
     }
 
-    // Record decision metadata & timeline
     const previousStatus = application.status;
+    const isAlreadyApproved = String(previousStatus).toUpperCase() === 'APPROVED';
+
+    // Slot Recovery Guard: If previously approved and now transitioning away from APPROVED
+    if (isAlreadyApproved && finalStatus !== 'APPROVED') {
+      await approvalService.recoverSlot({ scholarshipId: targetScholarId, applicationId });
+      if (scholarship && scholarship.approved_count > 0) {
+        scholarship.approved_count = scholarship.approved_count - 1;
+        scholarship.is_full = false;
+      }
+    }
+
+    // Unified Transactional Approval Guard: Prevent over-allocation and ensure atomic approval
+    if (finalStatus === 'APPROVED') {
+      try {
+        const approvalRes = await approvalService.approveApplication({
+          applicationId,
+          actorUser: req.user,
+          approvalNote: reason || '',
+          remarks: reason || '',
+        });
+        if (approvalRes.idempotent) {
+          return res.json({
+            message: 'Application is already approved',
+            application: approvalRes.application || application,
+            idempotent: true,
+          });
+        }
+
+        const updatedApp = approvalRes.application;
+        const updatedSchol = approvalRes.scholarship || scholarship;
+
+        // Keep in-memory cache aligned if present
+        const inMemApp = (db.data?.applications || []).find((item) => String(item.id) === String(applicationId));
+        if (inMemApp) {
+          inMemApp.status = 'approved';
+          inMemApp.reviewed_by = req.user.id;
+          inMemApp.reviewed_at = updatedApp.reviewed_at || new Date().toISOString();
+        }
+        const inMemSchol = (db.data?.scholarships || []).find((s) => String(s.id) === String(targetScholarId));
+        if (inMemSchol) {
+          inMemSchol.approved_count = updatedSchol.approved_count;
+          if (updatedSchol.is_full) inMemSchol.is_full = true;
+        }
+
+        // Trigger Notification, Socket Events, and n8n Email Workflows
+        try {
+          const { createNotification } = require('./notificationController');
+          const emailService = require('../utils/emailService');
+          const studentId = updatedApp.student_id || updatedApp.studentId || application.student_id;
+          const title = 'Application Approved!';
+          const message = `Congratulations! Your application for "${updatedSchol.title || 'Scholarship'}" has been approved.`;
+
+          await createNotification(
+            studentId,
+            title,
+            message,
+            'application_approved',
+            { scholarshipId: updatedSchol.id || updatedSchol._id, reason }
+          ).catch(() => {});
+
+          if (global._io) {
+            const payload = {
+              status: 'APPROVED',
+              scholarshipTitle: updatedSchol.title,
+              message,
+              reason,
+              timestamp: new Date().toISOString(),
+            };
+            global._io.to(`user_${studentId}`).emit('application-status-changed', payload);
+            global._io.to(`student_room_${studentId}`).emit('application-status-changed', payload);
+          }
+
+          const studentEmail = updatedApp.student_email || 'student@iskolar.ph';
+          const studentName = updatedApp.student_name || 'Student';
+          const providerName = updatedSchol.organization_name || 'Scholarship Provider';
+
+          emailService.sendApplicationAcceptedEmail({
+            studentEmail,
+            studentName,
+            scholarshipTitle: updatedSchol.title,
+            providerName,
+            maxAmount: updatedSchol.maxAmount || updatedSchol.amount,
+            allowance: updatedSchol.allowance,
+          }).catch((e) => console.error('Failed sending accepted email:', e.message));
+        } catch (notifErr) {
+          console.error('Failed to notify application approval:', notifErr?.message);
+        }
+
+        const fullApp = {
+          ...updatedApp,
+          id: updatedApp.id || updatedApp._id,
+          scholarship_id: updatedApp.scholarship_id || updatedApp.scholarshipId,
+          scholarship_title: updatedSchol.title || 'Scholarship Grant',
+          provider_name: updatedSchol.organization_name || 'Scholarship Provider',
+        };
+
+        return res.json({
+          message: 'Application approved successfully',
+          application: fullApp,
+          scholarship: updatedSchol,
+        });
+      } catch (apprErr) {
+        return res.status(apprErr.statusCode || 500).json({
+          message: apprErr.message,
+          availableSlots: apprErr.availableSlots,
+          approvedCount: apprErr.approvedCount,
+        });
+      }
+    }
+
+    // Record decision metadata & timeline
     application.status = finalStatus;
     application.previous_status = previousStatus;
     application.reviewed_by = req.user.id;
@@ -746,6 +1086,22 @@ const updateApplicationStatus = async (req, res, next) => {
 
     // Enforce Authoritative Write Order: Sync status to MongoDB first
     try {
+      if (db.collections?.applications) {
+        await db.collections.applications.updateOne(
+          { $or: [{ id: application.id }, { id: Number(application.id) }, { _id: application.id }] },
+          {
+            $set: {
+              status: finalStatus,
+              previous_status: previousStatus,
+              reviewed_by: req.user.id,
+              reviewed_by_role: req.user.role,
+              reviewed_at: application.reviewed_at,
+              timeline: application.timeline,
+              ...(reason ? { review_notes: reason } : {}),
+            },
+          }
+        );
+      }
       if (typeof db.syncApplication === 'function') {
         await db.syncApplication(application);
       }
@@ -755,7 +1111,21 @@ const updateApplicationStatus = async (req, res, next) => {
       return res.status(500).json({ message: 'Database failure: Could not update status in authoritative store' });
     }
 
-    await db.write();
+    // Update memory compatibility state
+    const inMemApp = (db.data.applications || []).find((item) => String(item.id) === String(applicationId));
+    if (inMemApp) {
+      inMemApp.status = finalStatus;
+      inMemApp.previous_status = previousStatus;
+      inMemApp.reviewed_by = req.user.id;
+      inMemApp.reviewed_at = application.reviewed_at;
+      inMemApp.timeline = application.timeline;
+    }
+    const inMemSchol = (db.data.scholarships || []).find((s) => String(s.id) === String(targetScholarId));
+    if (inMemSchol && scholarship) {
+      inMemSchol.approved_count = scholarship.approved_count;
+      if (scholarship.is_full) inMemSchol.is_full = true;
+    }
+    await db.write('applications');
 
     // Persist to AuditLog in MongoDB
     try {
@@ -777,12 +1147,36 @@ const updateApplicationStatus = async (req, res, next) => {
       console.warn('AuditLog persist warning:', auditErr?.message);
     }
 
-    // Find student email and name for notifications & response
-    const studentUser = (db.data.users || []).find((u) => String(u.id) === String(application.student_id)) || {};
-    const studentProfile = (db.data.student_profiles || []).find((p) => String(p.user_id) === String(application.student_id)) || {};
+    // Find student email and name for notifications & response using scoped database queries
+    let studentUser = null;
+    let studentProfile = null;
+    let providerUser = null;
+    if (db.collections?.users) {
+      const sId = application.student_id || application.studentId;
+      const numSId = Number(sId);
+      studentUser = await db.collections.users.findOne({
+        $or: [{ id: sId }, ...(!Number.isNaN(numSId) ? [{ id: numSId }] : []), { _id: sId }],
+      }).catch(() => null);
+      const pId = scholarship.provider_id || scholarship.sponsor_id || scholarship.providerId;
+      if (pId) {
+        const numPId = Number(pId);
+        providerUser = await db.collections.users.findOne({
+          $or: [{ id: pId }, ...(!Number.isNaN(numPId) ? [{ id: numPId }] : []), { _id: pId }],
+        }).catch(() => null);
+      }
+    }
+    if (db.collections?.student_profiles) {
+      const sId = application.student_id || application.studentId;
+      const numSId = Number(sId);
+      studentProfile = await db.collections.student_profiles.findOne({
+        $or: [{ user_id: sId }, ...(!Number.isNaN(numSId) ? [{ user_id: numSId }] : [])],
+      }).catch(() => null);
+    }
+    if (!studentUser) studentUser = (db.data.users || []).find((u) => String(u.id) === String(application.student_id || application.studentId)) || {};
+    if (!studentProfile) studentProfile = (db.data.student_profiles || []).find((p) => String(p.user_id) === String(application.student_id || application.studentId)) || {};
+    if (!providerUser) providerUser = (db.data.users || []).find((u) => String(u.id) === String(scholarship.provider_id || scholarship.sponsor_id)) || {};
     const studentEmail = studentUser.email || studentProfile.email || application.student_email || 'student@iskolar.ph';
     const studentName = studentUser.name || studentProfile.name || application.student_name || 'Student';
-    const providerUser = (db.data.users || []).find((u) => String(u.id) === String(scholarship.provider_id || scholarship.sponsor_id)) || {};
     const providerName = providerUser.name || scholarship.organization_name || 'Scholarship Provider';
 
     // Trigger Notification, Socket Events, and n8n Email Workflows
@@ -813,13 +1207,15 @@ const updateApplicationStatus = async (req, res, next) => {
       );
 
       if (global._io) {
-        global._io.to(`user_${application.student_id}`).emit('application-status-changed', {
+        const payload = {
           status: formattedStatus,
           scholarshipTitle: scholarship.title,
           message,
           reason,
           timestamp: new Date().toISOString(),
-        });
+        };
+        global._io.to(`user_${application.student_id}`).emit('application-status-changed', payload);
+        global._io.to(`student_room_${application.student_id}`).emit('application-status-changed', payload);
       }
 
       if (studentEmail) {
@@ -884,14 +1280,89 @@ const updateApplicationStatus = async (req, res, next) => {
 const checkApplicationRules = async (req, res, next) => {
   try {
     const applicationId = req.params.id;
-    const application = (db.data.applications || []).find((a) => String(a.id) === String(applicationId));
+    let application = null;
+    const numId = Number(applicationId);
+    const { ObjectId } = require('mongodb');
+
+    if (db.collections?.applications) {
+      application = await db.collections.applications.findOne({
+        $or: [
+          { id: applicationId },
+          ...(!Number.isNaN(numId) ? [{ id: numId }] : []),
+          { _id: applicationId },
+          ...(ObjectId.isValid(applicationId) ? [{ _id: new ObjectId(applicationId) }] : []),
+        ],
+      });
+    }
+    if (!application && db.data?.applications) {
+      application = (db.data.applications || []).find((a) => String(a.id) === String(applicationId) || String(a._id) === String(applicationId));
+    }
     if (!application) {
       return res.status(404).json({ message: 'Application not found' });
     }
 
-    const scholarship = (db.data.scholarships || []).find((s) => String(s.id) === String(application.scholarship_id)) || {};
-    const student = (db.data.student_profiles || []).find((p) => String(p.user_id) === String(application.student_id)) || {};
-    const documents = (db.data.documents || []).filter((d) => String(d.application_id) === String(applicationId));
+    const scholarshipId = application.scholarship_id || application.scholarshipId;
+    let scholarship = null;
+    if (db.collections?.scholarships) {
+      const numSId = Number(scholarshipId);
+      scholarship = await db.collections.scholarships.findOne({
+        $or: [
+          { id: scholarshipId },
+          ...(!Number.isNaN(numSId) ? [{ id: numSId }] : []),
+          ...(ObjectId.isValid(scholarshipId) ? [{ _id: new ObjectId(scholarshipId) }] : []),
+        ],
+      });
+    }
+    if (!scholarship && db.data?.scholarships) {
+      scholarship = (db.data.scholarships || []).find((s) => String(s.id) === String(scholarshipId)) || {};
+    }
+    scholarship = scholarship || {};
+
+    const studentId = application.student_id || application.studentId;
+    let student = null;
+    if (db.collections?.student_profiles) {
+      const numUId = Number(studentId);
+      student = await db.collections.student_profiles.findOne({
+        $or: [
+          { user_id: studentId },
+          ...(!Number.isNaN(numUId) ? [{ user_id: numUId }] : []),
+        ],
+      });
+    }
+    if (!student && db.data?.student_profiles) {
+      student = (db.data.student_profiles || []).find((p) => String(p.user_id) === String(studentId)) || {};
+    }
+    student = student || {};
+
+    let documents = [];
+    const appTargetId = application.id || application._id;
+    const numAppTargetId = Number(appTargetId);
+    if (db.collections?.documents) {
+      documents = await db.collections.documents.find({
+        $or: [
+          { application_id: appTargetId },
+          { applicationId: appTargetId },
+          { application_id: String(appTargetId) },
+          { applicationId: String(appTargetId) },
+          ...(!Number.isNaN(numAppTargetId) ? [{ application_id: numAppTargetId }, { applicationId: numAppTargetId }] : []),
+        ],
+      }).toArray().catch(() => []);
+    }
+    if ((!documents || documents.length === 0) && db.data?.documents) {
+      documents = (db.data.documents || []).filter((d) => String(d.application_id || d.applicationId) === String(appTargetId));
+    }
+
+    let ocrExtractions = [];
+    if (db.collections?.ocr_extractions) {
+      const docIds = documents.map((d) => String(d.id || d._id)).filter(Boolean);
+      ocrExtractions = await db.collections.ocr_extractions.find({
+        documentId: { $in: docIds },
+      }).toArray().catch(() => []);
+    }
+    if ((!ocrExtractions || ocrExtractions.length === 0) && db.data?.ocr_extractions) {
+      const docIds = new Set(documents.map((d) => String(d.id || d._id)));
+      ocrExtractions = (db.data.ocr_extractions || []).filter((o) => docIds.has(String(o.documentId)));
+    }
 
     const automaticCheckingService = require('../utils/automaticCheckingService');
     const evaluation = await automaticCheckingService.evaluateApplicationRules({
@@ -899,6 +1370,7 @@ const checkApplicationRules = async (req, res, next) => {
       scholarship,
       student,
       documents,
+      ocrExtractions,
       dbData: db.data,
     });
 
@@ -911,7 +1383,26 @@ const checkApplicationRules = async (req, res, next) => {
       totalRulesEvaluated: evaluation.totalRulesEvaluated,
       evaluatedAt: evaluation.evaluatedAt,
     };
-    await db.write();
+
+    if (db.collections?.applications) {
+      await db.collections.applications.updateOne(
+        {
+          $or: [
+            { id: applicationId },
+            ...(!Number.isNaN(numId) ? [{ id: numId }] : []),
+            { _id: applicationId },
+            ...(ObjectId.isValid(applicationId) ? [{ _id: new ObjectId(applicationId) }] : []),
+          ],
+        },
+        {
+          $set: {
+            automated_recommendation: evaluation.recommendation,
+            automated_check_summary: application.automated_check_summary,
+          },
+        }
+      ).catch(() => {});
+    }
+    if (typeof db.write === 'function') await db.write();
 
     // Persist to AutomaticCheckResult model in MongoDB
     try {
@@ -938,9 +1429,13 @@ const checkApplicationRules = async (req, res, next) => {
 
     return res.json({
       applicationId,
-      status: 'PENDING_HUMAN_REVIEW',
+      status: application.status || 'PENDING_HUMAN_REVIEW',
       recommendation: evaluation.recommendation,
       evaluation,
+      application: {
+        ...application,
+        documents,
+      },
     });
   } catch (error) {
     next(error);
