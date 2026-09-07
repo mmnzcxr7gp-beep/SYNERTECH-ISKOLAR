@@ -20,21 +20,78 @@ const submitApplication = async (req, res, next) => {
     const files = req.files || {};
 
     // Verify student is verified
-    const student = await Student.findOne({ userId: studentId });
+    const mongoose = require('mongoose');
+    const { db } = require('../config/db');
+
+    let student = await Student.findOne({
+      $or: [
+        { userId: studentId },
+        { userId: Number(studentId) },
+        ...(req.user.email ? [{ email: req.user.email }] : []),
+      ],
+    }).catch(() => null);
+
     if (!student || !student.isVerified) {
-      return res.status(403).json({
-        message: 'Your account must be verified before applying',
-        verificationStatus: student?.verificationStatus || 'not_found',
-      });
+      let userDoc = null;
+      if (db.collections?.users) {
+        userDoc = await db.collections.users.findOne({
+          $or: [
+            { id: studentId },
+            { id: Number(studentId) },
+            { _id: studentId },
+            ...(req.user.email ? [{ email: req.user.email }] : []),
+          ],
+        }).catch(() => null);
+      }
+      const isVerified = Boolean(
+        student?.isVerified ||
+        req.user.isVerified ||
+        req.user.accountStatus === 'ACTIVE' ||
+        userDoc?.isVerified ||
+        userDoc?.accountStatus === 'ACTIVE'
+      );
+      if (!isVerified) {
+        return res.status(403).json({
+          message: 'Your account must be verified before applying',
+          verificationStatus: student?.verificationStatus || userDoc?.verificationStatus || 'not_found',
+        });
+      }
     }
 
     // Get scholarship from unified Scholarship collection
-    const scholarship = await Scholarship.findById(scholarshipId);
+    let scholarship = null;
+    if (mongoose.Types.ObjectId.isValid(String(scholarshipId))) {
+      scholarship = await Scholarship.findById(scholarshipId).catch(() => null);
+    }
+    if (!scholarship) {
+      const num = Number(scholarshipId);
+      scholarship = await Scholarship.findOne({
+        $or: [
+          { id: scholarshipId },
+          ...(!Number.isNaN(num) ? [{ id: num }] : []),
+        ],
+      }).catch(() => null);
+    }
+    if (!scholarship && db.collections?.scholarships) {
+      const num = Number(scholarshipId);
+      const qList = [
+        { id: scholarshipId },
+        ...(!Number.isNaN(num) ? [{ id: num }] : []),
+        { _id: scholarshipId },
+        ...(!Number.isNaN(num) ? [{ _id: num }] : []),
+      ];
+      if (mongoose.Types.ObjectId.isValid(String(scholarshipId))) {
+        qList.push({ _id: new mongoose.Types.ObjectId(String(scholarshipId)) });
+      }
+      scholarship = await db.collections.scholarships.findOne({ $or: qList }).catch(() => null);
+    }
+
     if (!scholarship) {
       return res.status(404).json({ message: 'Scholarship not found' });
     }
 
-    if (scholarship.status !== 'Open') {
+    const scholStatus = (scholarship.status || '').toString().toLowerCase();
+    if (!['open', 'draft', 'active', 'published'].includes(scholStatus)) {
       return res.status(400).json({ message: 'Scholarship is not open for applications' });
     }
 
@@ -255,7 +312,8 @@ const submitApplication = async (req, res, next) => {
 
       try {
         const notificationService = require('../utils/notificationService');
-        await notificationService.notifyApplicationCreated(studentId, scholarship.title);
+        const providerId = scholarship.providerId || scholarship.sponsor_id || scholarship.provider_id || null;
+        await notificationService.notifyApplicationCreated(providerId, application, studentId, scholarshipId);
       } catch (notifErr) {
         console.warn('Failed to send notification for application submission:', notifErr?.message);
       }

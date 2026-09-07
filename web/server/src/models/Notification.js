@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const notificationSchema = new mongoose.Schema(
   {
     userId: {
-      type: Number,
+      type: mongoose.Schema.Types.Mixed,
       required: true,
       index: true,
     },

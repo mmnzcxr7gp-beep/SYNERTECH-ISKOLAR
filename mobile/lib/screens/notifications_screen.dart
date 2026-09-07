@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/notification_api_service.dart';
 import '../utils/app_colors.dart';
+import 'application_history_screen.dart';
+import 'browse_scholarships_screen.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({
@@ -137,6 +139,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                   ),
                                 ),
                                 child: ListTile(
+                                  onTap: () {
+                                    final notifId = (notif['_id'] ?? notif['id'])?.toString();
+                                    if (notifId != null && !isRead) {
+                                      _markRead(notifId);
+                                    }
+                                    _showNotificationDetails(notif);
+                                  },
                                   leading: CircleAvatar(
                                     backgroundColor: _getColor(type).withValues(alpha: 0.12),
                                     child: Icon(_getIcon(type), color: _getColor(type)),
@@ -170,9 +179,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                   trailing: !isRead
                                       ? IconButton(
                                           icon: const Icon(Icons.mark_chat_read_outlined, size: 20, color: AppColors.primary),
-                                          onPressed: () => _markRead(notif['_id'] as String),
+                                          onPressed: () => _markRead((notif['_id'] ?? notif['id']).toString()),
                                         )
-                                      : null,
+                                      : const Icon(Icons.chevron_right, size: 18, color: Colors.white24),
                                 ),
                               ),
                             );
@@ -180,6 +189,211 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         ),
                       ),
       ),
+    );
+  }
+
+  void _showNotificationDetails(dynamic notif) {
+    if (notif is! Map) return;
+    final type = (notif['type'] as String? ?? 'general').toLowerCase();
+    final title = notif['title'] as String? ?? 'Notification Details';
+    final message = notif['message'] as String? ?? notif['body'] as String? ?? '';
+    final createdAt = notif['createdAt'] != null
+        ? DateTime.tryParse(notif['createdAt'].toString())?.toLocal().toString().substring(0, 16) ?? ''
+        : '';
+    final data = notif['data'] is Map ? notif['data'] as Map : {};
+    final route = notif['route'] as String? ?? data['route'] as String?;
+    final status = notif['status'] as String? ?? data['status'] as String? ?? 'Delivered & Verified';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: AppColors.panelDark,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border(top: BorderSide(color: AppColors.border, width: 1)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Drag handle
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              // Header: Icon + Title + Close Button
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    backgroundColor: _getColor(type).withValues(alpha: 0.15),
+                    radius: 20,
+                    child: Icon(_getIcon(type), color: _getColor(type), size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (createdAt.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            createdAt,
+                            style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white54, size: 20),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Message Content Card
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Text(
+                  message,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              // Status & Metadata Badges
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.check_circle, color: AppColors.success, size: 14),
+                        const SizedBox(width: 6),
+                        Text(
+                          status,
+                          style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Text(
+                      type.toUpperCase().replaceAll('_', ' '),
+                      style: const TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              // Action Buttons
+              Row(
+                children: [
+                  if (type.contains('application') || route == 'applications') ...[
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.description_outlined, size: 16),
+                        label: const Text('View Applications'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ApplicationHistoryScreen(token: widget.token),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                  ] else if (type.contains('scholarship') || route == 'scholarships') ...[
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.school_outlined, size: 16),
+                        label: const Text('Browse Grants'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => BrowseScholarshipsScreen(token: widget.token),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                  ],
+                  OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white70,
+                      side: const BorderSide(color: AppColors.border),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                    ),
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Dismiss'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

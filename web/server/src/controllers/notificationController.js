@@ -17,7 +17,19 @@ const getNotifications = async (req, res, next) => {
     let unreadCount = 0;
 
     if (mongoose.connection.readyState === 1) {
-      const userQuery = { $or: [{ userId }, { userId: String(userId) }, { userId: Number(userId) }] };
+      const numId = Number(userId);
+      const userQueries = [
+        { userId },
+        { userId: String(userId) },
+        ...(!Number.isNaN(numId) ? [{ userId: numId }] : []),
+        { user_id: userId },
+        { user_id: String(userId) },
+        ...(!Number.isNaN(numId) ? [{ user_id: numId }] : []),
+      ];
+      if (req.user?.email) {
+        userQueries.push({ email: req.user.email });
+      }
+      const userQuery = { $or: userQueries };
       [notifications, total, unreadCount] = await Promise.all([
         Notification.find(userQuery).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
         Notification.countDocuments(userQuery),
@@ -27,7 +39,7 @@ const getNotifications = async (req, res, next) => {
       // Fallback: in-memory notifications
       if (!db.data.notifications) db.data.notifications = [];
       const userNotifs = db.data.notifications
-        .filter((n) => String(n.userId) === String(userId) || String(n.user_id) === String(userId))
+        .filter((n) => String(n.userId) === String(userId) || String(n.user_id) === String(userId) || (req.user?.email && n.email === req.user.email))
         .sort((a, b) => new Date(b.createdAt || b.timestamp) - new Date(a.createdAt || a.timestamp));
       total = userNotifs.length;
       unreadCount = userNotifs.filter((n) => !n.read).length;
@@ -71,6 +83,42 @@ const getNotifications = async (req, res, next) => {
             read: true,
             createdAt: new Date(now.getTime() - 120 * 60000).toISOString(),
           }
+        ];
+      } else if (role === 'student' || role === 'applicant') {
+        notifications = [
+          {
+            _id: 'notif_stud_1',
+            id: 'notif_stud_1',
+            title: 'Welcome to ISKOLAR!',
+            message: 'Your student account is active. Browse verified scholarship grants and submit your applications directly online.',
+            type: 'general',
+            route: 'scholarships',
+            status: 'Active Account',
+            read: false,
+            createdAt: new Date(now.getTime() - 10 * 60000).toISOString(),
+          },
+          {
+            _id: 'notif_stud_2',
+            id: 'notif_stud_2',
+            title: 'Gokongwei STEM Leadership Grant Open',
+            message: 'Applications are now open for the Gokongwei STEM Leadership Grant with automated document intake.',
+            type: 'general',
+            route: 'scholarships',
+            status: 'Accepting Applications',
+            read: false,
+            createdAt: new Date(now.getTime() - 45 * 60000).toISOString(),
+          },
+          {
+            _id: 'notif_stud_3',
+            id: 'notif_stud_3',
+            title: 'Profile & Credentials Verified',
+            message: 'Your academic standing and enrollment records have been verified by the administrator.',
+            type: 'verification_approved',
+            route: 'profile',
+            status: 'Verified',
+            read: true,
+            createdAt: new Date(now.getTime() - 120 * 60000).toISOString(),
+          },
         ];
       } else {
         notifications = [

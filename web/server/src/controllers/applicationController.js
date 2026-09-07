@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const mongoose = require('mongoose');
 const { db, createId } = require('../config/db');
 const { validationResult } = require('express-validator');
 const exifParser = require('exif-parser');
@@ -49,62 +50,86 @@ const submitApplication = async (req, res, next) => {
 
     const tryUserIdVariants = (userId) => {
       const num = Number(userId);
-      return Array.from(new Set([userId, num])).filter((v) => v !== null && v !== undefined && !Number.isNaN(v));
+      return Array.from(new Set([userId, String(userId), num])).filter((v) => v !== null && v !== undefined && !Number.isNaN(v));
     };
 
     const userIdVariants = tryUserIdVariants(req.user.id);
 
     let studentDoc = null;
     for (const v of userIdVariants) {
-      // Student schema uses `userId: Number`
-      studentDoc = await Student.findOne({ userId: v }).catch(() => null);
+      // Student schema uses `userId: Number` or String
+      studentDoc = await Student.findOne({ $or: [{ userId: v }, { user_id: v }] }).catch(() => null);
       if (studentDoc) break;
+    }
+    if (!studentDoc && req.user.email) {
+      studentDoc = await Student.findOne({ email: req.user.email }).catch(() => null);
     }
 
     let profile = null;
     if (db.collections?.student_profiles) {
       profile = await db.collections.student_profiles.findOne({
-        $or: [{ user_id: req.user.id }, { user_id: Number(req.user.id) }],
+        $or: [
+          ...userIdVariants.map((v) => ({ user_id: v })),
+          ...userIdVariants.map((v) => ({ userId: v })),
+          ...(req.user.email ? [{ email: req.user.email }] : []),
+        ],
       }).catch(() => null);
     }
     if (!profile && db.data.student_profiles) {
-      profile = db.data.student_profiles.find((p) => p.user_id === req.user.id || Number(p.user_id) === Number(req.user.id)) || null;
+      profile = db.data.student_profiles.find(
+        (p) => userIdVariants.includes(p.user_id) || userIdVariants.includes(p.userId) || (req.user.email && p.email === req.user.email)
+      ) || null;
     }
 
     let dbUser = null;
     if (db.collections?.users) {
+      const userQueries = [
+        { _id: req.user.id },
+        { id: req.user.id },
+        { id: Number(req.user.id) },
+        ...(req.user.email ? [{ email: req.user.email }] : []),
+      ];
+      if (mongoose.Types.ObjectId.isValid(String(req.user.id))) {
+        userQueries.push({ _id: new mongoose.Types.ObjectId(String(req.user.id)) });
+      }
       dbUser = await db.collections.users.findOne({
-        $or: [{ id: req.user.id }, { id: Number(req.user.id) }],
+        $or: userQueries,
       }).catch(() => null);
+    }
+
+    const isSuspendedOrDeleted = ['SUSPENDED', 'ARCHIVED', 'DELETED', 'DELETION_PENDING'].includes(dbUser?.accountStatus || req.user.accountStatus);
+    if (isSuspendedOrDeleted) {
+      return res.status(403).json({
+        message: 'Your account is suspended or deactivated. Please contact support.',
+        verificationStatus: 'suspended',
+      });
     }
 
     const isUserVerified = Boolean(
       req.user.isVerified ||
+      req.user.verificationStatus === 'verified' ||
+      req.user.status === 'verified' ||
       req.user.accountStatus === 'ACTIVE' ||
       dbUser?.isVerified ||
+      dbUser?.verificationStatus === 'verified' ||
+      dbUser?.status === 'verified' ||
       dbUser?.accountStatus === 'ACTIVE' ||
-      db.data.users?.find((u) => u.id === req.user.id || Number(u.id) === Number(req.user.id))?.isVerified ||
-      db.data.users?.find((u) => u.id === req.user.id || Number(u.id) === Number(req.user.id))?.accountStatus === 'ACTIVE'
+      studentDoc?.isVerified ||
+      studentDoc?.verificationStatus === 'verified' ||
+      profile?.isVerified ||
+      profile?.status === 'verified' ||
+      profile?.verificationStatus === 'verified' ||
+      db.data.users?.find((u) => u.id === req.user.id || Number(u.id) === Number(req.user.id) || (req.user.email && u.email === req.user.email))?.isVerified ||
+      db.data.users?.find((u) => u.id === req.user.id || Number(u.id) === Number(req.user.id) || (req.user.email && u.email === req.user.email))?.accountStatus === 'ACTIVE'
     );
 
-    // If a Mongo student document exists and indicates unverified, block.
-    if (studentDoc) {
-      if (!studentDoc.isVerified && !isUserVerified) {
-        return res.status(403).json({
-          message: 'Your account is pending verification by admin.',
-          verificationStatus: studentDoc.verificationStatus,
-        });
-      }
-    } else if (profile) {
-      // If legacy profile exists and is explicitly unverified, block.
-      const isVerified = Boolean(profile.isVerified || isUserVerified);
-      const verificationStatus = profile.verificationStatus;
-      if (!isVerified) {
-        return res.status(403).json({
-          message: 'Your account is pending verification by admin.',
-          verificationStatus: verificationStatus,
-        });
-      }
+    // If explicit rejection or explicitly unverified across all authoritative records, block.
+    if (!isUserVerified) {
+      const statusReason = studentDoc?.verificationStatus || profile?.verificationStatus || dbUser?.verificationStatus || 'pending';
+      return res.status(403).json({
+        message: 'Your account is pending verification by admin.',
+        verificationStatus: statusReason,
+      });
     }
 
     const { scholarship_id, gpa } = req.body;
@@ -116,13 +141,24 @@ const submitApplication = async (req, res, next) => {
     let scholarship = null;
     if (db.collections?.scholarships) {
       const num = Number(scholarship_id);
+      const queryList = [
+        { id: scholarship_id },
+        ...(!Number.isNaN(num) ? [{ id: num }] : []),
+        { _id: scholarship_id },
+        ...(!Number.isNaN(num) ? [{ _id: num }] : []),
+      ];
+      if (mongoose.Types.ObjectId.isValid(String(scholarship_id))) {
+        queryList.push({ _id: new mongoose.Types.ObjectId(String(scholarship_id)) });
+      }
+      const legacyMatch = String(scholarship_id).match(/^legacy-(\d+)$/);
+      if (legacyMatch) {
+        const extractedNum = Number(legacyMatch[1]);
+        if (!Number.isNaN(extractedNum)) {
+          queryList.push({ id: extractedNum }, { id: String(extractedNum) }, { _id: extractedNum }, { _id: String(extractedNum) });
+        }
+      }
       scholarship = await db.collections.scholarships.findOne({
-        $or: [
-          { id: scholarship_id },
-          ...(!Number.isNaN(num) ? [{ id: num }] : []),
-          { _id: scholarship_id },
-          ...(!Number.isNaN(num) ? [{ _id: num }] : []),
-        ],
+        $or: queryList,
       }).catch(() => null);
     }
 
@@ -147,23 +183,28 @@ const submitApplication = async (req, res, next) => {
       });
     }
 
-    // If not found, attempt to locate in Mongo-backed Scholarship collection and
-    // synthesize a legacy-like object so the upload/apply workflow continues to work.
+    // If not found, attempt to locate in Mongo-backed Scholarship collection via Mongoose model
     if (!scholarship) {
       try {
         const { Scholarship } = require('../models');
-        
-        // Try the scholarship_id as-is first (for ObjectIds or legacy numeric IDs)
-        let mongoScholar = await Scholarship.findById(String(scholarship_id)).lean().catch(() => null);
-        
-        // If not found and scholarship_id is "legacy-<numeric>", try to find by the numeric ID
-        // (in case there's a legacy entry duplicated in Mongo)
+        let mongoScholar = null;
+        if (mongoose.Types.ObjectId.isValid(String(scholarship_id))) {
+          mongoScholar = await Scholarship.findById(String(scholarship_id)).lean().catch(() => null);
+        }
         if (!mongoScholar) {
+          const num = Number(scholarship_id);
+          const mQueries = [
+            { id: scholarship_id },
+            ...(!Number.isNaN(num) ? [{ id: num }] : []),
+          ];
           const legacyMatch = String(scholarship_id).match(/^legacy-(\d+)$/);
           if (legacyMatch) {
             const extractedNum = Number(legacyMatch[1]);
-            mongoScholar = await Scholarship.findById(extractedNum).lean().catch(() => null);
+            if (!Number.isNaN(extractedNum)) {
+              mQueries.push({ id: extractedNum }, { id: String(extractedNum) });
+            }
           }
+          mongoScholar = await Scholarship.findOne({ $or: mQueries }).lean().catch(() => null);
         }
         
         if (mongoScholar) {
@@ -281,6 +322,8 @@ const submitApplication = async (req, res, next) => {
       id: createId('applications'),
       scholarship_id: targetScholarId,
       scholarshipId: targetScholarId,
+      scholarship_title: scholarship.title || scholarship.name || 'Scholarship Grant',
+      scholarshipTitle: scholarship.title || scholarship.name || 'Scholarship Grant',
       student_id: req.user.id,
       studentId: req.user.id,
       status: 'pending',
@@ -564,7 +607,7 @@ const submitApplication = async (req, res, next) => {
     db.data.applications.push(application);
     await db.write();
 
-    // Notify provider (sponsor) in real-time if socket is available
+    // Notify student (own notification) and provider (sponsor) in real-time with rich details
     try {
       const notificationService = require('../utils/notificationService');
       
@@ -574,11 +617,16 @@ const submitApplication = async (req, res, next) => {
         lookupId = legacyMatch ? Number(legacyMatch[1]) : scholarship_id;
       }
       
-      const scholarshipOwner = db.data.scholarships.find((s) => s.id === lookupId);
-      const providerId = scholarshipOwner?.sponsor_id ?? scholarshipOwner?.provider_id ?? null;
-      if (providerId) {
-        notificationService.notifyApplicationCreated(providerId, application, req.user.id, scholarship_id);
-      }
+      const scholarshipOwner = db.data.scholarships?.find((s) => s.id === lookupId) || null;
+      const providerId = scholarship?.sponsor_id ?? scholarship?.provider_id ?? scholarship?.providerId ?? scholarshipOwner?.sponsor_id ?? scholarshipOwner?.provider_id ?? null;
+      
+      // Always notify both the student who applied and the scholarship provider
+      await notificationService.notifyApplicationCreated(
+        providerId,
+        application,
+        req.user.id,
+        targetScholarId
+      );
     } catch (notifErr) {
       console.warn('Failed to send application notification:', notifErr.message || notifErr);
     }
@@ -704,8 +752,13 @@ const getApplications = async (req, res, next) => {
     const docsByAppId = new Map();
 
     if (db.collections?.scholarships && scholarIds.length > 0) {
+      const objIds = scholarIds.filter((id) => mongoose.Types.ObjectId.isValid(String(id))).map((id) => new mongoose.Types.ObjectId(String(id)));
       const sDocs = await db.collections.scholarships.find({
-        $or: [{ id: { $in: scholarIds } }, { _id: { $in: scholarIds } }],
+        $or: [
+          { id: { $in: scholarIds } },
+          { _id: { $in: scholarIds } },
+          ...(objIds.length > 0 ? [{ _id: { $in: objIds } }] : []),
+        ],
       }).toArray().catch(() => []);
       for (const s of sDocs) {
         if (s.id != null) scholMap.set(String(s.id), s);
@@ -827,7 +880,12 @@ const getApplications = async (req, res, next) => {
           ? { $or: [{ studentId: req.user.id }, { userId: req.user.id }, { studentId: userIdStr }] }
           : {};
         
-        const mongoDocs = await ScholarshipApplication.find(mongoQuery).populate('scholarshipId').lean();
+        let mongoDocs = [];
+        try {
+          mongoDocs = await ScholarshipApplication.find(mongoQuery).populate('scholarshipId').lean();
+        } catch (_) {
+          mongoDocs = await ScholarshipApplication.find(mongoQuery).lean().catch(() => []);
+        }
         const existingIds = new Set(applications.map((a) => String(a.id)));
 
         mongoDocs.forEach((doc) => {

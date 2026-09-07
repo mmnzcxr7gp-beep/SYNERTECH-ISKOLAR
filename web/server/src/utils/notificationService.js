@@ -170,39 +170,71 @@ const notifyAllowanceApproved = async (userId, transactionId, amount) => {
  * @param {number|string} scholarshipId - The scholarship ID
  */
 const notifyApplicationCreated = async (providerId, application, studentId, scholarshipId) => {
-  // Look up scholarship title from the application or db
+  // Look up scholarship title from db.data or authoritative MongoDB collection
   const { db } = require('../config/db');
-  const scholarship = (db.data.scholarships || []).find((s) => String(s.id) === String(scholarshipId)) || {};
-  const scholarshipTitle = scholarship.title || 'Scholarship';
+  let scholarship = (db.data.scholarships || []).find((s) => String(s.id) === String(scholarshipId) || String(s._id) === String(scholarshipId)) || {};
+  if (!scholarship.title && db.collections?.scholarships) {
+    try {
+      const mongoose = require('mongoose');
+      const queries = [
+        { id: scholarshipId },
+        { _id: scholarshipId },
+        ...(!Number.isNaN(Number(scholarshipId)) ? [{ id: Number(scholarshipId) }, { _id: Number(scholarshipId) }] : []),
+      ];
+      if (mongoose.Types.ObjectId.isValid(String(scholarshipId))) {
+        queries.push({ _id: new mongoose.Types.ObjectId(String(scholarshipId)) });
+      }
+      const fromMongo = await db.collections.scholarships.findOne({ $or: queries });
+      if (fromMongo) scholarship = fromMongo;
+    } catch (_) {}
+  }
+  const scholarshipTitle = application?.scholarship_title || application?.scholarshipTitle || scholarship.title || scholarship.name || 'Scholarship Grant';
+  const appId = application?.id || application?._id;
 
-  // Notify the student that their application was submitted
-  const studentBody = `Your application for "${scholarshipTitle}" has been submitted successfully.`;
+  // Notify the student that their own application was submitted
+  const studentBody = `Your grant application for "${scholarshipTitle}" has been submitted successfully and is under active review.`;
   emitToUser(studentId, 'application-status-changed', {
     status: 'SUBMITTED',
     scholarshipTitle,
+    applicationId: appId,
+    scholarshipId,
     message: studentBody,
     timestamp: new Date().toISOString(),
   });
 
   try {
-    await createNotification(studentId, 'Application Submitted', studentBody, 'application_submitted', { scholarshipTitle, scholarshipId });
+    await createNotification(studentId, 'Application Submitted', studentBody, 'application_submitted', {
+      scholarshipTitle,
+      scholarshipId,
+      applicationId: appId,
+      status: 'pending',
+      route: 'applications',
+    });
   } catch (err) {
     console.error('[NotificationService] Failed to persist student application notification:', err?.message);
   }
 
   // Notify the provider that a new application was received
   if (providerId) {
-    const providerBody = `New application received for "${scholarshipTitle}".`;
+    const providerBody = `New student application received for "${scholarshipTitle}".`;
     emitToUser(providerId, 'new-application', {
-      applicationId: application?.id,
+      applicationId: appId,
       studentId,
       scholarshipTitle,
+      scholarshipId,
       message: providerBody,
       timestamp: new Date().toISOString(),
     });
 
     try {
-      await createNotification(providerId, 'New Application', providerBody, 'application_submitted', { scholarshipTitle, scholarshipId, studentId });
+      await createNotification(providerId, 'New Applicant Received', providerBody, 'application_submitted', {
+        scholarshipTitle,
+        scholarshipId,
+        studentId,
+        applicationId: appId,
+        status: 'pending',
+        route: 'providers/applicants',
+      });
     } catch (err) {
       console.error('[NotificationService] Failed to persist provider application notification:', err?.message);
     }
@@ -210,9 +242,10 @@ const notifyApplicationCreated = async (providerId, application, studentId, scho
 
   // Also notify admin room
   emitToAdminRoom('new-application', {
+    applicationId: appId,
     studentId,
     scholarshipTitle,
-    message: `New application received for "${scholarshipTitle}".`,
+    message: `New student application received for "${scholarshipTitle}".`,
     timestamp: new Date().toISOString(),
   });
 };
