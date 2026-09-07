@@ -2,12 +2,16 @@ const API_URL = import.meta.env.VITE_API_URL;
 
 const isBrowser = typeof window !== 'undefined';
 const isLocalhost = isBrowser && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-const isVercel = isBrowser && window.location.hostname.endsWith('.vercel.app');
+const isVercelOrCustom = isBrowser && (
+  window.location.hostname.endsWith('.vercel.app') ||
+  window.location.hostname.endsWith('iskolar.org') ||
+  window.location.hostname.endsWith('.pages.dev')
+);
 
-// On Vercel deployments, relative '' uses Vercel's server-side proxy rewrites (zero CORS, fastest response)
+// On Vercel and custom domain deployments, relative '' uses server-side proxy rewrites (zero CORS, fastest response)
 const FALLBACK_API_URL = isLocalhost
   ? 'http://localhost:4000'
-  : (isVercel ? '' : 'https://iskolar-api.onrender.com');
+  : (isVercelOrCustom ? '' : 'https://iskolar-api.onrender.com');
 
 export const API_BASE_URL = (API_URL && API_URL.toString().trim().length > 0 && !API_URL.includes('jeyem26-iskolar-capstone'))
   ? API_URL

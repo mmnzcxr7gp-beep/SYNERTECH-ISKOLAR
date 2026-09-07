@@ -51,6 +51,9 @@ const defaultDevOrigins = [
 ];
 
 const defaultProdOrigins = [
+  'https://iskolar.org',
+  'https://www.iskolar.org',
+  'https://api.iskolar.org',
   'https://iskolar.vercel.app',
   'https://iskolar.ph',
   'https://iskolar.pages.dev',
@@ -91,7 +94,11 @@ const buildApp = () => {
     cors({
       origin: (origin, cb) => {
         if (!origin || origins.includes(origin)) return cb(null, true);
-        if (typeof origin === 'string' && (/^https:\/\/[a-zA-Z0-9_-]+\.vercel\.app$/.test(origin) || /^https:\/\/[a-zA-Z0-9_-]+\.pages\.dev$/.test(origin))) {
+        if (typeof origin === 'string' && (
+          /^https:\/\/[a-zA-Z0-9_-]+\.vercel\.app$/.test(origin) ||
+          /^https:\/\/[a-zA-Z0-9_-]+\.pages\.dev$/.test(origin) ||
+          /^https:\/\/(?:[a-zA-Z0-9_-]+\.)?iskolar\.org$/.test(origin)
+        )) {
           return cb(null, true);
         }
         // Allow any origin in development
