@@ -54,6 +54,7 @@ const defaultProdOrigins = [
   'https://iskolar.vercel.app',
   'https://iskolar.ph',
   'https://iskolar.pages.dev',
+  'https://client-gamma-hazel-97.vercel.app',
 ];
 
 // Directive 6: Production must only use explicit approved web domains; omit local dev origins
@@ -90,6 +91,9 @@ const buildApp = () => {
     cors({
       origin: (origin, cb) => {
         if (!origin || origins.includes(origin)) return cb(null, true);
+        if (typeof origin === 'string' && (/^https:\/\/[a-zA-Z0-9_-]+\.vercel\.app$/.test(origin) || /^https:\/\/[a-zA-Z0-9_-]+\.pages\.dev$/.test(origin))) {
+          return cb(null, true);
+        }
         // Allow any origin in development
         if (process.env.NODE_ENV !== 'production') return cb(null, true);
         cb(new Error('Not allowed by CORS'));

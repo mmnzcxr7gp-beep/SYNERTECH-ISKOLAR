@@ -252,6 +252,43 @@ export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLo
 
   const baseUrl = API_BASE_URL
 
+  // Resilient multi-target request dispatcher: tries configured baseUrl, same-origin relative proxy, and direct Render backend
+  const resilientFetch = async (endpoint, options = {}) => {
+    let lastError = null
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
+
+    // 1. Try configured baseUrl
+    try {
+      const url = baseUrl ? `${baseUrl}${cleanEndpoint}` : cleanEndpoint
+      const res = await fetch(url, options)
+      if (res) return res
+    } catch (err) {
+      lastError = err
+    }
+
+    // 2. If baseUrl is not empty, try same-origin relative path (handled by Vercel proxy rewrites)
+    if (baseUrl !== '') {
+      try {
+        const res = await fetch(cleanEndpoint, options)
+        if (res) return res
+      } catch (err) {
+        lastError = err
+      }
+    }
+
+    // 3. Fallback to direct Render production endpoint
+    if (baseUrl !== 'https://iskolar-api.onrender.com') {
+      try {
+        const res = await fetch(`https://iskolar-api.onrender.com${cleanEndpoint}`, options)
+        if (res) return res
+      } catch (err) {
+        lastError = err
+      }
+    }
+
+    throw lastError || new Error('Network error: unable to reach backend server')
+  }
+
   const getPasswordStrength = (pwd) => {
     if (!pwd) return { score: 0, label: 'None', color: 'bg-slate-700' }
     let score = 0
@@ -282,7 +319,7 @@ export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLo
     }
 
     try {
-      const res = await fetch(`${baseUrl}/api/auth/login`, {
+      const res = await resilientFetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -367,7 +404,7 @@ export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLo
     const effectiveOrgType = orgType === 'Other' ? (orgTypeOther || 'Other') : orgType
 
     try {
-      const res = await fetch(`${baseUrl}/api/auth/register`, {
+      const res = await resilientFetch('/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -428,7 +465,7 @@ export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLo
     }
 
     try {
-      const res = await fetch(`${baseUrl}/api/auth/verify-email-otp`, {
+      const res = await resilientFetch('/api/auth/verify-email-otp', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -472,7 +509,7 @@ export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLo
     }
 
     try {
-      const res = await fetch(`${baseUrl}/api/auth/verify-login-otp`, {
+      const res = await resilientFetch('/api/auth/verify-login-otp', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -503,7 +540,7 @@ export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLo
     setMsg('')
     setLoading(true)
     try {
-      const res = await fetch(`${baseUrl}/api/auth/resend-otp`, {
+      const res = await resilientFetch('/api/auth/resend-otp', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
