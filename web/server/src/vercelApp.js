@@ -217,17 +217,44 @@ const buildApp = () => {
   const adminDir = path.join(__dirname, '..', 'admin');
   app.use('/admin', express.static(adminDir));
 
-  // Health check (lightweight liveness)
+  const downloadsDir = path.join(__dirname, '..', '..', 'client', 'public', 'downloads');
+  app.use('/downloads', express.static(downloadsDir));
+
+  // Health check (Public safe status without exposing secrets - Section 8)
   const healthHandler = (_req, res) => {
+    const mongoConnected = Boolean(
+      (mongoose.connection && mongoose.connection.readyState === 1) ||
+      (db && (db.client || db.collection))
+    );
+    let r2Configured = false;
+    try {
+      const storageService = require('./utils/storageService');
+      r2Configured = Boolean(storageService?.r2Driver?.isConfigured);
+    } catch (_) {}
+    const smtpConfigured = Boolean(process.env.EMAIL_USER && process.env.EMAIL_PASSWORD);
+    const firebaseConfigured = Boolean(process.env.FIREBASE_SERVICE_ACCOUNT_JSON || process.env.FIREBASE_SERVICE_ACCOUNT_PATH);
+
     res.json({
       status: 'ok',
-      message: 'Iskolar API is running',
-      instanceId: process.env.INSTANCE_ID || 'default',
-      timestamp: new Date().toISOString(),
+      database: mongoConnected ? 'connected' : 'disconnected',
+      r2: r2Configured ? 'configured' : 'unconfigured',
+      smtp: smtpConfigured ? 'configured' : 'unconfigured',
+      firebase: firebaseConfigured ? 'configured' : 'unconfigured',
+      serverTime: new Date().toISOString(),
+      version: process.env.npm_package_version || '2.0.0',
+      // RENDER_GIT_COMMIT is injected automatically by Render at deploy time
+      commit: (process.env.RENDER_GIT_COMMIT || 'c1c2253e').slice(0, 8),
     });
   };
   // Root & Health handlers
   app.get('/', (req, res) => {
+    // Resolve the public web client URL from env (never use localhost in production)
+    const webClientUrl = (() => {
+      const origins = (process.env.CORS_ORIGINS || process.env.CLIENT_URL || '').split(',').map(s => s.trim()).filter(Boolean);
+      const prod = origins.find(o => o.startsWith('https://'));
+      return prod || 'https://client-gamma-hazel-97.vercel.app';
+    })();
+
     // If request accepts HTML, render a clean status page with link to frontend
     if (req.accepts('html')) {
       return res.send(`
@@ -240,13 +267,13 @@ const buildApp = () => {
           <style>
             body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0B0F17; color: #F1F5F9; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
             .card { background: #131B2A; border: 1px solid #1E293B; border-radius: 16px; padding: 32px; max-width: 520px; width: 100%; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center; }
-            h1 { font-size: 24px; margin: 0 0 8px; color: #FF6D29; }
+            h1 { font-size: 24px; margin: 0 0 8px; color: #305BFE; }
             p { color: #94A3B8; font-size: 14px; line-height: 1.5; margin: 0 0 24px; }
             .badge { display: inline-block; background: #064E3B; color: #34D399; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 999px; margin-bottom: 20px; border: 1px solid #059669; }
             .btn-group { display: flex; gap: 12px; flex-direction: column; }
             .btn { display: block; text-decoration: none; font-weight: 600; font-size: 14px; padding: 12px 20px; border-radius: 10px; transition: all 0.2s ease; }
-            .btn-primary { background: #FF6D29; color: #FFFFFF; }
-            .btn-primary:hover { background: #E85B19; }
+            .btn-primary { background: #305BFE; color: #FFFFFF; }
+            .btn-primary:hover { background: #1E40AF; }
             .btn-secondary { background: #1E293B; color: #E2E8F0; border: 1px solid #334155; }
             .btn-secondary:hover { background: #334155; }
           </style>
@@ -255,10 +282,9 @@ const buildApp = () => {
           <div class="card">
             <span class="badge">● Backend API Online</span>
             <h1>ISKOLAR 2.0 API Server</h1>
-            <p>The backend REST API and Socket.IO engine is running on port 4000. Open the web portal below:</p>
+            <p>The ISKOLAR 2.0 REST API and Socket.IO engine is running. Open the web portal below:</p>
             <div class="btn-group">
-              <a href="http://localhost:5173" class="btn btn-primary">Open Local Web Client (Port 5173) →</a>
-              <a href="https://client-gamma-hazel-97.vercel.app" class="btn btn-secondary" target="_blank">Open Live Vercel Deployment →</a>
+              <a href="${webClientUrl}" class="btn btn-primary" target="_blank">Open ISKOLAR Web Portal →</a>
               <a href="/api/health/readiness" class="btn btn-secondary">Check API Readiness Status</a>
             </div>
           </div>
@@ -270,8 +296,7 @@ const buildApp = () => {
       service: 'ISKOLAR 2.0 API',
       status: 'healthy',
       readiness: '/api/health/readiness',
-      frontendUrl: 'http://localhost:5173',
-      vercelDeployment: 'https://client-gamma-hazel-97.vercel.app',
+      webClient: webClientUrl,
       timestamp: new Date().toISOString()
     });
   });
