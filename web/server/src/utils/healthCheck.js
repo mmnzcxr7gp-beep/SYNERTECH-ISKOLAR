@@ -223,7 +223,9 @@ const readinessHandler = async (_req, res) => {
       const info = storageService.info();
       checks.storage = {
         status: 'ready',
-        type: info.type || 'local',
+        type: info.activeDriver || info.type || 'local',
+        activeDriver: info.activeDriver || 'local',
+        isR2Configured: !!info.isR2Configured,
       };
     } catch (_) {
       storageOk = false;
