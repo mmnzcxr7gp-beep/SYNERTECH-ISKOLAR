@@ -51,13 +51,25 @@ export default function Download() {
               Students apply and track scholarship grants exclusively through the official ISKOLAR mobile application. Search programs, scan verification documents, and get real-time status updates on Android and iOS.
             </p>
 
-            <div className="pt-2 flex flex-wrap gap-4">
-              <a href="/downloads/iskolar-student.apk" download="iskolar-student.apk" className="inline-block">
-                <ShinyButton size="lg" icon={<AndroidIcon className="w-4 h-4 text-white" />}>
-                  Download Android APK
-                </ShinyButton>
-              </a>
-              <ShinyButton variant="secondary" size="lg" icon={<AppleIcon className="w-4 h-4" />} onClick={() => alert('ISKOLAR iOS TestFlight client registration will open soon for university beta testers.')}>
+            <div className="pt-2 flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto">
+              <ShinyButton
+                id="download-apk-btn"
+                as="a"
+                href="/downloads/iskolar-student.apk"
+                download="iskolar-student.apk"
+                size="lg"
+                icon={<AndroidIcon className="w-5 h-5 text-white" />}
+                className="w-full sm:w-auto text-center justify-center"
+              >
+                Download Android APK
+              </ShinyButton>
+              <ShinyButton
+                variant="secondary"
+                size="lg"
+                icon={<AppleIcon className="w-5 h-5" />}
+                onClick={() => alert('ISKOLAR iOS TestFlight client registration will open soon for university beta testers.')}
+                className="w-full sm:w-auto text-center justify-center"
+              >
                 iOS TestFlight Beta
               </ShinyButton>
             </div>

@@ -22,8 +22,10 @@ firebase-admin*.json
 dist/
 build/
 *.apk
+!web/client/public/downloads/iskolar-student.apk
 *.aab
-web/client/public/downloads/
+web/client/public/downloads/*
+!web/client/public/downloads/iskolar-student.apk
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
