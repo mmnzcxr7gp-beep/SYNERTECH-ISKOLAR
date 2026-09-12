@@ -73,7 +73,7 @@ export default function Hero({ onLogin }) {
             </div>
 
             {/* Visible & Accessible Heading for Users, Screen Readers & SEO */}
-            <h1 id="home-hero-title" className="home-hero__semantic-title text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-[var(--color-text-heading)] leading-[1.12]">
+            <h1 id="home-hero-title" className="home-hero__semantic-title text-3xl xs:text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-[var(--color-text-heading)] leading-[1.12] break-words">
               Scholarship Applications{' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#4F96FF] via-[#305BFE] to-[#305DE0]">
                 Made Clearer
@@ -111,20 +111,20 @@ export default function Hero({ onLogin }) {
             </div>
 
             {/* Supporting Paragraph */}
-            <p className="body-text text-base md:text-lg leading-relaxed max-w-xl">
+            <p className="body-text text-sm sm:text-base md:text-lg leading-relaxed max-w-xl">
               Discover opportunities, submit requirements, track application progress, and communicate securely with scholarship providers.
             </p>
 
             {/* Action Buttons */}
-            <div className="flex flex-wrap items-center gap-3.5 pt-2">
-              <a href="#scholarships" className="btn-action">
+            <div className="flex flex-col xs:flex-row items-stretch xs:items-center gap-3 pt-2 w-full xs:w-auto">
+              <a href="#scholarships" className="btn-action w-full xs:w-auto text-center justify-center">
                 <span>Browse Scholarships</span>
                 <span aria-hidden="true">→</span>
               </a>
               <button
                 type="button"
                 onClick={onLogin}
-                className="btn-secondary"
+                className="btn-secondary w-full xs:w-auto text-center justify-center"
               >
                 Sign In
               </button>
@@ -132,56 +132,56 @@ export default function Hero({ onLogin }) {
 
             {/* Small Trust Statement */}
             <div className="pt-4 border-t flex items-center gap-2 text-xs font-medium" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-muted)' }}>
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0"></span>
               <span>Assisting Filipino students with verified scholarship grants, OCR-assisted document checks, and transparent evaluation.</span>
             </div>
           </div>
 
           {/* Right Column: Real Interface Preview */}
-          <div className="relative">
+          <div className="relative w-full min-w-0 overflow-hidden">
             <div
-              className="card-modern p-5 sm:p-7 space-y-4"
+              className="card-modern p-4 sm:p-7 space-y-3.5 sm:space-y-4 w-full min-w-0"
               style={{
                 backgroundColor: 'var(--color-bg-elevated)',
                 borderColor: 'var(--color-border)',
               }}
             >
               {/* Card Window Header */}
-              <div className="flex items-center justify-between pb-4 border-b gap-2 overflow-hidden" style={{ borderColor: 'var(--color-border)' }}>
+              <div className="flex items-center justify-between pb-3.5 sm:pb-4 border-b gap-2 overflow-hidden" style={{ borderColor: 'var(--color-border)' }}>
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="h-2.5 w-2.5 rounded-full bg-rose-400 shrink-0"></div>
                   <div className="h-2.5 w-2.5 rounded-full bg-amber-400 shrink-0"></div>
                   <div className="h-2.5 w-2.5 rounded-full bg-emerald-400 shrink-0"></div>
-                  <span className="font-mono text-xs ml-1 font-semibold truncate" style={{ color: 'var(--color-text-muted)' }}>
+                  <span className="font-mono text-[11px] sm:text-xs ml-1 font-semibold truncate" style={{ color: 'var(--color-text-muted)' }}>
                     evaluation-workspace / APP-2026-09
                   </span>
                 </div>
-                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 shrink-0">
+                <span className="text-[10px] sm:text-[11px] font-bold px-2 sm:px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 shrink-0">
                   Active Review
                 </span>
               </div>
 
               {/* Evaluation Step 1: OCR Extraction Review */}
               <div
-                className="p-4 rounded-xl border space-y-1.5"
+                className="p-3 sm:p-4 rounded-xl border space-y-1.5 min-w-0"
                 style={{
                   backgroundColor: 'var(--color-bg-panel)',
                   borderColor: 'var(--color-border)',
                 }}
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold flex items-center gap-1.5 text-emerald-700 dark:text-emerald-300">
-                    <CheckIcon className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />
-                    <span>OCR Document Extraction</span>
+                <div className="flex flex-wrap items-center justify-between gap-1.5">
+                  <span className="text-xs font-bold flex items-center gap-1.5 text-emerald-700 dark:text-emerald-300 min-w-0">
+                    <CheckIcon className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300 shrink-0" />
+                    <span className="truncate">OCR Document Extraction</span>
                   </span>
-                  <span className="font-mono text-[11px] font-semibold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-800 dark:text-emerald-200">
+                  <span className="font-mono text-[10px] sm:text-[11px] font-semibold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 shrink-0">
                     Confidence: 98.4%
                   </span>
                 </div>
-                <div className="text-sm font-semibold" style={{ color: 'var(--color-text-heading)' }}>
+                <div className="text-xs sm:text-sm font-semibold truncate" style={{ color: 'var(--color-text-heading)' }}>
                   Certificate of Grades & Enrollment Record
                 </div>
-                <div className="text-xs flex items-center justify-between font-mono pt-1" style={{ color: 'var(--color-text-muted)' }}>
+                <div className="text-[11px] sm:text-xs flex flex-wrap items-center justify-between gap-1 font-mono pt-1" style={{ color: 'var(--color-text-muted)' }}>
                   <span>Extracted GWA: 1.25</span>
                   <span className="text-emerald-700 dark:text-emerald-300 font-sans font-medium">Student Confirmed</span>
                 </div>
@@ -189,25 +189,25 @@ export default function Hero({ onLogin }) {
 
               {/* Evaluation Step 2: Merit Criteria Assessment */}
               <div
-                className="p-4 rounded-xl border space-y-1.5"
+                className="p-3 sm:p-4 rounded-xl border space-y-1.5 min-w-0"
                 style={{
                   backgroundColor: 'var(--color-bg-panel)',
                   borderColor: 'var(--color-border)',
                 }}
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold flex items-center gap-1.5 text-[#93ABFF]">
-                    <BoltIcon className="w-3.5 h-3.5 text-[#93ABFF]" />
-                    <span>Eligibility & Criteria Check</span>
+                <div className="flex flex-wrap items-center justify-between gap-1.5">
+                  <span className="text-xs font-bold flex items-center gap-1.5 text-[#93ABFF] min-w-0">
+                    <BoltIcon className="w-3.5 h-3.5 text-[#93ABFF] shrink-0" />
+                    <span className="truncate">Eligibility & Criteria Check</span>
                   </span>
-                  <span className="font-mono text-[11px] font-semibold px-2 py-0.5 rounded bg-blue-500/10 text-[#93ABFF]">
+                  <span className="font-mono text-[10px] sm:text-[11px] font-semibold px-2 py-0.5 rounded bg-blue-500/10 text-[#93ABFF] shrink-0">
                     Score: 94.5 / 100
                   </span>
                 </div>
-                <div className="text-sm font-semibold" style={{ color: 'var(--color-text-heading)' }}>
+                <div className="text-xs sm:text-sm font-semibold truncate" style={{ color: 'var(--color-text-heading)' }}>
                   Engineering & STEM Grant Guidelines
                 </div>
-                <div className="text-xs flex items-center justify-between pt-1" style={{ color: 'var(--color-text-muted)' }}>
+                <div className="text-[11px] sm:text-xs flex flex-wrap items-center justify-between gap-1 pt-1" style={{ color: 'var(--color-text-muted)' }}>
                   <span>Income & Academic Thresholds Met</span>
                   <span className="font-semibold text-[#93ABFF]">Shortlisted for Panel</span>
                 </div>
@@ -215,25 +215,25 @@ export default function Hero({ onLogin }) {
 
               {/* Evaluation Step 3: Notification Dispatch */}
               <div
-                className="p-4 rounded-xl border space-y-1.5"
+                className="p-3 sm:p-4 rounded-xl border space-y-1.5 min-w-0"
                 style={{
                   backgroundColor: 'var(--color-bg-panel)',
                   borderColor: 'var(--color-border)',
                 }}
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold flex items-center gap-1.5 text-sky-400">
-                    <PhoneIcon className="w-3.5 h-3.5 text-sky-400" />
-                    <span>Candidate Notification</span>
+                <div className="flex flex-wrap items-center justify-between gap-1.5">
+                  <span className="text-xs font-bold flex items-center gap-1.5 text-sky-400 min-w-0">
+                    <PhoneIcon className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                    <span className="truncate">Candidate Notification</span>
                   </span>
-                  <span className="font-mono text-[11px] font-semibold px-2 py-0.5 rounded bg-sky-500/10 text-sky-400">
+                  <span className="font-mono text-[10px] sm:text-[11px] font-semibold px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 shrink-0">
                     Dispatched
                   </span>
                 </div>
-                <div className="text-sm font-semibold" style={{ color: 'var(--color-text-heading)' }}>
+                <div className="text-xs sm:text-sm font-semibold truncate" style={{ color: 'var(--color-text-heading)' }}>
                   Interview Schedule Coordination
                 </div>
-                <div className="text-xs flex items-center justify-between pt-1" style={{ color: 'var(--color-text-muted)' }}>
+                <div className="text-[11px] sm:text-xs flex flex-wrap items-center justify-between gap-1 pt-1" style={{ color: 'var(--color-text-muted)' }}>
                   <span>Synchronized with Mobile App</span>
                   <span className="text-sky-400 font-medium">Delivered</span>
                 </div>

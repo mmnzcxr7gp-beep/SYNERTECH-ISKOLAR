@@ -5,7 +5,7 @@ export default function FinalCTA({ onLogin }) {
     <section className="py-16 md:py-20 section-white" aria-labelledby="cta-heading">
       <div className="max-w-7xl mx-auto px-4 md:px-8">
         <div
-          className="card-modern p-8 sm:p-12 md:p-16 flex flex-col md:flex-row md:items-center justify-between gap-8 border-[#305BFE]/25"
+          className="card-modern p-5 sm:p-10 md:p-14 flex flex-col lg:flex-row lg:items-center justify-between gap-6 sm:gap-8 border-[#305BFE]/25"
           style={{
             backgroundColor: 'var(--color-bg-light-blue)',
           }}
@@ -24,21 +24,21 @@ export default function FinalCTA({ onLogin }) {
           </div>
 
           {/* Right Column: Actions */}
-          <div className="flex flex-wrap items-center gap-3.5 shrink-0">
-            <a href="#scholarships" className="btn-action">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto shrink-0">
+            <a href="#scholarships" className="btn-action w-full sm:w-auto justify-center text-center">
               <span>Browse Scholarships</span>
               <span aria-hidden="true">→</span>
             </a>
             <button
               type="button"
               onClick={onLogin}
-              className="btn-secondary"
+              className="btn-secondary w-full sm:w-auto justify-center text-center"
             >
               Sign In
             </button>
             <a
               href="mailto:iskolar.official@gmail.com?subject=Provider%20Onboarding%20Inquiry"
-              className="btn-ghost text-xs font-bold"
+              className="btn-ghost text-xs font-bold text-center py-2 sm:py-1 w-full sm:w-auto hover:text-[#305BFE] transition"
             >
               Provider Registration
             </a>

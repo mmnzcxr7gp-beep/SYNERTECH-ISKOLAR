@@ -157,7 +157,7 @@ function AppContent() {
   const isPortalRole = role === 'provider' || role === 'sponsor' || role === 'admin' || role === 'administrator' || role === 'student' || role === 'applicant'
 
   return (
-    <div className="min-h-screen relative" style={{ backgroundColor: 'var(--color-bg-primary)', minHeight: '100vh' }}>
+    <div className="min-h-screen relative w-full max-w-full overflow-x-hidden" style={{ backgroundColor: 'var(--color-bg-primary)', minHeight: '100vh' }}>
       {/* Skip to Main Content Link for Keyboard Accessibility */}
       <a href="#main-content" className="skip-to-content">
         Skip to Main Content
@@ -172,7 +172,7 @@ function AppContent() {
         />
       )}
 
-      <div className="relative z-10">
+      <div className="relative z-10 w-full max-w-full overflow-x-hidden">
         {renderMainContent()}
       </div>
 
