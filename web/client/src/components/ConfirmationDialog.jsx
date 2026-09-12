@@ -116,8 +116,8 @@ export default function ConfirmationDialog({
               onClick={onConfirm}
               className={`px-5 py-2.5 text-sm font-bold text-white rounded-xl shadow-md transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
                 isDestructive
-                  ? 'bg-rose-600 hover:bg-rose-700'
-                  : 'bg-[#FF6D29] hover:bg-[#e05a1b]'
+                  ? 'bg-[#C33E4D] hover:bg-[#a82d3b]'
+                  : 'bg-[#305BFE] hover:bg-[#15265C]'
               }`}
             >
               {isProcessing ? 'Processing…' : confirmText}

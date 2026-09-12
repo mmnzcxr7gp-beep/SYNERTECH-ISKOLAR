@@ -335,7 +335,7 @@ export default function OpportunitiesManagementPage({ token, user }) {
                     onClick={() => setCurrentPage(pageNum)}
                     className={`min-w-[32px] h-8 rounded-xl text-xs font-bold transition border cursor-pointer ${
                       currentPage === pageNum
-                        ? 'bg-gradient-to-r from-[#FF6D29] to-[#FF8552] text-white border-[#FF6D29] shadow-sm'
+                        ? 'bg-gradient-to-r from-[#305BFE] to-[#4F96FF] text-white border-[#305BFE] shadow-sm'
                         : 'hover:bg-[var(--bg-panel)]'
                     }`}
                     style={{

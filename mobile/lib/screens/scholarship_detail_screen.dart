@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../models/scholarship_model.dart';
 import '../services/auth_service.dart';
+import '../utils/app_colors.dart';
 import '../utils/app_typography.dart';
 import 'application_upload_screen.dart';
 import 'student_identity_verification_screen.dart';
@@ -98,7 +99,7 @@ class _ScholarshipDetailScreenState extends State<ScholarshipDetailScreen> {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFFFF6D29).withValues(alpha: 0.28),
+                    AppColors.skyBlue.withValues(alpha: 0.25),
                     Colors.transparent,
                   ],
                 ),
@@ -155,10 +156,10 @@ class _ScholarshipDetailScreenState extends State<ScholarshipDetailScreen> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFFF6D29).withValues(alpha: 0.15),
+                                  color: AppColors.actionBlue.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                    color: const Color(0xFFFF6D29).withValues(alpha: 0.30),
+                                    color: AppColors.actionBlue.withValues(alpha: 0.30),
                                     width: 1,
                                   ),
                                 ),
@@ -168,13 +169,13 @@ class _ScholarshipDetailScreenState extends State<ScholarshipDetailScreen> {
                                     const Icon(
                                       Icons.verified_rounded,
                                       size: 13,
-                                      color: Color(0xFFFF8552),
+                                      color: AppColors.actionBlue,
                                     ),
                                     const SizedBox(width: 5),
                                     Text(
                                       scholarship.sponsorName,
                                       style: const TextStyle(
-                                        color: Color(0xFFFF8552),
+                                        color: AppColors.actionBlue,
                                         fontSize: 11,
                                         fontWeight: FontWeight.w700,
                                         letterSpacing: 0.4,
@@ -218,7 +219,7 @@ class _ScholarshipDetailScreenState extends State<ScholarshipDetailScreen> {
                           Expanded(
                             child: _buildMetricTile(
                               icon: Icons.calendar_today_rounded,
-                              accentColor: const Color(0xFFFF6D29),
+                              accentColor: AppColors.actionBlue,
                               label: 'Deadline',
                               value: scholarship.deadline.isNotEmpty ? scholarship.deadline : 'Open Intake',
                             ),
@@ -243,13 +244,13 @@ class _ScholarshipDetailScreenState extends State<ScholarshipDetailScreen> {
                                     Container(
                                       padding: const EdgeInsets.all(6),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFFF6D29).withValues(alpha: 0.15),
+                                        color: AppColors.actionBlue.withValues(alpha: 0.15),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: const Icon(
                                         Icons.description_outlined,
                                         size: 16,
-                                        color: Color(0xFFFF8552),
+                                        color: AppColors.actionBlue,
                                       ),
                                     ),
                                     const SizedBox(width: 8),
@@ -325,7 +326,7 @@ class _ScholarshipDetailScreenState extends State<ScholarshipDetailScreen> {
                                             child: Text(
                                               '${idx + 1}',
                                               style: const TextStyle(
-                                                color: Color(0xFFFF8552),
+                                                color: AppColors.actionBlue,
                                                 fontSize: 11,
                                                 fontWeight: FontWeight.w800,
                                               ),
@@ -487,12 +488,12 @@ class _ScholarshipDetailScreenState extends State<ScholarshipDetailScreen> {
                             gradient: const LinearGradient(
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
-                              colors: [Color(0xFFFF6D29), Color(0xFFFF8552)],
+                              colors: [Color(0xFF4F96FF), Color(0xFF305BFE)],
                             ),
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFFFF6D29).withValues(alpha: 0.40),
+                                color: AppColors.actionBlue.withValues(alpha: 0.35),
                                 blurRadius: 18,
                                 offset: const Offset(0, 6),
                               ),

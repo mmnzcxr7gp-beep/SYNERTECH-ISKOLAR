@@ -13,11 +13,17 @@ key.properties
 **/key.properties
 firebase-credentials.json
 service-account.json
+*firebase*service*account*.json
+*service*account*firebase*.json
+firebase-admin*.json
 
 
 # Build Outputs
 dist/
 build/
+*.apk
+*.aab
+web/client/public/downloads/
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies

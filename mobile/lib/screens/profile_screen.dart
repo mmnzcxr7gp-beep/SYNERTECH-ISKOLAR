@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../models/user_model.dart';
 import '../utils/upload_source_dialog.dart';
@@ -204,8 +205,20 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scaffoldBg = isDark ? AppColors.darkBackground : AppColors.mainBackground;
+    final headerTextColor = isDark ? AppColors.darkTextPrimary : AppColors.primaryNavy;
+    final headerSubtextColor = isDark ? AppColors.darkTextSecondary : AppColors.secondaryText;
+    final pillBg = isDark ? AppColors.darkSurface : AppColors.pureWhite;
+    final pillBorder = isDark ? AppColors.darkBorder : AppColors.border;
+    final pillLabelColor = isDark ? AppColors.darkTextSecondary : AppColors.secondaryText;
+    final pillDividerColor = isDark ? AppColors.darkBorder : AppColors.border;
+    final sheetBg = isDark ? AppColors.darkSurface : AppColors.pureWhite;
+    final sheetBorder = isDark ? AppColors.darkBorder : AppColors.border;
+    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.primaryNavy;
+
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark, // Warm Near-Black Header
+      backgroundColor: scaffoldBg,
       body: SafeArea(
         child: FutureBuilder<User>(
           future: _futureUser,
@@ -220,7 +233,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 child: SingleChildScrollView(
                   child: Column(
                 children: [
-                  // ─── TOP HERO BANNER (REF SCREEN #4) ──────────────────────
+                  // ─── TOP HERO BANNER ─────────────────────────────────────────
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
                     child: Column(
@@ -229,20 +242,25 @@ class _ProfileScreenState extends State<ProfileScreen>
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Row(
-                              children: [
-                                Icon(Icons.person_pin_rounded, color: AppColors.primary, size: 28),
-                                SizedBox(width: 8),
-                                Text(
-                                  'ACCOUNT',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 18,
-                                    letterSpacing: 1.2,
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.person_pin_rounded, color: AppColors.actionBlue, size: 28),
+                                  const SizedBox(width: 8),
+                                  Flexible(
+                                    child: Text(
+                                      'ACCOUNT',
+                                      style: GoogleFonts.poppins(
+                                        color: headerTextColor,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 18,
+                                        letterSpacing: 1.2,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                             IconButton(
                               icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
@@ -261,7 +279,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               gradient: AppColors.primaryGradient,
-                              border: Border.all(color: AppColors.primary, width: 2.5),
+                              border: Border.all(color: AppColors.actionBlue, width: 2.5),
                             ),
                             child: ClipOval(
                               child: user.profilePicture.isNotEmpty
@@ -283,59 +301,94 @@ class _ProfileScreenState extends State<ProfileScreen>
 
                         Text(
                           user.name,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: GoogleFonts.poppins(
+                            color: headerTextColor,
                             fontSize: 20,
-                            fontWeight: FontWeight.w900,
+                            fontWeight: FontWeight.w700,
                           ),
+                          textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 4),
                         Text(
                           user.email,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.7),
+                          style: GoogleFonts.poppins(
+                            color: headerSubtextColor,
                             fontSize: 13,
                           ),
+                          textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 16),
 
-                        // Status Info Pill Card (Ref Screen #4)
+                        // Status Info Pill Card
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.1),
+                            color: pillBg,
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                            border: Border.all(color: pillBorder),
+                            boxShadow: [
+                              BoxShadow(
+                                color: isDark
+                                    ? Colors.black.withValues(alpha: 0.20)
+                                    : const Color(0xFF15265C).withValues(alpha: 0.05),
+                                blurRadius: 10,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
-                              Column(
-                                children: [
-                                  Text(
-                                    'ROLE',
-                                    style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 10, fontWeight: FontWeight.bold),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    roleLabel,
-                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 14),
-                                  ),
-                                ],
+                              Expanded(
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      'ROLE',
+                                      style: GoogleFonts.poppins(
+                                        color: pillLabelColor,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      roleLabel,
+                                      style: GoogleFonts.poppins(
+                                        color: headerTextColor,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 14,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
                               ),
-                              Container(width: 1, height: 28, color: Colors.white24),
-                              Column(
-                                children: [
-                                  Text(
-                                    'STATUS',
-                                    style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 10, fontWeight: FontWeight.bold),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    user.normalizedVerificationStatus.toUpperCase(),
-                                    style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.w900, fontSize: 14),
-                                  ),
-                                ],
+                              Container(width: 1, height: 28, color: pillDividerColor),
+                              Expanded(
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      'STATUS',
+                                      style: GoogleFonts.poppins(
+                                        color: pillLabelColor,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      user.normalizedVerificationStatus.toUpperCase(),
+                                      style: GoogleFonts.poppins(
+                                        color: AppColors.success,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 14,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
@@ -344,50 +397,85 @@ class _ProfileScreenState extends State<ProfileScreen>
                     ),
                   ),
 
-                  // ─── OVERLAPPING CONTENT FORM SHEET (REF SCREEN #4) ─────────
+                  // ─── OVERLAPPING CONTENT FORM SHEET ─────────────────────────
                   Container(
                     width: double.infinity,
-                    decoration: const BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                    decoration: BoxDecoration(
+                      color: sheetBg,
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                      border: Border.all(color: sheetBorder),
+                      boxShadow: [
+                        BoxShadow(
+                          color: isDark
+                              ? Colors.black.withValues(alpha: 0.25)
+                              : const Color(0xFF15265C).withValues(alpha: 0.06),
+                          blurRadius: 14,
+                          offset: const Offset(0, -3),
+                        ),
+                      ],
                     ),
                     padding: const EdgeInsets.all(24),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'PROFILE DETAILS',
-                          style: TextStyle(
-                            color: AppColors.textPrimary,
+                          style: GoogleFonts.poppins(
+                            color: textPrimary,
                             fontSize: 14,
-                            fontWeight: FontWeight.w900,
+                            fontWeight: FontWeight.w800,
                             letterSpacing: 1.1,
                           ),
                         ),
                         const SizedBox(height: 16),
 
-                        _buildInfoTile(context, 'Full Name', user.name),
+                        _buildInfoTile(context, 'Full Name', user.name, isDark),
                         const SizedBox(height: 12),
-                        _buildInfoTile(context, 'Email Address', user.email),
+                        _buildInfoTile(context, 'Email Address', user.email, isDark),
                         const SizedBox(height: 12),
-                        _buildInfoTile(context, 'Role Type', roleLabel),
+                        _buildInfoTile(context, 'Role Type', roleLabel, isDark),
 
                         if (user.role == 'student') ...[
                           const SizedBox(height: 12),
-                          _buildInfoTile(context, 'School', profile?.school ?? 'Not provided'),
-                          const SizedBox(height: 12),
-                          _buildInfoTile(context, 'Course', profile?.course ?? 'Not provided'),
+                          _buildInfoTile(
+                            context,
+                            'School',
+                            profile?.school.isNotEmpty == true
+                                ? profile!.school
+                                : (user.school.isNotEmpty ? user.school : 'Not provided'),
+                            isDark,
+                          ),
                           const SizedBox(height: 12),
                           _buildInfoTile(
                             context,
-                            'GPA',
+                            'Course',
+                            profile?.course.isNotEmpty == true
+                                ? profile!.course
+                                : (user.course.isNotEmpty ? user.course : 'Not provided'),
+                            isDark,
+                          ),
+                          const SizedBox(height: 12),
+                          _buildInfoTile(
+                            context,
+                            'Year Level',
+                            profile?.yearLevel.isNotEmpty == true
+                                ? profile!.yearLevel
+                                : (user.yearLevel.isNotEmpty ? user.yearLevel : 'Not provided'),
+                            isDark,
+                          ),
+                          const SizedBox(height: 12),
+                          _buildInfoTile(
+                            context,
+                            'GPA / GWA',
                             profile?.gpa.isNotEmpty == true ? profile!.gpa : 'Not provided',
+                            isDark,
                           ),
                           const SizedBox(height: 12),
                           _buildInfoTile(
                             context,
                             'Family Income',
-                            profile?.familyIncome.isNotEmpty == true ? profile!.familyIncome : 'Not provided',
+                            profile?.familyIncome.isNotEmpty == true ? '₱${profile!.familyIncome}' : 'Not provided',
+                            isDark,
                           ),
                           const SizedBox(height: 20),
 
@@ -418,6 +506,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                             context,
                             'Company / Organization',
                             user.company.isNotEmpty ? user.company : 'Not provided',
+                            isDark,
                           ),
                           const SizedBox(height: 16),
                           PrimaryButton(
@@ -437,7 +526,10 @@ class _ProfileScreenState extends State<ProfileScreen>
                             minimumSize: const Size(double.infinity, 50),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                           ),
-                          child: const Text('LOGOUT', style: TextStyle(fontWeight: FontWeight.bold)),
+                          child: Text(
+                            'LOGOUT',
+                            style: GoogleFonts.poppins(fontWeight: FontWeight.w700),
+                          ),
                         ),
                         const SizedBox(height: 16),
                       ],
@@ -454,22 +546,29 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Widget _buildInfoTile(BuildContext context, String title, String value) {
+  Widget _buildInfoTile(BuildContext context, String title, String value, bool isDark) {
+    final tileBg = isDark
+        ? AppColors.darkElevated
+        : AppColors.lightBlueSurface.withValues(alpha: 0.55);
+    final tileBorder = isDark ? AppColors.darkBorder : AppColors.border;
+    final labelColor = isDark ? AppColors.darkTextSecondary : AppColors.secondaryText;
+    final valueColor = isDark ? AppColors.darkTextPrimary : AppColors.primaryNavy;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: tileBg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+        border: Border.all(color: tileBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title.toUpperCase(),
-            style: const TextStyle(
-              color: AppColors.textSecondary,
+            style: GoogleFonts.poppins(
+              color: labelColor,
               fontSize: 11,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.5,
@@ -478,8 +577,8 @@ class _ProfileScreenState extends State<ProfileScreen>
           const SizedBox(height: 6),
           Text(
             value,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
+            style: GoogleFonts.poppins(
+              color: valueColor,
               fontSize: 15,
               fontWeight: FontWeight.w600,
             ),

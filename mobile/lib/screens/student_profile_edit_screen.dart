@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
@@ -34,6 +35,8 @@ class _StudentProfileEditScreenState extends State<StudentProfileEditScreen> {
   late final TextEditingController _schoolController;
   late final TextEditingController _courseController;
   late final TextEditingController _yearLevelController;
+  late final TextEditingController _gpaController;
+  late final TextEditingController _familyIncomeController;
   late final TextEditingController _achievementsController;
 
   String? _selectedImagePath;
@@ -47,11 +50,23 @@ class _StudentProfileEditScreenState extends State<StudentProfileEditScreen> {
     final user = widget.user;
     final profile = user.profile;
 
+    final initialSchool = (profile?.school.isNotEmpty == true)
+        ? profile!.school
+        : user.school;
+    final initialCourse = (profile?.course.isNotEmpty == true)
+        ? profile!.course
+        : user.course;
+    final initialYearLevel = (profile?.yearLevel.isNotEmpty == true)
+        ? profile!.yearLevel
+        : user.yearLevel;
+
     _firstNameController = TextEditingController(text: user.firstName);
     _lastNameController = TextEditingController(text: user.lastName);
-    _schoolController = TextEditingController(text: profile?.school ?? '');
-    _courseController = TextEditingController(text: profile?.course ?? '');
-    _yearLevelController = TextEditingController(text: profile?.yearLevel ?? user.yearLevel);
+    _schoolController = TextEditingController(text: initialSchool);
+    _courseController = TextEditingController(text: initialCourse);
+    _yearLevelController = TextEditingController(text: initialYearLevel);
+    _gpaController = TextEditingController(text: profile?.gpa ?? '');
+    _familyIncomeController = TextEditingController(text: profile?.familyIncome ?? '');
     _achievementsController = TextEditingController(text: profile?.achievements ?? '');
   }
 
@@ -62,6 +77,8 @@ class _StudentProfileEditScreenState extends State<StudentProfileEditScreen> {
     _schoolController.dispose();
     _courseController.dispose();
     _yearLevelController.dispose();
+    _gpaController.dispose();
+    _familyIncomeController.dispose();
     _achievementsController.dispose();
     super.dispose();
   }
@@ -89,6 +106,8 @@ class _StudentProfileEditScreenState extends State<StudentProfileEditScreen> {
         school: _schoolController.text.trim(),
         course: _courseController.text.trim(),
         yearLevel: _yearLevelController.text.trim(),
+        gpa: _gpaController.text.trim(),
+        familyIncome: _familyIncomeController.text.trim(),
         achievements: _achievementsController.text.trim(),
         profilePicture: profilePic,
       );
@@ -137,6 +156,15 @@ class _StudentProfileEditScreenState extends State<StudentProfileEditScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? AppColors.surfaceDark : AppColors.pureWhite;
+    final cardBorder = isDark ? AppColors.darkBorder : AppColors.border;
+    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.primaryNavy;
+    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.secondaryText;
+    final uploadBoxBg = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : AppColors.lightBlueSurface.withValues(alpha: 0.55);
+
     return StudentDashboardScaffold(
       title: 'Edit Student Profile',
       showHeader: true,
@@ -144,16 +172,16 @@ class _StudentProfileEditScreenState extends State<StudentProfileEditScreen> {
         children: [
           Card(
             elevation: 0,
-            color: AppColors.surfaceDark,
+            color: cardColor,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
               side: BorderSide(
-                color: AppColors.border.withValues(alpha: 0.55),
+                color: cardBorder,
                 width: 1,
               ),
             ),
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               child: Form(
                 key: _formKey,
                 autovalidateMode: AutovalidateMode.onUserInteraction,
@@ -162,29 +190,31 @@ class _StudentProfileEditScreenState extends State<StudentProfileEditScreen> {
                   children: [
                     Text(
                       'Edit your student profile',
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineSmall
-                          ?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                          ),
+                      style: GoogleFonts.poppins(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: textPrimary,
+                      ),
                     ),
                     const SizedBox(height: 20),
                     // Profile Picture Upload Section
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: AppColors.border.withValues(alpha: 0.2)),
+                        color: uploadBoxBg,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: cardBorder),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Text(
                             'Profile Picture',
-                            style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Colors.white),
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: textPrimary,
+                            ),
                           ),
                           const SizedBox(height: 12),
                           if (_selectedImagePath != null || _selectedImageBytes != null)
@@ -192,32 +222,41 @@ class _StudentProfileEditScreenState extends State<StudentProfileEditScreen> {
                               height: 120,
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: AppColors.primary),
+                                border: Border.all(color: AppColors.actionBlue),
                               ),
-                              child: _selectedImageBytes != null
-                                  ? Image.memory(
-                                      Uint8List.fromList(_selectedImageBytes!),
-                                      fit: BoxFit.cover,
-                                      width: double.infinity,
-                                      height: 120,
-                                    )
-                                  : Image.file(
-                                      File(_selectedImagePath!),
-                                      fit: BoxFit.cover,
-                                      width: double.infinity,
-                                      height: 120,
-                                    ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: _selectedImageBytes != null
+                                    ? Image.memory(
+                                        Uint8List.fromList(_selectedImageBytes!),
+                                        fit: BoxFit.cover,
+                                        width: double.infinity,
+                                        height: 120,
+                                      )
+                                    : Image.file(
+                                        File(_selectedImagePath!),
+                                        fit: BoxFit.cover,
+                                        width: double.infinity,
+                                        height: 120,
+                                      ),
+                              ),
                             )
                           else
                             Container(
                               height: 120,
                               decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.1),
+                                color: isDark
+                                    ? AppColors.actionBlue.withValues(alpha: 0.1)
+                                    : AppColors.paleBlue.withValues(alpha: 0.4),
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: AppColors.border.withValues(alpha: 0.2)),
+                                border: Border.all(color: cardBorder),
                               ),
-                              child: const Center(
-                                child: Icon(Icons.photo_library_outlined, color: Colors.white54),
+                              child: Center(
+                                child: Icon(
+                                  Icons.photo_library_outlined,
+                                  color: textSecondary,
+                                  size: 36,
+                                ),
                               ),
                             ),
                           const SizedBox(height: 12),
@@ -235,12 +274,24 @@ class _StudentProfileEditScreenState extends State<StudentProfileEditScreen> {
                                 });
                               }
                             },
-                            icon: const Icon(Icons.upload_file_rounded),
-                            label: Text(_selectedImagePath != null || _selectedImageBytes != null
-                                ? 'Change Picture'
-                                : 'Choose Picture'),
+                            icon: const Icon(Icons.upload_file_rounded, size: 18),
+                            label: Text(
+                              _selectedImagePath != null || _selectedImageBytes != null
+                                  ? 'Change Picture'
+                                  : 'Choose Picture',
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
+                            ),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
+                              backgroundColor: AppColors.actionBlue,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
                             ),
                           ),
                         ],
@@ -278,8 +329,26 @@ class _StudentProfileEditScreenState extends State<StudentProfileEditScreen> {
                     _buildTextField(
                       'Year Level',
                       _yearLevelController,
-                      hint: 'e.g., 1st Year, 2nd Year',
+                      hint: 'e.g., 1st Year, 2nd Year, 4th Year',
                       textInputAction: TextInputAction.next,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildTextField(
+                      'Current GPA / GWA',
+                      _gpaController,
+                      hint: 'e.g., 1.25 or 92.5',
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      textInputAction: TextInputAction.next,
+                      requiredField: false,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildTextField(
+                      'Annual Family Income (₱)',
+                      _familyIncomeController,
+                      hint: 'e.g., 250000',
+                      keyboardType: TextInputType.number,
+                      textInputAction: TextInputAction.next,
+                      requiredField: false,
                     ),
                     const SizedBox(height: 12),
                     _buildTextField(

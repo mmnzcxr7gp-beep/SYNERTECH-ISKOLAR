@@ -173,10 +173,11 @@ export default function ScholarshipCreatePage({ token, onPublished }) {
 
             <div className="grid gap-6 sm:grid-cols-2">
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+                <label htmlFor="create-program-type" className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
                   Program Type
                 </label>
                 <select
+                  id="create-program-type"
                   value={programType}
                   onChange={(e) => setProgramType(e.target.value)}
                   className="input-field mt-2 w-full p-3 text-sm focus:outline-none"
@@ -193,10 +194,11 @@ export default function ScholarshipCreatePage({ token, onPublished }) {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+                <label htmlFor="create-available-slots" className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
                   Available Slots
                 </label>
                 <input
+                  id="create-available-slots"
                   value={slots}
                   onChange={(e) => setSlots(e.target.value)}
                   className="input-field mt-2 w-full p-3 text-sm focus:outline-none"
@@ -222,10 +224,11 @@ export default function ScholarshipCreatePage({ token, onPublished }) {
                 }}
               >
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                  <label htmlFor="create-allowance" className="block text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
                     Monthly Allowance (₱)
                   </label>
                   <input
+                    id="create-allowance"
                     value={allowance}
                     onChange={(e) => setAllowance(e.target.value)}
                     className="input-field mt-2 w-full p-3 text-sm focus:outline-none"
@@ -242,10 +245,11 @@ export default function ScholarshipCreatePage({ token, onPublished }) {
                   <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>Disbursed directly via student bank / e-wallet.</p>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                  <label htmlFor="create-max-amount" className="block text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
                     Max Grant Amount (₱)
                   </label>
                   <input
+                    id="create-max-amount"
                     value={maxAmount}
                     onChange={(e) => setMaxAmount(e.target.value)}
                     className="input-field mt-2 w-full p-3 text-sm focus:outline-none"
@@ -264,10 +268,11 @@ export default function ScholarshipCreatePage({ token, onPublished }) {
             )}
 
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+              <label htmlFor="create-title" className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
                 Scholarship Opportunity Title
               </label>
               <input
+                id="create-title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className="input-field mt-2 w-full p-3 text-sm focus:outline-none"
@@ -283,10 +288,11 @@ export default function ScholarshipCreatePage({ token, onPublished }) {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+              <label htmlFor="create-description" className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
                 Detailed Description
               </label>
               <textarea
+                id="create-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 className="input-field mt-2 min-h-[120px] w-full p-3 text-sm focus:outline-none"
@@ -302,10 +308,11 @@ export default function ScholarshipCreatePage({ token, onPublished }) {
 
             <div className="grid gap-6 sm:grid-cols-2">
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+                <label htmlFor="create-benefits" className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
                   Benefits Summary
                 </label>
                 <textarea
+                  id="create-benefits"
                   value={benefits}
                   onChange={(e) => setBenefits(e.target.value)}
                   className="input-field mt-2 min-h-[100px] w-full p-3 text-sm focus:outline-none"
@@ -320,10 +327,11 @@ export default function ScholarshipCreatePage({ token, onPublished }) {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+                <label htmlFor="create-eligibility" className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
                   Eligibility Instructions
                 </label>
                 <textarea
+                  id="create-eligibility"
                   value={eligibilityRequirements}
                   onChange={(e) => setEligibilityRequirements(e.target.value)}
                   className="input-field mt-2 min-h-[100px] w-full p-3 text-sm focus:outline-none"
@@ -339,10 +347,11 @@ export default function ScholarshipCreatePage({ token, onPublished }) {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+              <label htmlFor="create-deadline" className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
                 Application Deadline
               </label>
               <input
+                id="create-deadline"
                 value={deadline}
                 onChange={(e) => setDeadline(e.target.value)}
                 className="input-field mt-2 w-full sm:w-1/2 p-3 text-sm focus:outline-none"
@@ -387,35 +396,38 @@ export default function ScholarshipCreatePage({ token, onPublished }) {
               <div
                 className={`rounded-2xl border p-5 transition-all ${
                   hasExam
-                    ? 'border-[#FF6D29] bg-[#FF6D29]/10 shadow-md'
+                    ? 'border-[#305BFE] bg-[#305BFE]/10 shadow-md'
                     : 'border-[var(--border)] bg-[var(--bg-card)]'
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <DocumentIcon className="w-5 h-5 text-[#FF6D29]" />
+                    <DocumentIcon className="w-5 h-5 text-[#305BFE]" />
                     <div>
                       <h3 className="text-base font-bold" style={{ color: 'var(--text-heading)' }}>Qualifying Examination</h3>
                       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Requires written or online test</p>
                     </div>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
+                  <label htmlFor="create-has-exam" className="relative inline-flex items-center cursor-pointer">
                     <input
+                      id="create-has-exam"
+                      aria-label="Qualifying Examination Required"
                       type="checkbox"
                       checked={hasExam}
                       onChange={(e) => setHasExam(e.target.checked)}
                       className="sr-only peer"
                     />
-                    <div className="w-11 h-6 bg-[var(--bg-input)] border border-[var(--border)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#FF6D29]"></div>
+                    <div className="w-11 h-6 bg-[var(--bg-input)] border border-[var(--border)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#305BFE]"></div>
                   </label>
                 </div>
 
                 {hasExam && (
-                  <div className="mt-4 space-y-3 pt-4 border-t border-[#FF6D29]/25">
-                    <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--primary)' }}>
+                  <div className="mt-4 space-y-3 pt-4 border-t border-[#305BFE]/25">
+                    <label htmlFor="create-exam-details" className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--primary)' }}>
                       Exam Mode, Date & Passing Criteria
                     </label>
                     <textarea
+                      id="create-exam-details"
                       value={examDetails}
                       onChange={(e) => setExamDetails(e.target.value)}
                       className="input-field w-full p-3 text-xs focus:outline-none"
@@ -434,35 +446,38 @@ export default function ScholarshipCreatePage({ token, onPublished }) {
               <div
                 className={`rounded-2xl border p-5 transition-all ${
                   hasInterview
-                    ? 'border-[#FF6D29] bg-[#FF6D29]/10 shadow-md'
+                    ? 'border-[#305BFE] bg-[#305BFE]/10 shadow-md'
                     : 'border-[var(--border)] bg-[var(--bg-card)]'
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <PhoneIcon className="w-5 h-5 text-[#FF8552]" />
+                    <PhoneIcon className="w-5 h-5 text-[#4F96FF]" />
                     <div>
                       <h3 className="text-base font-bold" style={{ color: 'var(--text-heading)' }}>Panel / Personal Interview</h3>
                       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Requires candidate interview</p>
                     </div>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
+                  <label htmlFor="create-has-interview" className="relative inline-flex items-center cursor-pointer">
                     <input
+                      id="create-has-interview"
+                      aria-label="Panel or Personal Interview Required"
                       type="checkbox"
                       checked={hasInterview}
                       onChange={(e) => setHasInterview(e.target.checked)}
                       className="sr-only peer"
                     />
-                    <div className="w-11 h-6 bg-[var(--bg-input)] border border-[var(--border)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#FF6D29]"></div>
+                    <div className="w-11 h-6 bg-[var(--bg-input)] border border-[var(--border)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#305BFE]"></div>
                   </label>
                 </div>
 
                 {hasInterview && (
-                  <div className="mt-4 space-y-3 pt-4 border-t border-[#FF6D29]/25">
-                    <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--primary)' }}>
+                  <div className="mt-4 space-y-3 pt-4 border-t border-[#305BFE]/25">
+                    <label htmlFor="create-interview-details" className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--primary)' }}>
                       Interview Schedule & Location Notes
                     </label>
                     <textarea
+                      id="create-interview-details"
                       value={interviewDetails}
                       onChange={(e) => setInterviewDetails(e.target.value)}
                       className="input-field w-full p-3 text-xs focus:outline-none"
@@ -550,8 +565,8 @@ export default function ScholarshipCreatePage({ token, onPublished }) {
                     }}
                     className={`rounded-2xl border px-4 py-3 text-left text-xs font-semibold transition-all flex items-center justify-between ${
                       isSelected
-                        ? 'bg-[#FF6D29] text-white font-bold shadow-sm'
-                        : 'hover:border-[#FF6D29]/50'
+                        ? 'bg-[#305BFE] text-white font-bold shadow-sm'
+                        : 'hover:border-[#305BFE]/50'
                     }`}
                     style={{
                       backgroundColor: isSelected ? 'var(--primary)' : 'var(--bg-card)',
@@ -568,11 +583,12 @@ export default function ScholarshipCreatePage({ token, onPublished }) {
 
             {/* Custom Requirement Input */}
             <div className="pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
-              <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+              <label htmlFor="create-custom-requirement" className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
                 Add Custom Document Requirement
               </label>
               <div className="mt-2 flex flex-col gap-3 sm:flex-row">
                 <input
+                  id="create-custom-requirement"
                   value={customRequirement}
                   onChange={(e) => setCustomRequirement(e.target.value)}
                   className="input-field flex-1 p-3 text-xs focus:outline-none"
@@ -613,6 +629,7 @@ export default function ScholarshipCreatePage({ token, onPublished }) {
                     {req}
                     <button
                       type="button"
+                      aria-label={`Remove requirement: ${req}`}
                       onClick={() => {
                         setSelectedRequirements((current) => current.filter((item) => item !== req))
                         setCustomRequirements((current) => current.filter((item) => item !== req))
@@ -651,6 +668,8 @@ export default function ScholarshipCreatePage({ token, onPublished }) {
 
           {formMessage && (
             <div
+              role="status"
+              aria-live="polite"
               className={`p-4 rounded-2xl text-sm font-semibold border ${
                 formMessage.includes('successfully')
                   ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500'

@@ -320,7 +320,12 @@ export default function ApplicantsPage({ token }) {
             <div key={i} className="skeleton h-24 rounded-2xl" />
           ))}
         </div>
-        <div className="skeleton h-80 rounded-3xl" />
+        {/* Tab Group Placeholder */}
+        <div className="skeleton h-11 w-full rounded-2xl" />
+        {/* Search & Filter Controls Placeholder */}
+        <div className="skeleton h-14 w-full rounded-2xl" />
+        {/* Content Table / Cards Placeholder */}
+        <div className="skeleton h-96 rounded-3xl" />
       </div>
     )
   }
@@ -399,7 +404,7 @@ export default function ApplicantsPage({ token }) {
             <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
               Total Candidates
             </span>
-            <DocumentIcon className="w-4 h-4 text-[#FF6D29]" />
+            <DocumentIcon className="w-4 h-4 text-[#305BFE]" />
           </div>
           <div className="my-2">
             <div className="text-3xl font-black tracking-tight" style={{ color: 'var(--text-heading)' }}>
@@ -477,7 +482,7 @@ export default function ApplicantsPage({ token }) {
             onClick={() => setActiveTabGroup(tab.id)}
             className={`px-4 py-2.5 rounded-xl text-xs font-extrabold transition border cursor-pointer ${
               activeTabGroup === tab.id
-                ? 'bg-gradient-to-r from-[#FF6D29] to-[#FF8552] text-white border-[#FF6D29] shadow-sm'
+                ? 'bg-gradient-to-r from-[#305BFE] to-[#4F96FF] text-white border-[#305BFE] shadow-sm'
                 : 'hover:bg-[var(--color-surface-panel)]'
             }`}
             style={{
@@ -513,10 +518,11 @@ export default function ApplicantsPage({ token }) {
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+            <label htmlFor="filter-scholarship" className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>
               Scholarship Program
             </label>
             <select
+              id="filter-scholarship"
               value={scholarshipFilter}
               onChange={(e) => setScholarshipFilter(e.target.value)}
               className="w-full rounded-xl border p-2.5 text-xs font-semibold focus:outline-none cursor-pointer"
@@ -534,10 +540,11 @@ export default function ApplicantsPage({ token }) {
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+            <label htmlFor="filter-status" className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>
               Canonical Status
             </label>
             <select
+              id="filter-status"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="w-full rounded-xl border p-2.5 text-xs font-bold focus:outline-none cursor-pointer"
@@ -561,10 +568,11 @@ export default function ApplicantsPage({ token }) {
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+            <label htmlFor="filter-sort" className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>
               Sort Order
             </label>
             <select
+              id="filter-sort"
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
               className="w-full rounded-xl border p-2.5 text-xs font-bold focus:outline-none cursor-pointer"
@@ -630,7 +638,7 @@ export default function ApplicantsPage({ token }) {
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0 flex-1 space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-[#FF6D29]">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-[#305BFE]">
                             {application.scholarship_title || 'Scholarship Program'}
                           </span>
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border" style={{ backgroundColor: 'var(--color-surface-panel)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
@@ -694,7 +702,7 @@ export default function ApplicantsPage({ token }) {
                     onClick={() => setCurrentPage(pageNum)}
                     className={`min-w-[32px] h-8 rounded-xl text-xs font-bold transition border cursor-pointer ${
                       currentPage === pageNum
-                        ? 'bg-gradient-to-r from-[#FF6D29] to-[#FF8552] text-white border-[#FF6D29] shadow-sm'
+                        ? 'bg-gradient-to-r from-[#305BFE] to-[#4F96FF] text-white border-[#305BFE] shadow-sm'
                         : 'hover:bg-[var(--color-surface-panel)]'
                     }`}
                     style={{
@@ -736,7 +744,7 @@ export default function ApplicantsPage({ token }) {
                 <button
                   type="button"
                   onClick={() => openReviewModalFor(selectedApplicant)}
-                  className="text-xs font-bold text-[#FF6D29] underline cursor-pointer"
+                  className="text-xs font-bold text-[#305BFE] underline cursor-pointer"
                 >
                   Full Workspace ↗
                 </button>
@@ -758,13 +766,13 @@ export default function ApplicantsPage({ token }) {
                   <div className="p-2.5 rounded-xl border" style={{ backgroundColor: 'var(--color-surface-panel)', borderColor: 'var(--border)' }}>
                     <p style={{ color: 'var(--text-muted)' }}>School</p>
                     <p className="font-bold truncate mt-0.5" style={{ color: 'var(--text-heading)' }}>
-                      {selectedApplicant.student_profile?.school || selectedApplicant.school || 'N/A'}
+                      {selectedApplicant.student_profile?.school || selectedApplicant.studentSchool || selectedApplicant.school || 'Not specified'}
                     </p>
                   </div>
                   <div className="p-2.5 rounded-xl border" style={{ backgroundColor: 'var(--color-surface-panel)', borderColor: 'var(--border)' }}>
                     <p style={{ color: 'var(--text-muted)' }}>GPA / Grade</p>
-                    <p className="font-bold truncate mt-0.5 text-[#FF6D29]">
-                      {selectedApplicant.student_profile?.gpa ?? selectedApplicant.gpa ?? '1.50'}
+                    <p className="font-bold truncate mt-0.5 text-[#305BFE]">
+                      {selectedApplicant.student_profile?.gpa ?? selectedApplicant.studentGpa ?? selectedApplicant.gpa ?? 'N/A'}
                     </p>
                   </div>
                 </div>
@@ -852,7 +860,7 @@ export default function ApplicantsPage({ token }) {
             {/* Modal Header */}
             <div className="px-6 py-4 border-b flex items-center justify-between flex-shrink-0" style={{ borderColor: 'var(--border)' }}>
               <div className="flex items-center gap-3 min-w-0">
-                <span className="h-8 w-8 rounded-full bg-[#FF6D29]/15 text-[#FF6D29] font-black text-sm flex items-center justify-center flex-shrink-0">
+                <span className="h-8 w-8 rounded-full bg-[#305BFE]/15 text-[#305BFE] font-black text-sm flex items-center justify-center flex-shrink-0">
                   {(selectedApplicant.student_name || 'U').charAt(0).toUpperCase()}
                 </span>
                 <div className="min-w-0">
@@ -890,25 +898,25 @@ export default function ApplicantsPage({ token }) {
               <div className="lg:col-span-4 p-5 space-y-5 overflow-y-auto" style={{ backgroundColor: 'var(--color-surface-panel)' }}>
                 {/* Academic Profile */}
                 <div className="space-y-2">
-                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#FF6D29]">
+                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#305BFE]">
                     Applicant Profile
                   </p>
                   <div className="p-4 rounded-2xl border bg-[var(--bg-input)] space-y-2 text-xs" style={{ borderColor: 'var(--border)' }}>
                     <div>
                       <span className="font-semibold" style={{ color: 'var(--text-muted)' }}>Email: </span>
-                      <strong style={{ color: 'var(--text-heading)' }}>{selectedApplicant.student_email || 'N/A'}</strong>
+                      <strong style={{ color: 'var(--text-heading)' }}>{selectedApplicant.student_email || selectedApplicant.studentEmail || 'N/A'}</strong>
                     </div>
                     <div>
                       <span className="font-semibold" style={{ color: 'var(--text-muted)' }}>School: </span>
-                      <strong style={{ color: 'var(--text-heading)' }}>{selectedApplicant.student_profile?.school || selectedApplicant.school || 'N/A'}</strong>
+                      <strong style={{ color: 'var(--text-heading)' }}>{selectedApplicant.student_profile?.school || selectedApplicant.studentSchool || selectedApplicant.school || 'Not specified'}</strong>
                     </div>
                     <div>
                       <span className="font-semibold" style={{ color: 'var(--text-muted)' }}>Course: </span>
-                      <strong style={{ color: 'var(--text-heading)' }}>{selectedApplicant.student_profile?.course || selectedApplicant.course || 'N/A'}</strong>
+                      <strong style={{ color: 'var(--text-heading)' }}>{selectedApplicant.student_profile?.course || selectedApplicant.studentCourse || selectedApplicant.course || 'Not specified'}</strong>
                     </div>
                     <div>
                       <span className="font-semibold" style={{ color: 'var(--text-muted)' }}>Current GPA: </span>
-                      <strong className="text-[#FF6D29]">{selectedApplicant.student_profile?.gpa ?? selectedApplicant.gpa ?? '1.50'}</strong>
+                      <strong className="text-[#305BFE]">{selectedApplicant.student_profile?.gpa ?? selectedApplicant.studentGpa ?? selectedApplicant.gpa ?? 'N/A'}</strong>
                     </div>
                   </div>
                 </div>

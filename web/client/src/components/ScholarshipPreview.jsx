@@ -202,17 +202,17 @@ export default function ScholarshipPreview({ onSelectScholarship }) {
               return (
                 <div
                   key={grantId}
-                  className="modular-card p-6 sm:p-7 flex flex-col justify-between"
+                  className="card-modern p-6 sm:p-7 flex flex-col justify-between"
                   style={{ backgroundColor: 'var(--color-bg-elevated)' }}
                 >
                   <div className="space-y-4">
                     {/* Sponsor Identity & Status */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-xs font-bold" style={{ color: 'var(--color-text-secondary)' }}>
-                        <BuildingIcon className="w-4 h-4 text-[#FF6D29]" />
+                        <BuildingIcon className="w-4 h-4 text-[#305BFE]" />
                         <span className="truncate max-w-[180px]">{sponsorName}</span>
                       </div>
-                      <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                      <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                         {slots} Slots Open
                       </span>
                     </div>

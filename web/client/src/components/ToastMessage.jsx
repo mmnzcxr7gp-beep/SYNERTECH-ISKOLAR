@@ -40,7 +40,7 @@ export default function ToastMessage({ toast, message, type, title, onClose, dur
     },
     info: {
       bg: 'bg-slate-900/90 border-slate-700 text-slate-100',
-      icon: <ShieldIcon className="w-5 h-5 text-[#FF6D29]" />,
+      icon: <ShieldIcon className="w-5 h-5 text-[#305BFE]" />,
       title: toastTitle || 'Notice',
     },
   }

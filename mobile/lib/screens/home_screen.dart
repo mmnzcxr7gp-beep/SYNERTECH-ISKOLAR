@@ -117,7 +117,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 await _refreshProfile();
                 await _loadVerificationStatus();
               },
-              color: AppColors.primaryOrange,
+              color: AppColors.actionBlue,
               backgroundColor: const Color(0xFF161318),
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -138,12 +138,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                   height: 38,
                                   decoration: BoxDecoration(
                                     gradient: const LinearGradient(
-                                      colors: [Color(0xFFFF6D29), Color(0xFFFF8552)],
+                                      colors: [Color(0xFF4F96FF), Color(0xFF305BFE)],
                                     ),
                                     borderRadius: BorderRadius.circular(12),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: AppColors.primaryOrange.withValues(alpha: 0.35),
+                                        color: AppColors.actionBlue.withValues(alpha: 0.35),
                                         blurRadius: 12,
                                       ),
                                     ],
@@ -205,7 +205,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     width: 8,
                                     height: 8,
                                     decoration: const BoxDecoration(
-                                      color: AppColors.primaryOrange,
+                                      color: AppColors.actionBlue,
                                       shape: BoxShape.circle,
                                     ),
                                   ),
@@ -252,7 +252,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       height: 60,
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        border: Border.all(color: AppColors.primaryOrange, width: 2),
+                                        border: Border.all(color: AppColors.actionBlue, width: 2),
                                       ),
                                       child: ClipOval(
                                         child: Image.network(
@@ -317,7 +317,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 Container(width: 1, height: 28, color: Colors.white12),
                                 _buildMetricItem('OCR ENGINE', 'ACTIVE', const Color(0xFF3B82F6)),
                                 Container(width: 1, height: 28, color: Colors.white12),
-                                _buildMetricItem('ROLE', 'STUDENT', const Color(0xFFFF6D29)),
+                                _buildMetricItem('ROLE', 'STUDENT', AppColors.actionBlue),
                               ],
                             ),
                           ],
@@ -338,7 +338,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           child: const Row(
                             children: [
-                              SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryOrange)),
+                              SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.actionBlue)),
                               SizedBox(width: 12),
                               Expanded(
                                 child: Text(
@@ -361,12 +361,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               colors: [
-                                AppColors.primaryOrange.withValues(alpha: 0.15),
+                                AppColors.actionBlue.withValues(alpha: 0.15),
                                 const Color(0xFF1A1620),
                               ],
                             ),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: AppColors.primaryOrange.withValues(alpha: 0.35)),
+                            border: Border.all(color: AppColors.actionBlue.withValues(alpha: 0.35)),
                           ),
                           child: Row(
                             children: [
@@ -374,10 +374,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                 width: 42,
                                 height: 42,
                                 decoration: BoxDecoration(
-                                  color: AppColors.primaryOrange.withValues(alpha: 0.25),
+                                  color: AppColors.actionBlue.withValues(alpha: 0.25),
                                   shape: BoxShape.circle,
                                 ),
-                                child: const Icon(Icons.shield_outlined, color: AppColors.primaryOrange, size: 22),
+                                child: const Icon(Icons.shield_outlined, color: AppColors.actionBlue, size: 22),
                               ),
                               const SizedBox(width: 14),
                               Expanded(
@@ -398,7 +398,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       onTap: _navigateToVerification,
                                       child: const Text(
                                         'START VERIFICATION →',
-                                        style: TextStyle(color: AppColors.primaryOrange, fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 0.5),
+                                        style: TextStyle(color: AppColors.actionBlue, fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 0.5),
                                       ),
                                     ),
                                   ],
@@ -436,7 +436,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               _buildBentoActionTile(
                                 icon: Icons.search_rounded,
                                 label: 'Browse',
-                                color: const Color(0xFFFF6D29),
+                                color: AppColors.actionBlue,
                                 onTap: () {
                                   if (widget.onSelectTab != null) {
                                     widget.onSelectTab!(1);
@@ -452,7 +452,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               _buildBentoActionTile(
                                 icon: Icons.assignment_turned_in_rounded,
                                 label: 'Applications',
-                                color: const Color(0xFFFF8552),
+                                color: AppColors.actionBlue,
                                 onTap: () {
                                   if (widget.onSelectTab != null) {
                                     widget.onSelectTab!(2);
@@ -533,7 +533,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         children: [
                           _buildServiceCard(
                             icon: Icons.document_scanner_rounded,
-                            accentColor: const Color(0xFFFF6D29),
+                            accentColor: AppColors.actionBlue,
                             title: 'Automated OCR Verification',
                             subtitle: 'Smart extraction of Student ID & Grades',
                             status: 'ONLINE',
@@ -576,11 +576,11 @@ class _HomeScreenState extends State<HomeScreen> {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: const LinearGradient(
-          colors: [Color(0xFFFF6D29), Color(0xFFFF8552)],
+          colors: [Color(0xFF4F96FF), Color(0xFF305BFE)],
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primaryOrange.withValues(alpha: 0.3),
+            color: AppColors.actionBlue.withValues(alpha: 0.3),
             blurRadius: 10,
           ),
         ],

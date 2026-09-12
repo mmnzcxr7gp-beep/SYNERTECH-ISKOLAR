@@ -23,12 +23,13 @@ export default function NotificationCenter({ token, isAdmin }) {
   const popoverRef = useRef(null)
 
   // Fetch notifications
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (signal) => {
     if (!token) return
     try {
       setLoading(true)
       const res = await fetch('/api/notifications', {
         headers: { Authorization: `Bearer ${token}` },
+        signal: signal || undefined,
       })
       if (res.ok) {
         const body = await res.json()
@@ -37,16 +38,37 @@ export default function NotificationCenter({ token, isAdmin }) {
         setUnreadCount(body.unreadCount ?? notifs.filter((n) => !n.read).length)
       }
     } catch (err) {
-      console.warn('Failed to load notifications:', err.message)
+      if (err.name !== 'AbortError') {
+        console.warn('Failed to load notifications:', err.message)
+      }
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    fetchNotifications()
-    const interval = setInterval(fetchNotifications, 30000)
-    return () => clearInterval(interval)
+    const controller = new AbortController()
+    fetchNotifications(controller.signal)
+
+    const interval = setInterval(() => {
+      // Pause polling if the tab is hidden to save battery & network
+      if (!document.hidden) {
+        fetchNotifications(controller.signal)
+      }
+    }, 30000)
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchNotifications(controller.signal)
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      controller.abort()
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }, [token])
 
   // Close on outside click
@@ -114,7 +136,7 @@ export default function NotificationCenter({ token, isAdmin }) {
       return <CalendarIcon className="w-5 h-5 text-amber-400" />
     }
     if (t.includes('provider') || t.includes('approval') || t.includes('application')) {
-      return <UsersIcon className="w-5 h-5 text-[#FF6D29]" />
+      return <UsersIcon className="w-5 h-5 text-[#305BFE]" />
     }
     return <AlertTriangleIcon className="w-5 h-5 text-indigo-400" />
   }
@@ -150,7 +172,7 @@ export default function NotificationCenter({ token, isAdmin }) {
       >
         <BellIcon className="w-4 h-4" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#FF6D29] px-1 text-[10px] font-black text-white ring-2 ring-[var(--bg-primary, #0B0F17)] animate-pulse">
+          <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#305BFE] px-1 text-[10px] font-black text-white ring-2 ring-[var(--bg-primary, #0B0F17)] animate-pulse">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -181,12 +203,12 @@ export default function NotificationCenter({ token, isAdmin }) {
               }}
             >
               <div className="flex items-center gap-2">
-                <BellIcon className="w-4 h-4 text-[#FF6D29]" />
+                <BellIcon className="w-4 h-4 text-[#305BFE]" />
                 <span className="text-xs font-bold text-white">
                   Notifications & Alerts
                 </span>
                 {unreadCount > 0 && (
-                  <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-[#FF6D29]/20 text-[#FF6D29] border border-[#FF6D29]/30">
+                  <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-[#305BFE]/20 text-[#305BFE] border border-[#305BFE]/30">
                     {unreadCount} new
                   </span>
                 )}
@@ -196,7 +218,7 @@ export default function NotificationCenter({ token, isAdmin }) {
                 <button
                   type="button"
                   onClick={handleMarkAllRead}
-                  className="text-[11px] font-bold text-[#FF6D29] hover:underline cursor-pointer"
+                  className="text-[11px] font-bold text-[#305BFE] hover:underline cursor-pointer"
                 >
                   Mark all as read
                 </button>
@@ -229,7 +251,7 @@ export default function NotificationCenter({ token, isAdmin }) {
                       key={notifId}
                       onClick={() => handleNotificationClick(notif)}
                       className={`p-3.5 transition flex gap-3 items-start cursor-pointer hover:bg-white/5 ${
-                        isUnread ? 'bg-[#FF6D29]/10' : ''
+                        isUnread ? 'bg-[#305BFE]/10' : ''
                       }`}
                     >
                       <div className="mt-0.5 p-2 rounded-xl border bg-black/40 border-white/10 shrink-0">
@@ -251,7 +273,7 @@ export default function NotificationCenter({ token, isAdmin }) {
                         </p>
 
                         <div className="flex items-center justify-between mt-2 pt-1 border-t border-white/5">
-                          <span className="text-[10px] font-bold text-[#FF6D29] flex items-center gap-1">
+                          <span className="text-[10px] font-bold text-[#305BFE] flex items-center gap-1">
                             <span>Inspect alert</span>
                             <span>→</span>
                           </span>
@@ -262,7 +284,7 @@ export default function NotificationCenter({ token, isAdmin }) {
                       </div>
 
                       {isUnread && (
-                        <span className="h-2 w-2 rounded-full bg-[#FF6D29] shrink-0 mt-1.5 ring-2 ring-[#FF6D29]/40" />
+                        <span className="h-2 w-2 rounded-full bg-[#305BFE] shrink-0 mt-1.5 ring-2 ring-[#305BFE]/40" />
                       )}
                     </div>
                   )
@@ -284,7 +306,7 @@ export default function NotificationCenter({ token, isAdmin }) {
                   window.location.hash = isAdmin ? '#admin/audit' : '#providers/applicants'
                   setOpen(false)
                 }}
-                className="text-[11px] font-bold text-slate-300 hover:text-[#FF6D29] transition cursor-pointer"
+                className="text-[11px] font-bold text-slate-300 hover:text-[#305BFE] transition cursor-pointer"
               >
                 {isAdmin ? 'View Full Security Audit Log →' : 'View Applicant Activity →'}
               </button>
@@ -330,7 +352,7 @@ export default function NotificationCenter({ token, isAdmin }) {
                       {getNotificationIcon(selectedNotif.type)}
                     </div>
                     <div>
-                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-[#FF6D29]/20 text-[#FF6D29] border border-[#FF6D29]/30">
+                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-[#305BFE]/20 text-[#305BFE] border border-[#305BFE]/30">
                         {selectedNotif.type || 'SYSTEM ALERT'}
                       </span>
                       <h3 className="text-sm font-black text-white mt-1">
@@ -390,7 +412,7 @@ export default function NotificationCenter({ token, isAdmin }) {
                     <button
                       type="button"
                       onClick={() => handleNavigateToWorkflow(selectedNotif.route)}
-                      className="px-4 py-2 rounded-xl font-extrabold text-xs bg-[#FF6D29] text-white hover:brightness-110 shadow-lg flex items-center gap-1.5 transition cursor-pointer"
+                      className="px-4 py-2 rounded-xl font-extrabold text-xs bg-[#305BFE] text-white hover:bg-[#15265C] shadow-lg flex items-center gap-1.5 transition cursor-pointer"
                     >
                       <span>Open Related Page</span>
                       <ExternalLinkIcon className="w-3.5 h-3.5" />

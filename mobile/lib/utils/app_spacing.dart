@@ -1,5 +1,6 @@
-/// Standardized 4-Point Spacing and Sizing System for ISKOLAR Mobile
+/// Standardized Spacing, Touch Target, and Sizing System for ISKOLAR Mobile
 abstract final class AppSpacing {
+  // Spacing scale
   static const double s2 = 2.0;
   static const double s4 = 4.0;
   static const double s8 = 8.0;
@@ -21,17 +22,20 @@ abstract final class AppSpacing {
   static const double xxl = s48;
   static const double xxxl = s64;
 
-  // Standard Dimensions
+  // Standard Dimensions (Minimum 48x48 touch targets for accessibility)
   static const double screenHorizontal = s16;
   static const double screenPadding = s16;
   static const double cardPadding = s16;
   static const double sectionGap = s24;
-  static const double buttonHeight = 44.0;
-  static const double controlHeight = 44.0;
+  static const double buttonHeight = 48.0;
+  static const double controlHeight = 48.0;
 
-  // Corner Radii
-  static const double radiusSmall = 6.0;
-  static const double radiusControl = 10.0;
-  static const double radiusCard = 14.0;
-  static const double radiusPanel = 14.0;
+  // Locked Corner Radii
+  static const double radiusSmall = 10.0;     // Small controls
+  static const double radiusControl = 14.0;   // Inputs and buttons
+  static const double radiusInput = 14.0;     // Text fields & inputs
+  static const double radiusCard = 18.0;      // Cards
+  static const double radiusPanel = 18.0;     // Panels
+  static const double radiusModal = 24.0;     // Feature cards and modals
+  static const double radiusPill = 999.0;     // Pills and filter chips
 }

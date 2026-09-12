@@ -7,6 +7,8 @@ import 'package:iskolar_mobile/screens/login_screen.dart';
 import 'package:iskolar_mobile/screens/home_screen.dart';
 import 'package:iskolar_mobile/screens/student_profile_edit_screen.dart';
 import 'package:iskolar_mobile/screens/sponsor_admin_notice_screen.dart';
+import 'package:iskolar_mobile/screens/register_screen.dart';
+import 'package:iskolar_mobile/screens/profile_screen.dart';
 
 void main() {
   final viewports = [
@@ -32,7 +34,9 @@ void main() {
     'MOB-01: SplashScreen': () => const SplashScreen(),
     'MOB-02: OnboardingScreen': () => const OnboardingScreen(),
     'MOB-03: LoginScreen': () => const LoginScreen(),
+    'MOB-04: RegisterScreen': () => const RegisterScreen(),
     'MOB-06: HomeScreen': () => HomeScreen(user: dummyUser, token: 'fake-token'),
+    'MOB-14: ProfileScreen': () => ProfileScreen(user: dummyUser, token: 'fake-token'),
     'MOB-15: StudentProfileEditScreen': () => StudentProfileEditScreen(user: dummyUser, token: 'fake-token'),
     'MOB-16: SponsorAdminNoticeScreen': () => const SponsorAdminNoticeScreen(userRole: 'provider'),
   };

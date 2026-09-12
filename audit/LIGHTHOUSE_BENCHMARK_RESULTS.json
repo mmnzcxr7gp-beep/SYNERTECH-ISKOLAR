@@ -1,0 +1,106 @@
+{
+  "benchmark_metadata": {
+    "generated_at": "2026-09-12T17:22:00+08:00",
+    "auditor": "Antigravity Lead QA & Systems Engineer",
+    "environment": "Local Production Preview (Vite Preview v5.4.21, Node.js v24.14.0, Google Chrome v134.0.6998.89, Lighthouse v13.4.1)",
+    "shipped_code_integrity": "VERIFIED. All query-parameter role overrides (?test_role=provider) and mock tokens (mock_jwt_provider_token) were completely removed from App.jsx and ProviderDashboard.jsx. Route guards verified with no session, query bypass attempts, and invalid tokens.",
+    "real_staging_authenticated_benchmark_status": "BLOCKED (Designated provider credentials for live staging backend https://iskolar-api.onrender.com are not configured in environment; mocks and intercepted responses are prohibited from real benchmark claims)."
+  },
+  "real_public_benchmarks": {
+    "Desktop Public Landing (#home)": {
+      "role": "Guest / Public",
+      "url": "http://localhost:4173/#home",
+      "execution_mode": "Real Production Build (Zero Mocks, Zero Intercepts, Desktop Profile)",
+      "activeHeading": "Scholarship Applications Made Clearer",
+      "perf": { "median": 99, "min": 99, "max": 100 },
+      "a11y": { "median": 96, "min": 96, "max": 96 },
+      "fcp": { "median": 0.51, "min": 0.50, "max": 0.73 },
+      "lcp": { "median": 0.81, "min": 0.77, "max": 0.91 },
+      "cls": { "median": 0.000, "min": 0.000, "max": 0.026 },
+      "tbt": { "median": 0, "min": 0, "max": 15 },
+      "sampleCount": 5,
+      "reports": [
+        "audit/lighthouse_reports/desktop_landing_home_run1.json",
+        "audit/lighthouse_reports/desktop_landing_home_run2.json",
+        "audit/lighthouse_reports/desktop_landing_home_run3.json",
+        "audit/lighthouse_reports/desktop_landing_home_run4.json",
+        "audit/lighthouse_reports/desktop_landing_home_run5.json"
+      ]
+    },
+    "Mobile Public Landing (#home)": {
+      "role": "Guest / Public",
+      "url": "http://localhost:4173/#home",
+      "execution_mode": "Real Production Build (Zero Mocks, Zero Intercepts, Emulated Moto G Power, 4x CPU Throttling, 1.6 Mbps Network)",
+      "activeHeading": "Scholarship Applications Made Clearer",
+      "perf": { "median": 81, "min": 78, "max": 93 },
+      "a11y": { "median": 96, "min": 96, "max": 96 },
+      "fcp": { "median": 1.81, "min": 1.73, "max": 1.90 },
+      "lcp": { "median": 2.86, "min": 2.72, "max": 4.23 },
+      "cls": { "median": 0.016, "min": 0.014, "max": 0.016 },
+      "tbt": { "median": 241, "min": 153, "max": 710 },
+      "sampleCount": 5,
+      "reports": [
+        "audit/lighthouse_reports/public_landing_home_run1.json",
+        "audit/lighthouse_reports/public_landing_home_run2.json",
+        "audit/lighthouse_reports/public_landing_home_run3.json",
+        "audit/lighthouse_reports/public_landing_home_run4.json",
+        "audit/lighthouse_reports/public_landing_home_run5.json"
+      ]
+    }
+  },
+  "simulated_ui_fixture_tests": {
+    "notes": "These runs evaluate component DOM layout, heading hierarchy, and skeleton visual stability under an isolated fixture harness. They are labeled strictly as simulated UI tests and are NOT represented as live authenticated staging cloud benchmarks.",
+    "Candidate Scheduling (#providers/scheduling) [Simulated UI Test]": {
+      "role": "Provider (Isolated UI Fixture)",
+      "url": "http://localhost:4173/#providers/scheduling",
+      "activeHeading": "Candidate Interview & Examination Agenda",
+      "perf": { "median": 95, "min": 80, "max": 95 },
+      "a11y": { "median": 100, "min": 100, "max": 100 },
+      "fcp": { "median": 1.66, "min": 1.66, "max": 2.11 },
+      "lcp": { "median": 2.79, "min": 2.71, "max": 4.34 },
+      "cls": { "median": 0.048, "min": 0.010, "max": 0.056 },
+      "tbt": { "median": 65, "min": 59, "max": 200 },
+      "sampleCount": 5,
+      "screenshot": "audit/screenshots/provider_scheduling.png"
+    },
+    "Document & OCR Verification Queue (#providers/verification) [Simulated UI Test]": {
+      "role": "Provider (Isolated UI Fixture)",
+      "url": "http://localhost:4173/#providers/verification",
+      "activeHeading": "Document & OCR Verification Queue",
+      "perf": { "median": 89, "min": 88, "max": 92 },
+      "a11y": { "median": 100, "min": 100, "max": 100 },
+      "fcp": { "median": 1.89, "min": 1.67, "max": 2.11 },
+      "lcp": { "median": 3.46, "min": 3.16, "max": 3.62 },
+      "cls": { "median": 0.000, "min": 0.000, "max": 0.000 },
+      "tbt": { "median": 90, "min": 53, "max": 155 },
+      "sampleCount": 5,
+      "screenshot": "audit/screenshots/provider_verification.png"
+    },
+    "Organization & Account Settings (#providers/settings) [Simulated UI Test]": {
+      "role": "Provider (Isolated UI Fixture)",
+      "url": "http://localhost:4173/#providers/settings",
+      "activeHeading": "Account & Organization Settings",
+      "perf": { "median": 88, "min": 85, "max": 91 },
+      "a11y": { "median": 100, "min": 100, "max": 100 },
+      "fcp": { "median": 2.11, "min": 1.66, "max": 2.11 },
+      "lcp": { "median": 3.33, "min": 3.31, "max": 3.48 },
+      "cls": { "median": 0.029, "min": 0.029, "max": 0.029 },
+      "tbt": { "median": 148, "min": 93, "max": 223 },
+      "sampleCount": 5,
+      "screenshot": "audit/screenshots/provider_settings.png"
+    },
+    "Applicant Pipeline Oversight (#providers/applicants) [Simulated UI Test]": {
+      "role": "Provider (Isolated UI Fixture)",
+      "url": "http://localhost:4173/#providers/applicants",
+      "activeHeading": "Candidate Review & Selection Pipeline",
+      "perf": { "median": 88, "min": 81, "max": 95 },
+      "a11y": { "median": 94, "min": 94, "max": 94 },
+      "fcp": { "median": 2.07, "min": 1.68, "max": 2.19 },
+      "lcp": { "median": 3.68, "min": 2.77, "max": 4.11 },
+      "cls": { "median": 0.034, "min": 0.001, "max": 0.035 },
+      "tbt": { "median": 57, "min": 41, "max": 196 },
+      "sampleCount": 5,
+      "screenshot": "audit/screenshots/provider_applicants.png"
+    }
+  }
+}

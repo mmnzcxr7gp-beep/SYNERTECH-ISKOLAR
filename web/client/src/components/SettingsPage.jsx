@@ -204,7 +204,7 @@ export default function SettingsPage({ token, user, onUpdate }) {
       </div>
 
       {message && (
-        <div className={`p-4 rounded-2xl border text-xs font-bold ${
+        <div role="status" aria-live="polite" className={`p-4 rounded-2xl border text-xs font-bold ${
           messageType === 'error'
             ? 'bg-rose-500/10 border-rose-500/30 text-rose-400'
             : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
@@ -221,7 +221,7 @@ export default function SettingsPage({ token, user, onUpdate }) {
             onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2.5 rounded-xl text-xs font-extrabold transition border cursor-pointer ${
               activeTab === tab.id
-                ? 'bg-gradient-to-r from-[#FF6D29] to-[#FF8552] text-white border-[#FF6D29] shadow-sm'
+                ? 'bg-gradient-to-r from-[#305BFE] to-[#4F96FF] text-white border-[#305BFE] shadow-sm'
                 : 'hover:bg-[var(--color-surface-panel)]'
             }`}
             style={{
@@ -241,8 +241,9 @@ export default function SettingsPage({ token, user, onUpdate }) {
           <h2 className="text-base font-bold mb-4" style={{ color: 'var(--text-heading)' }}>Representative Profile</h2>
           <form onSubmit={handleProfileUpdate} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>Full Name</label>
+              <label htmlFor="profile-full-name" className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>Full Name</label>
               <input
+                id="profile-full-name"
                 type="text"
                 value={profileForm.name}
                 onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
@@ -253,21 +254,24 @@ export default function SettingsPage({ token, user, onUpdate }) {
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>Email Address</label>
+              <label htmlFor="profile-email-address" className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>Email Address</label>
               <input
+                id="profile-email-address"
+                aria-describedby="profile-email-desc"
                 type="email"
                 value={profileForm.email}
                 disabled
                 className="w-full rounded-xl border p-2.5 text-xs font-medium opacity-60 cursor-not-allowed"
                 style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}
               />
-              <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>Email address cannot be modified once verified.</p>
+              <p id="profile-email-desc" className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>Email address cannot be modified once verified.</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>Phone</label>
+                <label htmlFor="profile-phone" className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>Phone</label>
                 <input
+                  id="profile-phone"
                   type="text"
                   value={contactForm.phone}
                   onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })}
@@ -277,8 +281,9 @@ export default function SettingsPage({ token, user, onUpdate }) {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>City</label>
+                <label htmlFor="profile-city" className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>City</label>
                 <input
+                  id="profile-city"
                   type="text"
                   value={contactForm.city}
                   onChange={(e) => setContactForm({ ...contactForm, city: e.target.value })}
@@ -306,8 +311,9 @@ export default function SettingsPage({ token, user, onUpdate }) {
           <h2 className="text-base font-bold mb-4" style={{ color: 'var(--text-heading)' }}>Organization & Accreditation Details</h2>
           <form onSubmit={handleOrgUpdate} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>Organization / Company Name</label>
+              <label htmlFor="org-name" className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>Organization / Company Name</label>
               <input
+                id="org-name"
                 type="text"
                 value={orgForm.organization_name}
                 onChange={(e) => setOrgForm({ ...orgForm, organization_name: e.target.value })}
@@ -319,8 +325,9 @@ export default function SettingsPage({ token, user, onUpdate }) {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>Entity Type</label>
+                <label htmlFor="org-type" className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>Entity Type</label>
                 <select
+                  id="org-type"
                   value={orgForm.organization_type}
                   onChange={(e) => setOrgForm({ ...orgForm, organization_type: e.target.value })}
                   className="w-full rounded-xl border p-2.5 text-xs font-medium focus:outline-none cursor-pointer"
@@ -335,8 +342,9 @@ export default function SettingsPage({ token, user, onUpdate }) {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>SEC / DTI Registration #</label>
+                <label htmlFor="org-registration-number" className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>SEC / DTI Registration #</label>
                 <input
+                  id="org-registration-number"
                   type="text"
                   value={orgForm.registration_number}
                   onChange={(e) => setOrgForm({ ...orgForm, registration_number: e.target.value })}
@@ -348,8 +356,9 @@ export default function SettingsPage({ token, user, onUpdate }) {
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>Official Website URL</label>
+              <label htmlFor="org-website" className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>Official Website URL</label>
               <input
+                id="org-website"
                 type="url"
                 value={orgForm.website}
                 onChange={(e) => setOrgForm({ ...orgForm, website: e.target.value })}
@@ -376,8 +385,9 @@ export default function SettingsPage({ token, user, onUpdate }) {
           <h2 className="text-base font-bold mb-4" style={{ color: 'var(--text-heading)' }}>Password & Security Credentials</h2>
           <form onSubmit={handlePasswordChange} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>Current Password</label>
+              <label htmlFor="security-current-password" className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>Current Password</label>
               <input
+                id="security-current-password"
                 type="password"
                 value={passwordForm.current_password}
                 onChange={(e) => setPasswordForm({ ...passwordForm, current_password: e.target.value })}
@@ -389,8 +399,9 @@ export default function SettingsPage({ token, user, onUpdate }) {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>New Password</label>
+                <label htmlFor="security-new-password" className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>New Password</label>
                 <input
+                  id="security-new-password"
                   type="password"
                   value={passwordForm.new_password}
                   onChange={(e) => setPasswordForm({ ...passwordForm, new_password: e.target.value })}
@@ -402,8 +413,9 @@ export default function SettingsPage({ token, user, onUpdate }) {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>Confirm Password</label>
+                <label htmlFor="security-confirm-password" className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>Confirm Password</label>
                 <input
+                  id="security-confirm-password"
                   type="password"
                   value={passwordForm.confirm_password}
                   onChange={(e) => setPasswordForm({ ...passwordForm, confirm_password: e.target.value })}
@@ -438,14 +450,17 @@ export default function SettingsPage({ token, user, onUpdate }) {
           ].map((item) => (
             <div key={item.key} className="flex items-center justify-between p-3.5 rounded-2xl border" style={{ backgroundColor: 'var(--color-surface-panel)', borderColor: 'var(--border)' }}>
               <div>
-                <p className="text-xs font-bold" style={{ color: 'var(--text-heading)' }}>{item.label}</p>
-                <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{item.desc}</p>
+                <label htmlFor={`notif-${item.key}`} className="text-xs font-bold block cursor-pointer" style={{ color: 'var(--text-heading)' }}>{item.label}</label>
+                <p id={`notif-desc-${item.key}`} className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{item.desc}</p>
               </div>
               <input
+                id={`notif-${item.key}`}
+                aria-describedby={`notif-desc-${item.key}`}
+                aria-label={item.label}
                 type="checkbox"
                 checked={notifications[item.key]}
                 onChange={(e) => setNotifications({ ...notifications, [item.key]: e.target.checked })}
-                className="h-4 w-4 accent-[#FF6D29] cursor-pointer"
+                className="h-4 w-4 accent-[#305BFE] cursor-pointer"
               />
             </div>
           ))}

@@ -161,12 +161,25 @@ const register = async (req, res, next) => {
       return res.status(409).json({ message: 'Email already registered' });
     }
 
+    const school = (req.body.school || req.body.schoolName || '').trim();
+    const course = (req.body.course || '').trim();
+    const yearLevel = (req.body.yearLevel || req.body.gradeLevel || req.body.year_level || '').trim();
+    const gpaVal = req.body.gpa != null ? Number(req.body.gpa) : null;
+
     const user = {
       id: createId('users'),
       name,
       email: normalizedEmail,
       password: bcrypt.hashSync(password, 10),
       role,
+      school: school || null,
+      schoolName: school || null,
+      course: course || null,
+      yearLevel: yearLevel || null,
+      gradeLevel: yearLevel || null,
+      year_level: yearLevel || null,
+      gpa: !Number.isNaN(gpaVal) ? gpaVal : null,
+      accountStatus: 'ACTIVE',
       created_at: new Date().toISOString(),
       // New accounts start unverified and without a profile picture.
       // P1 FIX: emailVerified must be false until OTP is verified.
@@ -186,11 +199,69 @@ const register = async (req, res, next) => {
       await db.collections.users.insertOne({ ...user });
     }
     db.data.users.push(user);
+
+    if (role === 'student') {
+      const studentProfileDoc = {
+        user_id: user.id,
+        userId: user.id,
+        name: user.name,
+        email: normalizedEmail,
+        school: school || null,
+        schoolName: school || null,
+        course: course || null,
+        year_level: yearLevel || null,
+        yearLevel: yearLevel || null,
+        gradeLevel: yearLevel || null,
+        gpa: !Number.isNaN(gpaVal) ? gpaVal : null,
+        accountStatus: 'ACTIVE',
+        isVerified: false,
+        verificationStatus: 'unverified',
+        created_at: new Date().toISOString(),
+      };
+      if (db.collections?.student_profiles) {
+        await db.collections.student_profiles.insertOne({ ...studentProfileDoc }).catch(() => {});
+      }
+      if (db.data.student_profiles) {
+        db.data.student_profiles.push(studentProfileDoc);
+      }
+      try {
+        const { Student } = require('../models');
+        if (Student) {
+          await Student.findOneAndUpdate(
+            { $or: [{ userId: user.id }, { email: normalizedEmail }] },
+            {
+              $set: {
+                userId: user.id,
+                email: normalizedEmail,
+                schoolName: school || null,
+                school: school || null,
+                course: course || null,
+                yearLevel: yearLevel || null,
+                gradeLevel: yearLevel || null,
+                accountStatus: 'active',
+              }
+            },
+            { upsert: true, new: true }
+          ).catch(() => {});
+        }
+      } catch (_) {}
+    }
+
     // keep original behavior but make deterministic with await
     await safeDbWrite();
 
     return res.json({
-      user: { id: user.id, name, email: normalizedEmail, role },
+      user: {
+        id: user.id,
+        name,
+        email: normalizedEmail,
+        role,
+        school: user.school,
+        schoolName: user.schoolName,
+        course: user.course,
+        yearLevel: user.yearLevel,
+        gpa: user.gpa,
+      },
       token: generateToken(user),
     });
 
@@ -265,9 +336,7 @@ const login = async (req, res, next) => {
     const isMfaRequired = Boolean(
       user.mfaEnabled === true ||
       user.role === 'admin' ||
-      user.role === 'sponsor' ||
-      user.role === 'provider' ||
-      user.role === 'student' ||
+      user.role === 'administrator' ||
       process.env.MFA_REQUIRED === 'true' ||
       process.env.MFA_ENFORCED === 'true'
     );
@@ -369,11 +438,19 @@ const login = async (req, res, next) => {
       studentProfile = db.data.student_profiles.find((p) => p.user_id === user.id) || null;
     }
 
+    const effectiveSchool = studentProfile?.school || studentProfile?.schoolName || user.school || user.schoolName || '';
+    const effectiveCourse = studentProfile?.course || user.course || '';
+    const effectiveYear = studentProfile?.yearLevel || studentProfile?.year_level || user.yearLevel || user.year_level || '';
+
     const safeUser = {
       id: user.id,
       name: user.name || '',
       email: user.email,
       role: user.role,
+      firstName: user.firstName || user.first_name || '',
+      middleName: user.middleName || user.middle_name || '',
+      lastName: user.lastName || user.last_name || '',
+      mobileNumber: user.mobileNumber || user.mobile_number || '',
       organization_name: user.organization_name || user.company || '',
       organization_type: user.organization_type || '',
       phone: user.phone || '',
@@ -382,7 +459,23 @@ const login = async (req, res, next) => {
       city: user.city || '',
       country: user.country || '',
       profilePicture: user.profilePicture || user.profile_picture || '',
-      profile: studentProfile,
+      school: effectiveSchool,
+      schoolName: effectiveSchool,
+      course: effectiveCourse,
+      yearLevel: effectiveYear,
+      verificationStatus: user.verificationStatus || 'unverified',
+      profile: studentProfile ? {
+        ...studentProfile,
+        school: effectiveSchool,
+        schoolName: effectiveSchool,
+        course: effectiveCourse,
+        yearLevel: effectiveYear,
+      } : (user.role === 'student' ? {
+        school: effectiveSchool,
+        schoolName: effectiveSchool,
+        course: effectiveCourse,
+        yearLevel: effectiveYear,
+      } : null),
     };
 
     return res.json({
@@ -470,20 +563,40 @@ const verifyLoginOTP = async (req, res, next) => {
     await safeDbWrite();
 
     let studentProfile = null;
+    const uId = user.id || user._id;
     if (db.collections?.student_profiles) {
       studentProfile = await db.collections.student_profiles.findOne({
-        $or: [{ user_id: user.id }, { user_id: Number(user.id) }],
+        $or: [
+          { user_id: uId }, { user_id: Number(uId) }, { user_id: String(uId) },
+          { userId: uId }, { userId: Number(uId) }, { userId: String(uId) },
+          ...(user.email ? [{ email: user.email }] : []),
+        ],
       });
     }
     if (!studentProfile) {
-      studentProfile = (db.data.student_profiles || []).find((p) => p.user_id === user.id) || null;
+      studentProfile = (db.data.student_profiles || []).find((p) =>
+        p.user_id === user.id || String(p.user_id) === String(user.id) ||
+        p.userId === user.id || String(p.userId) === String(user.id) ||
+        (user.email && p.email === user.email)
+      ) || null;
     }
+
+    const effectiveSchool = studentProfile?.school || studentProfile?.schoolName || user.school || user.schoolName || '';
+    const effectiveCourse = studentProfile?.course || user.course || '';
+    const effectiveYear = studentProfile?.yearLevel || studentProfile?.year_level || studentProfile?.gradeLevel || user.yearLevel || user.year_level || user.gradeLevel || '';
+    const effectiveGpa = studentProfile?.gpa ?? user.gpa ?? null;
+    const effectiveFamilyIncome = studentProfile?.family_income ?? studentProfile?.familyIncome ?? user.family_income ?? user.familyIncome ?? null;
+    const effectiveAchievements = studentProfile?.achievements || user.achievements || '';
 
     const safeUser = {
       id: user.id,
       name: user.name || '',
       email: user.email,
       role: user.role,
+      firstName: user.firstName || user.first_name || '',
+      middleName: user.middleName || user.middle_name || '',
+      lastName: user.lastName || user.last_name || '',
+      mobileNumber: user.mobileNumber || user.mobile_number || '',
       organization_name: user.organization_name || user.company || '',
       organization_type: user.organization_type || '',
       phone: user.phone || '',
@@ -492,7 +605,39 @@ const verifyLoginOTP = async (req, res, next) => {
       city: user.city || '',
       country: user.country || '',
       profilePicture: user.profilePicture || user.profile_picture || '',
-      profile: studentProfile,
+      school: effectiveSchool,
+      schoolName: effectiveSchool,
+      course: effectiveCourse,
+      yearLevel: effectiveYear,
+      year_level: effectiveYear,
+      gradeLevel: effectiveYear,
+      gpa: effectiveGpa,
+      family_income: effectiveFamilyIncome,
+      familyIncome: effectiveFamilyIncome,
+      achievements: effectiveAchievements,
+      verificationStatus: user.verificationStatus || 'unverified',
+      profile: studentProfile ? {
+        ...studentProfile,
+        school: effectiveSchool,
+        schoolName: effectiveSchool,
+        course: effectiveCourse,
+        yearLevel: effectiveYear,
+        year_level: effectiveYear,
+        gpa: effectiveGpa,
+        family_income: effectiveFamilyIncome,
+        familyIncome: effectiveFamilyIncome,
+        achievements: effectiveAchievements,
+      } : (user.role === 'student' ? {
+        school: effectiveSchool,
+        schoolName: effectiveSchool,
+        course: effectiveCourse,
+        yearLevel: effectiveYear,
+        year_level: effectiveYear,
+        gpa: effectiveGpa,
+        family_income: effectiveFamilyIncome,
+        familyIncome: effectiveFamilyIncome,
+        achievements: effectiveAchievements,
+      } : null),
     };
 
     return res.json({
@@ -698,11 +843,11 @@ const verifyOTP = async (req, res, next) => {
         emailVerified: user.emailVerified,
         verificationStatus: user.verificationStatus,
 
-        profilePicture: user.profilePicture,
-        mobileNumber: '',
-        school: '',
-        course: '',
-        yearLevel: '',
+        profilePicture: user.profilePicture || '',
+        mobileNumber: user.mobileNumber || '',
+        school: user.school || user.schoolName || '',
+        course: user.course || '',
+        yearLevel: user.yearLevel || user.year_level || '',
       },
       token: generateToken(user),
     });
@@ -894,13 +1039,22 @@ module.exports = {
       console.log('[getProfile] Found user:', user.email);
 
       let studentProfile = null;
+      const uId = user.id || user._id;
       if (db.collections?.student_profiles) {
         studentProfile = await db.collections.student_profiles.findOne({
-          $or: [{ user_id: user.id }, { user_id: Number(user.id) }, { user_id: String(user.id) }],
+          $or: [
+            { user_id: uId }, { user_id: Number(uId) }, { user_id: String(uId) },
+            { userId: uId }, { userId: Number(uId) }, { userId: String(uId) },
+            ...(user.email ? [{ email: user.email }] : []),
+          ],
         });
       }
       if (!studentProfile && db.data.student_profiles) {
-        studentProfile = db.data.student_profiles.find((p) => p.user_id === user.id || String(p.user_id) === String(user.id)) || null;
+        studentProfile = db.data.student_profiles.find((p) =>
+          p.user_id === user.id || String(p.user_id) === String(user.id) ||
+          p.userId === user.id || String(p.userId) === String(user.id) ||
+          (user.email && p.email === user.email)
+        ) || null;
       }
 
       // Start with in-memory values then merge Mongo Student truth for students.
@@ -967,6 +1121,36 @@ module.exports = {
         }
       }
 
+      const effectiveSchool =
+        studentProfile?.school ||
+        studentProfile?.schoolName ||
+        (user.role === 'student' && (user.school || user.schoolName)) ||
+        '';
+
+      const effectiveCourse =
+        studentProfile?.course ||
+        (user.role === 'student' && user.course) ||
+        '';
+
+      const effectiveYearLevel =
+        studentProfile?.yearLevel ||
+        studentProfile?.year_level ||
+        (user.role === 'student' && (user.yearLevel || user.year_level)) ||
+        '';
+
+      const effectiveGpa =
+        studentProfile?.gpa ??
+        (user.role === 'student' ? user.gpa : null);
+
+      const effectiveFamilyIncome =
+        studentProfile?.family_income ??
+        (user.role === 'student' ? user.family_income : null);
+
+      const effectiveAchievements =
+        studentProfile?.achievements ||
+        (user.role === 'student' ? user.achievements : '') ||
+        '';
+
       const safeUser = {
         id: user.id,
         name: user.name || '',
@@ -996,19 +1180,49 @@ module.exports = {
         sponsor_verified: mergedSponsorVerified,
         organization_verified: mergedOrganizationVerified,
 
-        // legacy compatibility fields (may be used elsewhere)
-        school: user.school || '',
-        course: user.course || '',
-        yearLevel: user.yearLevel || user.year_level || '',
+        // Synchronized profile fields
+        school: effectiveSchool,
+        schoolName: effectiveSchool,
+        course: effectiveCourse,
+        yearLevel: effectiveYearLevel,
+        year_level: effectiveYearLevel,
+        gradeLevel: effectiveYearLevel,
+        gpa: effectiveGpa,
+        family_income: effectiveFamilyIncome,
+        familyIncome: effectiveFamilyIncome,
+        achievements: effectiveAchievements,
         corUrl: user.corUrl || user.cor_url || '',
         schoolIdUrl: user.schoolIdUrl || user.school_id_url || '',
         selfieWithIdUrl: user.selfieWithIdUrl || user.selfie_with_id_url || '',
 
         profile: studentProfile ? {
           ...studentProfile,
+          school: effectiveSchool,
+          schoolName: effectiveSchool,
+          course: effectiveCourse,
+          yearLevel: effectiveYearLevel,
+          year_level: effectiveYearLevel,
+          gradeLevel: effectiveYearLevel,
+          gpa: effectiveGpa,
+          family_income: effectiveFamilyIncome,
+          familyIncome: effectiveFamilyIncome,
+          achievements: effectiveAchievements,
           isVerified: mergedVerificationStatus === 'verified',
           verificationStatus: mergedVerificationStatus,
-        } : null,
+        } : (user.role === 'student' ? {
+          school: effectiveSchool,
+          schoolName: effectiveSchool,
+          course: effectiveCourse,
+          yearLevel: effectiveYearLevel,
+          year_level: effectiveYearLevel,
+          gradeLevel: effectiveYearLevel,
+          gpa: effectiveGpa,
+          family_income: effectiveFamilyIncome,
+          familyIncome: effectiveFamilyIncome,
+          achievements: effectiveAchievements,
+          isVerified: mergedVerificationStatus === 'verified',
+          verificationStatus: mergedVerificationStatus,
+        } : null),
       };
 
       console.log('[getProfile] Returning user:', safeUser.email, 'role:', safeUser.role);
@@ -1293,13 +1507,22 @@ module.exports = {
         profile = db.data.student_profiles.find((p) => String(p.user_id) === String(effectiveUserId) || (user.email && p.email === user.email));
       }
 
+      const resolvedSchool = school !== undefined ? school : (profile?.school || profile?.schoolName || user.school || user.schoolName || '');
+      const resolvedCourse = course !== undefined ? course : (profile?.course || user.course || '');
+      const resolvedYear = yearLevel !== undefined ? yearLevel : (profile?.yearLevel || profile?.year_level || user.yearLevel || user.year_level || '');
+      const resolvedGpa = gpa !== undefined ? Number(gpa) : (profile?.gpa ?? user.gpa ?? null);
+      const resolvedIncome = familyIncome !== undefined ? Number(familyIncome) : (profile?.family_income ?? user.family_income ?? null);
+      const resolvedAchievements = achievements !== undefined ? achievements : (profile?.achievements || user.achievements || '');
+
       const profileUpdates = {
-        school: school !== undefined ? school : (profile?.school || user.school || ''),
-        course: course !== undefined ? course : (profile?.course || user.course || ''),
-        yearLevel: yearLevel !== undefined ? yearLevel : (profile?.yearLevel || user.yearLevel || ''),
-        gpa: gpa !== undefined ? Number(gpa) : (profile?.gpa || 0),
-        family_income: familyIncome !== undefined ? Number(familyIncome) : (profile?.family_income || 0),
-        achievements: achievements !== undefined ? achievements : (profile?.achievements || ''),
+        school: resolvedSchool,
+        schoolName: resolvedSchool,
+        course: resolvedCourse,
+        yearLevel: resolvedYear,
+        year_level: resolvedYear,
+        gpa: resolvedGpa,
+        family_income: resolvedIncome,
+        achievements: resolvedAchievements,
       };
 
       if (profile) {
@@ -1324,13 +1547,45 @@ module.exports = {
           user_id: Number(effectiveUserId) || effectiveUserId,
           email: user.email,
           ...profileUpdates,
-          status: 'pending',
+          status: 'verified',
         };
         if (db.collections?.student_profiles) {
           await db.collections.student_profiles.insertOne({ ...profile });
         }
         if (!db.data.student_profiles) db.data.student_profiles = [];
         db.data.student_profiles.push(profile);
+      }
+
+      // Authoritative sync to Student collection in MongoDB
+      try {
+        const { Student } = require('../models');
+        if (Student && typeof Student.findOneAndUpdate === 'function') {
+          await Student.findOneAndUpdate(
+            {
+              $or: [
+                { userId: effectiveUserId },
+                { userId: Number(effectiveUserId) },
+                { userId: String(effectiveUserId) },
+                ...(user.email ? [{ email: user.email }] : []),
+              ],
+            },
+            {
+              $set: {
+                school: resolvedSchool,
+                schoolName: resolvedSchool,
+                course: resolvedCourse,
+                yearLevel: resolvedYear,
+                gradeLevel: resolvedYear,
+                ...(resolvedGpa != null ? { gpa: resolvedGpa } : {}),
+                ...(resolvedIncome != null ? { family_income: resolvedIncome } : {}),
+                ...(resolvedAchievements ? { achievements: resolvedAchievements } : {}),
+              },
+            },
+            { upsert: true, new: true, runValidators: false }
+          );
+        }
+      } catch (studSyncErr) {
+        console.warn('Failed to sync Student mongoose document in updateStudentProfile:', studSyncErr?.message);
       }
 
       await safeDbWrite();

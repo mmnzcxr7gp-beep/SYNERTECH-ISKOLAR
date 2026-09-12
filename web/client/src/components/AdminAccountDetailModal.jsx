@@ -253,7 +253,7 @@ export default function AdminAccountDetailModal({
         {/* Modal Header */}
         <div className="p-5 sm:p-6 border-b flex items-center justify-between gap-4" style={{ borderColor: 'var(--border, #1f293d)' }}>
           <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-            <div className="h-11 w-11 sm:h-12 sm:w-12 shrink-0 rounded-2xl bg-[#FF6D29]/20 text-[#FF6D29] flex items-center justify-center font-black text-lg border border-[#FF6D29]/30">
+            <div className="h-11 w-11 sm:h-12 sm:w-12 shrink-0 rounded-2xl bg-[#305BFE]/15 text-[#305BFE] flex items-center justify-center font-black text-lg border border-[#305BFE]/30">
               {(acc.name || acc.email || 'A').charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0">
@@ -303,7 +303,7 @@ export default function AdminAccountDetailModal({
               onClick={() => setActiveTab(tab.id)}
               className={`px-3 sm:px-4 py-2.5 text-xs font-extrabold border-b-2 transition whitespace-nowrap cursor-pointer ${
                 activeTab === tab.id
-                  ? 'border-[#FF6D29] text-[#FF6D29]'
+                  ? 'border-[#305BFE] text-[#305BFE]'
                   : 'border-transparent text-slate-400 hover:text-white'
               }`}
             >
@@ -316,7 +316,7 @@ export default function AdminAccountDetailModal({
         <div className="p-5 sm:p-6 flex-1 overflow-y-auto space-y-6">
           {loading ? (
             <div className="py-16 text-center text-xs font-semibold text-slate-400">
-              <div className="inline-block animate-spin rounded-full h-6 w-6 border-2 border-[#FF6D29] border-t-transparent mb-3" />
+              <div className="inline-block animate-spin rounded-full h-6 w-6 border-2 border-[#305BFE] border-t-transparent mb-3" />
               <p>Loading account details and evidence…</p>
             </div>
           ) : error ? (
@@ -330,7 +330,7 @@ export default function AdminAccountDetailModal({
                 <button
                   type="button"
                   onClick={fetchDetails}
-                  className="px-3 py-1.5 rounded-xl bg-[#FF6D29] text-white text-xs font-bold hover:bg-[#e05a1b] transition cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl bg-[#305BFE] text-white text-xs font-bold hover:bg-[#305DE0] transition cursor-pointer"
                 >
                   Retry Loading
                 </button>
@@ -351,11 +351,11 @@ export default function AdminAccountDetailModal({
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="p-4 rounded-2xl border space-y-3" style={{ backgroundColor: 'var(--color-surface-panel, #121829)', borderColor: 'var(--border, #1f293d)' }}>
                       <div className="flex items-center justify-between">
-                        <h4 className="text-xs font-extrabold uppercase text-[#FF6D29]">Basic Information</h4>
+                        <h4 className="text-xs font-extrabold uppercase text-[#305BFE]">Basic Information</h4>
                         <button
                           type="button"
                           onClick={() => { setActionDialog('edit'); setActionError(''); }}
-                          className="text-[11px] font-bold text-[#FF6D29] hover:underline cursor-pointer"
+                          className="text-[11px] font-bold text-[#305BFE] hover:underline cursor-pointer"
                         >
                           ✎ Edit Profile
                         </button>
@@ -370,7 +370,7 @@ export default function AdminAccountDetailModal({
                     </div>
 
                     <div className="p-4 rounded-2xl border space-y-3" style={{ backgroundColor: 'var(--color-surface-panel, #121829)', borderColor: 'var(--border, #1f293d)' }}>
-                      <h4 className="text-xs font-extrabold uppercase text-[#FF6D29]">
+                      <h4 className="text-xs font-extrabold uppercase text-[#305BFE]">
                         {isStudent ? 'Academic Information' : 'Organization Details'}
                       </h4>
                       <div className="text-xs space-y-1.5">
@@ -383,7 +383,7 @@ export default function AdminAccountDetailModal({
                         ) : (
                           <>
                             <div><strong className="text-white">Company / Org:</strong> {acc.company || 'N/A'}</div>
-                            <div><strong className="text-white">Website:</strong> {acc.organization_website ? <a href={acc.organization_website} target="_blank" rel="noreferrer" className="text-[#FF6D29] underline">{acc.organization_website}</a> : 'N/A'}</div>
+                            <div><strong className="text-white">Website:</strong> {acc.organization_website ? <a href={acc.organization_website} target="_blank" rel="noreferrer" className="text-[#305BFE] underline">{acc.organization_website}</a> : 'N/A'}</div>
                             <div><strong className="text-white">Domain:</strong> {acc.company_domain || 'N/A'}</div>
                           </>
                         )}
@@ -392,39 +392,45 @@ export default function AdminAccountDetailModal({
                   </div>
 
                   {/* Quick Verification Banner */}
-                  <div className="p-4 rounded-2xl border flex items-center justify-between flex-wrap gap-4" style={{ backgroundColor: 'rgba(255, 109, 41, 0.05)', borderColor: 'rgba(255, 109, 41, 0.25)' }}>
-                    <div>
-                      <h4 className="text-xs font-black text-white">Administrator Verification State</h4>
-                      <p className="text-[11px] mt-0.5 text-slate-400">
-                        Status: <strong>{acc.accountStatus || 'ACTIVE'}</strong> • Verified: <strong>{acc.isVerified || acc.sponsor_verified ? 'Yes' : 'No'}</strong>
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {(!acc.isVerified && acc.accountStatus !== 'ACTIVE') && (
-                        <button
-                          type="button"
-                          onClick={() => { setActionDialog('verify'); setActionReason('Identity verification validated'); }}
-                          className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition cursor-pointer"
-                        >
-                          Verify Account
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab('actions')}
-                        className="px-3.5 py-1.5 rounded-xl border border-white/20 text-slate-200 hover:bg-white/10 text-xs font-bold transition cursor-pointer"
-                      >
-                        All Controls
-                      </button>
-                    </div>
-                  </div>
+                  {(() => {
+                    const isRejected = acc.accountStatus === 'REJECTED' || acc.verificationStatus === 'rejected'
+                    const isVerified = isRejected ? false : (acc.isVerified || acc.sponsor_verified)
+                    return (
+                      <div className="p-4 rounded-2xl border flex items-center justify-between flex-wrap gap-4" style={{ backgroundColor: 'rgba(48, 91, 254, 0.08)', borderColor: 'rgba(48, 91, 254, 0.25)' }}>
+                        <div>
+                          <h4 className="text-xs font-black text-white">Administrator Verification State</h4>
+                          <p className="text-[11px] mt-0.5 text-slate-400">
+                            Status: <strong className={isRejected ? 'text-rose-400' : ''}>{acc.accountStatus || 'ACTIVE'}</strong> • Verified: <strong className={isRejected ? 'text-rose-400' : isVerified ? 'text-emerald-400' : ''}>{isRejected ? 'No (Rejected)' : isVerified ? 'Yes' : 'No'}</strong>
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {(!isVerified && acc.accountStatus !== 'ACTIVE' && !isRejected) && (
+                            <button
+                              type="button"
+                              onClick={() => { setActionDialog('verify'); setActionReason('Identity verification validated'); }}
+                              className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition cursor-pointer"
+                            >
+                              Verify Account
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('actions')}
+                            className="px-3.5 py-1.5 rounded-xl border border-white/20 text-slate-200 hover:bg-white/10 text-xs font-bold transition cursor-pointer"
+                          >
+                            All Controls
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })()}
                 </div>
               )}
 
               {/* TAB 2: APPLICATIONS OR SCHOLARSHIPS */}
               {activeTab === 'submissions' && (
                 <div className="space-y-4">
-                  <h4 className="text-xs font-extrabold uppercase text-[#FF6D29]">
+                  <h4 className="text-xs font-extrabold uppercase text-[#305BFE]">
                     {isStudent ? `Submitted Scholarship Applications (${applications.length})` : `Managed Scholarship Programs (${managedScholarships.length})`}
                   </h4>
                   {isStudent ? (
@@ -471,7 +477,7 @@ export default function AdminAccountDetailModal({
               {activeTab === 'documents' && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-extrabold uppercase text-[#FF6D29]">
+                    <h4 className="text-xs font-extrabold uppercase text-[#305BFE]">
                       Verification Documents & OCR Extractions ({documents.length})
                     </h4>
                   </div>
@@ -505,7 +511,7 @@ export default function AdminAccountDetailModal({
                             <button
                               type="button"
                               onClick={() => loadDocumentPreview(doc)}
-                              className="px-3 py-1.5 rounded-xl bg-[#FF6D29] text-white text-xs font-bold hover:bg-[#e05a1b] transition cursor-pointer flex items-center gap-1.5"
+                              className="px-3 py-1.5 rounded-xl bg-[#305BFE] text-white text-xs font-bold hover:bg-[#305DE0] transition cursor-pointer flex items-center gap-1.5"
                             >
                               <DocumentIcon className="w-3.5 h-3.5" />
                               View Protected Preview
@@ -521,7 +527,7 @@ export default function AdminAccountDetailModal({
               {/* TAB 4: SECURITY & ACTIONS */}
               {activeTab === 'actions' && (
                 <div className="space-y-6">
-                  <h4 className="text-xs font-extrabold uppercase text-[#FF6D29]">Administrative Account Lifecycle Controls</h4>
+                  <h4 className="text-xs font-extrabold uppercase text-[#305BFE]">Administrative Account Lifecycle Controls</h4>
                   <div className="grid gap-3 sm:grid-cols-2">
                     {/* Verify */}
                     <div className="p-4 rounded-2xl border space-y-2" style={{ backgroundColor: 'var(--color-surface-panel, #121829)', borderColor: 'var(--border, #1f293d)' }}>
@@ -648,7 +654,7 @@ export default function AdminAccountDetailModal({
                 <div className="space-y-6">
                   {/* Version History */}
                   <div className="space-y-3">
-                    <h4 className="text-xs font-extrabold uppercase text-[#FF6D29]">Profile Version History</h4>
+                    <h4 className="text-xs font-extrabold uppercase text-[#305BFE]">Profile Version History</h4>
                     {versionHistory.length === 0 ? (
                       <p className="text-xs text-slate-400">No profile versions logged yet.</p>
                     ) : (
@@ -668,7 +674,7 @@ export default function AdminAccountDetailModal({
 
                   {/* Audit Ledger */}
                   <div className="space-y-3">
-                    <h4 className="text-xs font-extrabold uppercase text-[#FF6D29]">Immutable Audit Ledger Events</h4>
+                    <h4 className="text-xs font-extrabold uppercase text-[#305BFE]">Immutable Audit Ledger Events</h4>
                     {auditHistory.length === 0 ? (
                       <p className="text-xs text-slate-400">No audit events recorded for this account yet.</p>
                     ) : (
@@ -676,7 +682,7 @@ export default function AdminAccountDetailModal({
                         {auditHistory.map((log) => (
                           <div key={log.id} className="p-3 rounded-xl border text-xs space-y-1" style={{ backgroundColor: 'var(--color-surface-panel, #121829)', borderColor: 'var(--border, #1f293d)' }}>
                             <div className="flex items-center justify-between">
-                              <span className="font-mono font-bold text-[#FF6D29]">{log.action}</span>
+                              <span className="font-mono font-bold text-[#305BFE]">{log.action}</span>
                               <span className="text-[10px] text-slate-400">{new Date(log.timestamp || Date.now()).toLocaleString()}</span>
                             </div>
                             <p className="text-slate-300">{log.reason || 'Administrative action executed'}</p>
@@ -793,13 +799,13 @@ export default function AdminAccountDetailModal({
                       </>
                     )}
                     <div>
-                      <label className="font-bold text-[#FF6D29]">Mandatory Reason for Administrative Edit (min 5 chars) *</label>
+                      <label className="font-bold text-[#305BFE]">Mandatory Reason for Administrative Edit (min 5 chars) *</label>
                       <input
                         type="text"
                         placeholder="e.g. Corrected spelling on official school record"
                         value={actionReason}
                         onChange={(e) => setActionReason(e.target.value)}
-                        className="w-full p-2 rounded-xl border mt-1 bg-black/40 text-white border-[#FF6D29]/50 focus:outline-none"
+                        className="w-full p-2 rounded-xl border mt-1 bg-black/40 text-white border-[#305BFE]/50 focus:outline-none"
                       />
                     </div>
                   </div>
@@ -895,7 +901,7 @@ export default function AdminAccountDetailModal({
                         ? 'bg-red-600 hover:bg-red-700 text-white'
                         : actionDialog === 'suspend' || actionDialog === 'reject'
                         ? 'bg-rose-600 hover:bg-rose-700 text-white'
-                        : 'bg-[#FF6D29] hover:bg-[#e05a1b] text-white'
+                        : 'bg-[#305BFE] hover:bg-[#305DE0] text-white'
                     }`}
                   >
                     {actionLoading
@@ -939,7 +945,7 @@ export default function AdminAccountDetailModal({
                 <div className="flex-1 min-h-[300px] max-h-[460px] rounded-2xl border overflow-hidden flex items-center justify-center bg-black/60 relative" style={{ borderColor: 'var(--border, #1f293d)' }}>
                   {previewLoading ? (
                     <div className="p-8 text-center text-xs font-semibold text-slate-400">
-                      <div className="inline-block animate-spin rounded-full h-6 w-6 border-2 border-[#FF6D29] border-t-transparent mb-2" />
+                      <div className="inline-block animate-spin rounded-full h-6 w-6 border-2 border-[#305BFE] border-t-transparent mb-2" />
                       <p>Loading document preview…</p>
                     </div>
                   ) : previewError ? (
@@ -950,7 +956,7 @@ export default function AdminAccountDetailModal({
                         <button
                           type="button"
                           onClick={() => loadDocumentPreview(previewDoc)}
-                          className="px-3 py-1.5 rounded-xl bg-[#FF6D29] text-white text-xs font-bold hover:bg-[#e05a1b] transition cursor-pointer"
+                          className="px-3 py-1.5 rounded-xl bg-[#305BFE] text-white text-xs font-bold hover:bg-[#305DE0] transition cursor-pointer"
                         >
                           Retry Loading
                         </button>
@@ -1001,7 +1007,7 @@ export default function AdminAccountDetailModal({
 
                 {previewDoc.rawOcrText && (
                   <div className="space-y-1">
-                    <h5 className="text-[10px] font-extrabold uppercase text-[#FF6D29]">OCR Extracted Text</h5>
+                    <h5 className="text-[10px] font-extrabold uppercase text-[#305BFE]">OCR Extracted Text</h5>
                     <div className="p-2.5 rounded-xl bg-black/40 border border-white/5 text-[11px] font-mono text-slate-300 max-h-24 overflow-y-auto">
                       {previewDoc.rawOcrText}
                     </div>

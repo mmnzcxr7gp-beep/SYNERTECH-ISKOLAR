@@ -31,8 +31,8 @@ export default function Navbar({ currentUser, activeSection, onLogin, onLogout }
   }, [mobileMenuOpen])
 
   const roleLabel = (() => {
-    if (role === 'admin' || role === 'administrator') return { label: 'Administrator', dotColor: 'bg-[#FF6D29]' }
-    if (role === 'provider' || role === 'sponsor') return { label: 'Scholarship Provider', dotColor: 'bg-[#FF8552]' }
+    if (role === 'admin' || role === 'administrator') return { label: 'Administrator', dotColor: 'bg-[#305BFE]' }
+    if (role === 'provider' || role === 'sponsor') return { label: 'Scholarship Provider', dotColor: 'bg-[#4F96FF]' }
     if (role === 'student' || role === 'applicant') return { label: 'Student (Mobile Only)', dotColor: 'bg-emerald-500' }
     return null
   })()
@@ -52,7 +52,7 @@ export default function Navbar({ currentUser, activeSection, onLogin, onLogout }
           
           {/* Logo & Role Badge */}
           <div className="flex items-center gap-3">
-            <a href="#home" className="transition hover:opacity-90 flex items-center" aria-label="Iskolar Home">
+            <a href="#home" className="transition hover:opacity-90 flex items-center">
               <IskolarLogo size="sm" />
             </a>
             {roleLabel && (

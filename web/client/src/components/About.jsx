@@ -3,7 +3,7 @@ import { ShieldIcon, LockIcon, DocumentIcon, ChartIcon, CheckIcon } from './Icon
 
 const trustPillars = [
   {
-    icon: <LockIcon className="w-5 h-5 text-[#FF6D29]" />,
+    icon: <LockIcon className="w-5 h-5 text-[#305BFE]" />,
     title: 'Private Document Storage',
     description: 'Uploaded applicant records are stored in private Cloudflare R2 cloud object storage with SHA-256 integrity hashing and strict bearer token ownership validation.',
   },
@@ -23,7 +23,7 @@ const trustPillars = [
     description: 'Strict client and platform isolation prevents horizontal privilege escalation. Students operate on Flutter mobile; sponsors manage reviews on the web portal.',
   },
   {
-    icon: <DocumentIcon className="w-5 h-5 text-[#FF6D29]" />,
+    icon: <DocumentIcon className="w-5 h-5 text-[#305BFE]" />,
     title: 'Application Audit History',
     description: 'Every state transition, document resubmission request, and decision note is recorded in an immutable, timestamped audit log for academic compliance.',
   },
@@ -43,7 +43,7 @@ export default function About() {
               color: 'var(--color-text-secondary)'
             }}
           >
-            <span className="h-2 w-2 rounded-full bg-[#FF6D29]"></span>
+            <span className="h-2 w-2 rounded-full bg-[#305BFE]"></span>
             <span>Security & Data Governance</span>
           </div>
 
@@ -98,7 +98,7 @@ export default function About() {
               <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-heading)]">
                 Data Protection Protocol
               </span>
-              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                 Active Standards
               </span>
             </div>

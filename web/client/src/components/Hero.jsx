@@ -1,4 +1,4 @@
-import React, { lazy, Suspense } from 'react'
+import React, { lazy, Suspense, useState, useEffect } from 'react'
 import { useTheme } from './ThemeContext'
 import { CheckIcon, BoltIcon, PhoneIcon } from './Icons'
 import ParticleText from './effects/ParticleText'
@@ -9,6 +9,17 @@ const Dither = lazy(() => import('./effects/Dither'))
 export default function Hero({ onLogin }) {
   const { theme } = useTheme()
   const isDark = theme === 'dark'
+  const [mountDither, setMountDither] = useState(false)
+
+  useEffect(() => {
+    if ('requestIdleCallback' in window) {
+      const handle = window.requestIdleCallback(() => setMountDither(true), { timeout: 1200 })
+      return () => window.cancelIdleCallback(handle)
+    } else {
+      const timer = setTimeout(() => setMountDither(true), 600)
+      return () => clearTimeout(timer)
+    }
+  }, [])
 
   return (
     <section
@@ -19,19 +30,23 @@ export default function Hero({ onLogin }) {
       {/* Decorative Dither Background (Zero Keyboard/Pointer Interference) */}
       <div className="home-hero__effect" aria-hidden="true">
         <EffectErrorBoundary fallback={<div className="dither-fallback" />}>
-          <Suspense fallback={<div className="dither-fallback" />}>
-            <Dither
-              waveColor={isDark ? [0.95, 0.42, 0.14] : [0.79, 0.28, 0.06]}
-              disableAnimation={false}
-              enableMouseInteraction={false}
-              mouseRadius={0.2}
-              colorNum={4}
-              pixelSize={3}
-              waveAmplitude={0.18}
-              waveFrequency={2.2}
-              waveSpeed={0.022}
-            />
-          </Suspense>
+          {mountDither ? (
+            <Suspense fallback={<div className="dither-fallback" />}>
+              <Dither
+                waveColor={isDark ? [0.31, 0.59, 1.0] : [0.19, 0.36, 0.99]}
+                disableAnimation={false}
+                enableMouseInteraction={false}
+                mouseRadius={0.2}
+                colorNum={4}
+                pixelSize={3}
+                waveAmplitude={0.18}
+                waveFrequency={2.2}
+                waveSpeed={0.022}
+              />
+            </Suspense>
+          ) : (
+            <div className="dither-fallback" />
+          )}
         </EffectErrorBoundary>
       </div>
 
@@ -51,7 +66,7 @@ export default function Hero({ onLogin }) {
                 color: 'var(--color-text-secondary)'
               }}
             >
-              <span className="h-2 w-2 rounded-full bg-[#FF6D29]"></span>
+              <span className="h-2 w-2 rounded-full bg-[#305BFE]"></span>
               <span className="font-bold text-[var(--color-text-heading)]">ISKOLAR 2.0</span>
               <span className="opacity-40">•</span>
               <span>Academic Scholarship Platform</span>
@@ -60,7 +75,7 @@ export default function Hero({ onLogin }) {
             {/* Visible & Accessible Heading for Users, Screen Readers & SEO */}
             <h1 id="home-hero-title" className="home-hero__semantic-title text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-[var(--color-text-heading)] leading-[1.12]">
               Scholarship Applications{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF6D29] via-[#FF8552] to-[#FFB800]">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#4F96FF] via-[#305BFE] to-[#305DE0]">
                 Made Clearer
               </span>
             </h1>
@@ -79,7 +94,7 @@ export default function Hero({ onLogin }) {
                   particleSize={1.4}
                   density={2}
                   color={isDark ? '#94A3B8' : '#64748B'}
-                  highlightColor={isDark ? '#FF8552' : '#C9470F'}
+                  highlightColor={isDark ? '#4F96FF' : '#305BFE'}
                   scatter={15}
                   gatherDuration={800}
                   stagger={100}
@@ -89,7 +104,7 @@ export default function Hero({ onLogin }) {
                   trigger="mount"
                   fontSize="clamp(0.875rem, 1.8vw, 1.05rem)"
                   fontWeight={700}
-                  fontFamily="VT323, 'Anonymous Pro', monospace, sans-serif"
+                  fontFamily="Poppins, Inter, sans-serif"
                   glow={false}
                 />
               </EffectErrorBoundary>
@@ -102,7 +117,7 @@ export default function Hero({ onLogin }) {
 
             {/* Action Buttons */}
             <div className="flex flex-wrap items-center gap-3.5 pt-2">
-              <a href="#scholarships" className="btn-primary">
+              <a href="#scholarships" className="btn-action">
                 <span>Browse Scholarships</span>
                 <span aria-hidden="true">→</span>
               </a>
@@ -125,7 +140,7 @@ export default function Hero({ onLogin }) {
           {/* Right Column: Real Interface Preview */}
           <div className="relative">
             <div
-              className="modular-card p-5 sm:p-7 space-y-4"
+              className="card-modern p-5 sm:p-7 space-y-4"
               style={{
                 backgroundColor: 'var(--color-bg-elevated)',
                 borderColor: 'var(--color-border)',
@@ -141,7 +156,7 @@ export default function Hero({ onLogin }) {
                     evaluation-workspace / APP-2026-09
                   </span>
                 </div>
-                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 shrink-0">
+                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 shrink-0">
                   Active Review
                 </span>
               </div>
@@ -155,11 +170,11 @@ export default function Hero({ onLogin }) {
                 }}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold flex items-center gap-1.5 text-emerald-600">
-                    <CheckIcon className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="text-xs font-bold flex items-center gap-1.5 text-emerald-700 dark:text-emerald-300">
+                    <CheckIcon className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />
                     <span>OCR Document Extraction</span>
                   </span>
-                  <span className="font-mono text-[11px] font-semibold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-700">
+                  <span className="font-mono text-[11px] font-semibold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-800 dark:text-emerald-200">
                     Confidence: 98.4%
                   </span>
                 </div>
@@ -168,7 +183,7 @@ export default function Hero({ onLogin }) {
                 </div>
                 <div className="text-xs flex items-center justify-between font-mono pt-1" style={{ color: 'var(--color-text-muted)' }}>
                   <span>Extracted GWA: 1.25</span>
-                  <span className="text-emerald-600 font-sans font-medium">Student Confirmed</span>
+                  <span className="text-emerald-700 dark:text-emerald-300 font-sans font-medium">Student Confirmed</span>
                 </div>
               </div>
 
@@ -181,11 +196,11 @@ export default function Hero({ onLogin }) {
                 }}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold flex items-center gap-1.5 text-[#FF6D29]">
-                    <BoltIcon className="w-3.5 h-3.5 text-[#FF6D29]" />
+                  <span className="text-xs font-bold flex items-center gap-1.5 text-[#93ABFF]">
+                    <BoltIcon className="w-3.5 h-3.5 text-[#93ABFF]" />
                     <span>Eligibility & Criteria Check</span>
                   </span>
-                  <span className="font-mono text-[11px] font-semibold px-2 py-0.5 rounded bg-orange-500/10 text-[#FF6D29]">
+                  <span className="font-mono text-[11px] font-semibold px-2 py-0.5 rounded bg-blue-500/10 text-[#93ABFF]">
                     Score: 94.5 / 100
                   </span>
                 </div>
@@ -194,7 +209,7 @@ export default function Hero({ onLogin }) {
                 </div>
                 <div className="text-xs flex items-center justify-between pt-1" style={{ color: 'var(--color-text-muted)' }}>
                   <span>Income & Academic Thresholds Met</span>
-                  <span className="font-semibold text-[#FF6D29]">Shortlisted for Panel</span>
+                  <span className="font-semibold text-[#93ABFF]">Shortlisted for Panel</span>
                 </div>
               </div>
 
@@ -207,11 +222,11 @@ export default function Hero({ onLogin }) {
                 }}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold flex items-center gap-1.5 text-sky-600">
-                    <PhoneIcon className="w-3.5 h-3.5 text-sky-600" />
+                  <span className="text-xs font-bold flex items-center gap-1.5 text-sky-400">
+                    <PhoneIcon className="w-3.5 h-3.5 text-sky-400" />
                     <span>Candidate Notification</span>
                   </span>
-                  <span className="font-mono text-[11px] font-semibold px-2 py-0.5 rounded bg-sky-500/10 text-sky-700">
+                  <span className="font-mono text-[11px] font-semibold px-2 py-0.5 rounded bg-sky-500/10 text-sky-400">
                     Dispatched
                   </span>
                 </div>
@@ -220,7 +235,7 @@ export default function Hero({ onLogin }) {
                 </div>
                 <div className="text-xs flex items-center justify-between pt-1" style={{ color: 'var(--color-text-muted)' }}>
                   <span>Synchronized with Mobile App</span>
-                  <span className="text-sky-600 font-medium">Delivered</span>
+                  <span className="text-sky-400 font-medium">Delivered</span>
                 </div>
               </div>
 

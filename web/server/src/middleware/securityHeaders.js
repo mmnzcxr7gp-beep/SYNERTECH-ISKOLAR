@@ -36,8 +36,9 @@ const securityHeaders = (req, res, next) => {
     return res.redirect(301, `https://${req.headers.host}${req.url}`);
   }
 
-  // Cache control for API responses (no caching of sensitive data)
+  // Cache control and content isolation for API responses (no caching of sensitive data)
   if (req.path.startsWith('/api/')) {
+    res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');

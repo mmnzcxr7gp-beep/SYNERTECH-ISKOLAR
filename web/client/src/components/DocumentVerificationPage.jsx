@@ -231,7 +231,7 @@ export default function DocumentVerificationPage({ token }) {
                       }}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#FF6D29]">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#305BFE]">
                           Doc Ref #{doc.id || doc._id}
                         </span>
                         <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${
@@ -265,6 +265,7 @@ export default function DocumentVerificationPage({ token }) {
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
+                      aria-label="Previous page"
                       disabled={currentPage === 1}
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                       className="px-3 py-1.5 rounded-xl border text-xs font-bold transition disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed hover:bg-[var(--color-surface-panel)]"
@@ -276,10 +277,11 @@ export default function DocumentVerificationPage({ token }) {
                       <button
                         key={pageNum}
                         type="button"
+                        aria-label={`Page ${pageNum}`}
                         onClick={() => setCurrentPage(pageNum)}
                         className={`min-w-[32px] h-8 rounded-xl text-xs font-bold transition border cursor-pointer ${
                           currentPage === pageNum
-                            ? 'bg-gradient-to-r from-[#FF6D29] to-[#FF8552] text-white border-[#FF6D29] shadow-sm'
+                            ? 'bg-gradient-to-r from-[#305BFE] to-[#4F96FF] text-white border-[#305BFE] shadow-sm'
                             : 'hover:bg-[var(--color-surface-panel)]'
                         }`}
                         style={{
@@ -293,6 +295,7 @@ export default function DocumentVerificationPage({ token }) {
                     ))}
                     <button
                       type="button"
+                      aria-label="Next page"
                       disabled={currentPage === totalPages}
                       onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                       className="px-3 py-1.5 rounded-xl border text-xs font-bold transition disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed hover:bg-[var(--color-surface-panel)]"
@@ -341,7 +344,7 @@ export default function DocumentVerificationPage({ token }) {
                   />
                 ) : (
                   <div className="text-center p-6 space-y-2">
-                    <DocumentIcon className="w-8 h-8 text-[#FF6D29] mx-auto" />
+                    <DocumentIcon className="w-8 h-8 text-[#305BFE] mx-auto" />
                     <p className="text-xs font-bold" style={{ color: 'var(--text-heading)' }}>
                       {selectedDoc.document_type || 'Uploaded Credential Document'}
                     </p>
@@ -353,7 +356,7 @@ export default function DocumentVerificationPage({ token }) {
               </div>
 
               {/* OCR Cross-Check Status */}
-              <div className="space-y-3">
+              <div className="space-y-3 min-h-[160px]">
                 <div className="flex items-center justify-between pb-2 border-b" style={{ borderColor: 'var(--border)' }}>
                   <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
                     Automated OCR Cross-Check Evidence
@@ -438,10 +441,11 @@ export default function DocumentVerificationPage({ token }) {
               {/* Human Decision Form */}
               <form onSubmit={handleStatusSubmit} className="space-y-4 pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                  <label htmlFor="verification-decision" className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                     Verification Decision *
                   </label>
                   <select
+                    id="verification-decision"
                     value={status}
                     onChange={(e) => setStatus(e.target.value)}
                     className="w-full rounded-xl border p-2.5 text-xs font-bold focus:outline-none cursor-pointer"
@@ -458,10 +462,11 @@ export default function DocumentVerificationPage({ token }) {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                  <label htmlFor="verification-notes" className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                     Reviewer Notes / Instructions
                   </label>
                   <textarea
+                    id="verification-notes"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="Provide specific notes or explanation for this document verification record..."

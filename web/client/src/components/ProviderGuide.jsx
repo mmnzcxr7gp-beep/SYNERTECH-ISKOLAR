@@ -38,7 +38,7 @@ export default function ProviderGuide({ onLogin }) {
             <div className="space-y-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
               <div className="p-4 rounded-xl border" style={{ backgroundColor: 'var(--color-surface-panel)', borderColor: 'var(--border)' }}>
                 <div className="flex items-center gap-2 mb-1">
-                  <BuildingIcon className="w-4 h-4 text-[#FF6D29]" />
+                  <BuildingIcon className="w-4 h-4 text-[#305BFE]" />
                   <p className="font-extrabold text-base" style={{ color: 'var(--text-heading)' }}>
                     Verified Organization Identity
                   </p>
@@ -82,7 +82,7 @@ export default function ProviderGuide({ onLogin }) {
 
               <div className="p-4 rounded-xl border" style={{ backgroundColor: 'var(--color-surface-panel)', borderColor: 'var(--border)' }}>
                 <div className="flex items-center gap-2 mb-1">
-                  <LockIcon className="w-4 h-4 text-[#FF6D29]" />
+                  <LockIcon className="w-4 h-4 text-[#305BFE]" />
                   <p className="font-extrabold text-base" style={{ color: 'var(--text-heading)' }}>
                     Encrypted Applicant Data
                   </p>

@@ -185,7 +185,7 @@ export default function ScholarshipsPage({ token, user }) {
               onClick={() => setFilter(option.value)}
               className={`px-4 py-2.5 rounded-xl text-xs font-extrabold transition border cursor-pointer ${
                 filter === option.value
-                  ? 'bg-gradient-to-r from-[#FF6D29] to-[#FF8552] text-white border-[#FF6D29] shadow-sm'
+                  ? 'bg-gradient-to-r from-[#305BFE] to-[#4F96FF] text-white border-[#305BFE] shadow-sm'
                   : 'hover:bg-[var(--color-surface-panel)]'
               }`}
               style={{
@@ -209,7 +209,7 @@ export default function ScholarshipsPage({ token, user }) {
         </div>
       ) : filtered.length === 0 ? (
         <SpotlightCard className="py-16 text-center p-8 border">
-          <div className="text-3xl mb-3 text-[#FF6D29]">✦</div>
+          <div className="text-3xl mb-3 text-[#305BFE]">✦</div>
           <h3 className="text-lg font-black mb-1" style={{ color: 'var(--text-heading)' }}>No scholarships found</h3>
           <p className="text-xs max-w-sm mx-auto" style={{ color: 'var(--text-secondary)' }}>
             No grants match your current filter or search criteria. Create a new scholarship using the button above.
@@ -250,8 +250,8 @@ export default function ScholarshipsPage({ token, user }) {
                     </p>
 
                     {item.sponsor_name && (
-                      <div className="text-xs font-bold flex items-center gap-1.5 text-[#FF6D29]">
-                        <span className="h-1.5 w-1.5 rounded-full bg-[#FF6D29]"></span>
+                      <div className="text-xs font-bold flex items-center gap-1.5 text-[#305BFE]">
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#305BFE]"></span>
                         <span>Sponsor: {item.sponsor_name}</span>
                       </div>
                     )}
@@ -312,7 +312,7 @@ export default function ScholarshipsPage({ token, user }) {
                     onClick={() => setCurrentPage(pageNum)}
                     className={`min-w-[32px] h-8 rounded-xl text-xs font-bold transition border cursor-pointer ${
                       currentPage === pageNum
-                        ? 'bg-gradient-to-r from-[#FF6D29] to-[#FF8552] text-white border-[#FF6D29] shadow-sm'
+                        ? 'bg-gradient-to-r from-[#305BFE] to-[#4F96FF] text-white border-[#305BFE] shadow-sm'
                         : 'hover:bg-[var(--color-surface-panel)]'
                     }`}
                     style={{
@@ -400,14 +400,14 @@ export default function ScholarshipsPage({ token, user }) {
             {/* Benefits & Eligibility */}
             <div className="grid sm:grid-cols-2 gap-4 text-xs">
               <div className="p-4 rounded-2xl border" style={{ backgroundColor: 'var(--color-surface-panel)', borderColor: 'var(--border)' }}>
-                <p className="font-bold text-[#FF6D29] uppercase tracking-wider text-[10px] mb-1">Scholar Benefits</p>
+                <p className="font-bold text-[#305BFE] uppercase tracking-wider text-[10px] mb-1">Scholar Benefits</p>
                 <p style={{ color: 'var(--text-secondary)' }}>
                   {selectedScholarshipDetail.benefits || 'Full tuition subsidy & monthly living allowance.'}
                 </p>
               </div>
 
               <div className="p-4 rounded-2xl border" style={{ backgroundColor: 'var(--color-surface-panel)', borderColor: 'var(--border)' }}>
-                <p className="font-bold text-[#FF6D29] uppercase tracking-wider text-[10px] mb-1">Eligibility Criteria</p>
+                <p className="font-bold text-[#305BFE] uppercase tracking-wider text-[10px] mb-1">Eligibility Criteria</p>
                 <p style={{ color: 'var(--text-secondary)' }}>
                   {selectedScholarshipDetail.eligibilityRequirements || 'Minimum 85% GPA, enrolled undergraduate student.'}
                 </p>

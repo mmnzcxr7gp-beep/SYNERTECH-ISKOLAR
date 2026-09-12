@@ -106,7 +106,7 @@ const providerSchema = new mongoose.Schema(
     // Account Status
     accountStatus: {
       type: String,
-      enum: ['active', 'suspended', 'inactive'],
+      enum: ['active', 'suspended', 'inactive', 'rejected', 'ACTIVE', 'SUSPENDED', 'INACTIVE', 'REJECTED', 'PENDING_ADMIN_REVIEW'],
       default: 'active',
     },
     // Verification Timestamps

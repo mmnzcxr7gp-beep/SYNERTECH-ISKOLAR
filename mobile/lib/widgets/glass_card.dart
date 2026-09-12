@@ -27,19 +27,25 @@ class GlassCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(borderRadius),
         child: Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF141118),
+            color: Theme.of(context).brightness == Brightness.dark
+                ? AppColors.darkSurface
+                : AppColors.cardSurface,
             borderRadius: BorderRadius.circular(borderRadius),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.09),
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? AppColors.darkBorder
+                  : AppColors.border,
               width: 1.0,
             ),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x33000000),
-                blurRadius: 18,
-                offset: Offset(0, 6),
-              ),
-            ],
+            boxShadow: Theme.of(context).brightness == Brightness.dark
+                ? const [
+                    BoxShadow(
+                      color: Color(0x33000000),
+                      blurRadius: 18,
+                      offset: Offset(0, 6),
+                    ),
+                  ]
+                : AppColors.cardShadow,
           ),
           child: Padding(
             padding: padding,
@@ -78,7 +84,7 @@ class GradientGlassCard extends StatelessWidget {
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFFFF6D29), Color(0xFFFF8552)],
+              colors: [AppColors.skyBlue, AppColors.actionBlue, AppColors.primaryBlue],
             ),
             borderRadius: BorderRadius.circular(borderRadius),
             border: Border.all(
@@ -87,7 +93,7 @@ class GradientGlassCard extends StatelessWidget {
             ),
             boxShadow: [
               BoxShadow(
-                color: AppColors.primaryOrange.withValues(alpha: 0.35),
+                color: AppColors.actionBlue.withValues(alpha: 0.35),
                 blurRadius: 24,
                 offset: const Offset(0, 8),
               ),

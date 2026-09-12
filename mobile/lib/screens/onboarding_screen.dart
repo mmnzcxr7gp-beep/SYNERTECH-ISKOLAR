@@ -1,52 +1,76 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../screens/login_screen.dart';
 import '../screens/register_screen.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_spacing.dart';
 
-/// Ultra-Modern Apple-Inspired Liquid Glass Onboarding Screen with Multi-Scale Support
+/// Ultra-Modern Apple-Inspired Blue & Poppins Onboarding Screen
+/// Implements the locked ISKOLAR 2.0 visual system:
+/// - Light Mode default: Soft light-blue background (#F7F9FD), White rounded cards (#FFFFFF),
+///   Navy (#15265C) headers, Action Blue (#305BFE) actions, Sky Blue (#4F96FF) accents,
+///   Border (#DCE5F2), Poppins typography.
+/// - Dynamic Dark Mode: Sleek dark surface (#0B1020 / #16213A) with responsive typography.
 class OnboardingScreen extends StatelessWidget {
   const OnboardingScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final bgColor = isDark ? AppColors.darkBackground : AppColors.mainBackground;
+    final cardColor = isDark ? const Color(0xFF131C2E) : AppColors.pureWhite;
+    final cardBorder = isDark ? const Color(0xFF22314D) : AppColors.border;
+    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.primaryNavy;
+    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.secondaryText;
+    final surfaceTint = isDark ? const Color(0xFF1B273F) : AppColors.lightBlueSurface;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0B0F),
+      backgroundColor: bgColor,
       body: Stack(
         children: [
-          // ─── 1. AMBIENT MESH GRADIENT BACKGROUND ───────────────────────────
+          // ─── 1. ORGANIC AMBIENT BACKGROUND CURVES & GRADIENTS ───────────────
           Positioned.fill(
             child: Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xFF0F0C12),
-                    Color(0xFF160F16),
-                    Color(0xFF1A1215),
-                    Color(0xFF0D0B0F),
-                  ],
+                  colors: isDark
+                      ? const [
+                          Color(0xFF090D18),
+                          Color(0xFF0E1526),
+                          Color(0xFF0B1020),
+                        ]
+                      : const [
+                          Color(0xFFEFF5FF),
+                          Color(0xFFF7F9FD),
+                          Color(0xFFF3F7FD),
+                        ],
                 ),
               ),
             ),
           ),
 
-          // Top-Right Glowing Amber/Orange Orb
+          // Top-Right Glowing Blue Orb
           Positioned(
             top: -60,
             right: -60,
-            width: 260,
-            height: 260,
+            width: 280,
+            height: 280,
             child: Container(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFFFF6D29).withValues(alpha: 0.35),
-                    const Color(0xFFFF8552).withValues(alpha: 0.15),
+                    isDark
+                        ? AppColors.actionBlue.withValues(alpha: 0.22)
+                        : const Color(0xFFBAD5FF).withValues(alpha: 0.50),
+                    isDark
+                        ? AppColors.skyBlue.withValues(alpha: 0.10)
+                        : const Color(0xFFDDEBFF).withValues(alpha: 0.20),
                     Colors.transparent,
                   ],
                 ),
@@ -54,7 +78,7 @@ class OnboardingScreen extends StatelessWidget {
             ),
           ),
 
-          // Center-Left Subtle Purple/Violet Orb
+          // Center-Left Subtle Cyan/Sky Blue Orb
           Positioned(
             top: 240,
             left: -80,
@@ -65,8 +89,12 @@ class OnboardingScreen extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFF8B5CF6).withValues(alpha: 0.20),
-                    const Color(0xFF6366F1).withValues(alpha: 0.08),
+                    isDark
+                        ? const Color(0xFF4F96FF).withValues(alpha: 0.16)
+                        : const Color(0xFFD6E6FF).withValues(alpha: 0.45),
+                    isDark
+                        ? const Color(0xFF305BFE).withValues(alpha: 0.06)
+                        : const Color(0xFFE8F1FF).withValues(alpha: 0.15),
                     Colors.transparent,
                   ],
                 ),
@@ -74,19 +102,20 @@ class OnboardingScreen extends StatelessWidget {
             ),
           ),
 
-          // Bottom-Right Deep Warm Ember Orb
+          // Bottom-Right Deep Blue Orb
           Positioned(
             bottom: 60,
             right: -40,
-            width: 240,
-            height: 240,
+            width: 260,
+            height: 260,
             child: Container(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFFFF6D29).withValues(alpha: 0.25),
-                    const Color(0xFF453027).withValues(alpha: 0.15),
+                    isDark
+                        ? AppColors.actionBlue.withValues(alpha: 0.18)
+                        : const Color(0xFFC7DEFF).withValues(alpha: 0.40),
                     Colors.transparent,
                   ],
                 ),
@@ -97,7 +126,7 @@ class OnboardingScreen extends StatelessWidget {
           // Ambient Blur Filter Layer
           Positioned.fill(
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
+              filter: ImageFilter.blur(sigmaX: 45, sigmaY: 45),
               child: Container(color: Colors.transparent),
             ),
           ),
@@ -113,8 +142,11 @@ class OnboardingScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // ─── A. TOP GLASS NAVIGATION BAR ─────────────────────────
-                      _buildGlassContainer(
+                      // ─── A. TOP NAVIGATION BAR ─────────────────────────────────
+                      _buildContainerCard(
+                        cardColor: cardColor,
+                        cardBorder: cardBorder,
+                        isDark: isDark,
                         borderRadius: AppSpacing.radiusPanel,
                         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s16, vertical: AppSpacing.s12),
                         child: Row(
@@ -126,12 +158,12 @@ class OnboardingScreen extends StatelessWidget {
                                 gradient: const LinearGradient(
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
-                                  colors: [Color(0xFFFF6D29), Color(0xFFFF8552)],
+                                  colors: [Color(0xFF4F96FF), Color(0xFF305BFE)],
                                 ),
                                 borderRadius: BorderRadius.circular(12),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: const Color(0xFFFF6D29).withValues(alpha: 0.4),
+                                    color: AppColors.actionBlue.withValues(alpha: 0.35),
                                     blurRadius: 12,
                                     offset: const Offset(0, 4),
                                   ),
@@ -148,21 +180,21 @@ class OnboardingScreen extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
+                                  Text(
                                     'ISKOLAR',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w900,
+                                    style: GoogleFonts.poppins(
+                                      color: textPrimary,
+                                      fontWeight: FontWeight.w800,
                                       fontSize: 16,
-                                      letterSpacing: 1.2,
+                                      letterSpacing: 1.1,
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   Text(
                                     'Scholarship Portal',
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.6),
+                                    style: GoogleFonts.poppins(
+                                      color: textSecondary,
                                       fontSize: 11,
                                       fontWeight: FontWeight.w500,
                                     ),
@@ -174,7 +206,7 @@ class OnboardingScreen extends StatelessWidget {
                             ),
                             const SizedBox(width: AppSpacing.s8),
 
-                            // Frosted Glass Sign In Pill Button
+                            // Sign In Pill Button
                             Material(
                               color: Colors.transparent,
                               child: InkWell(
@@ -185,30 +217,30 @@ class OnboardingScreen extends StatelessWidget {
                                 },
                                 borderRadius: BorderRadius.circular(16),
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.08),
+                                    color: surfaceTint,
                                     borderRadius: BorderRadius.circular(16),
                                     border: Border.all(
-                                      color: Colors.white.withValues(alpha: 0.18),
+                                      color: isDark ? const Color(0xFF2C3E61) : const Color(0xFFBFDBFE),
                                       width: 1,
                                     ),
                                   ),
-                                  child: const Row(
+                                  child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Text(
                                         'Sign In',
-                                        style: TextStyle(
-                                          color: Colors.white,
+                                        style: GoogleFonts.poppins(
+                                          color: AppColors.actionBlue,
                                           fontWeight: FontWeight.w700,
                                           fontSize: 12,
                                         ),
                                       ),
-                                      SizedBox(width: 4),
-                                      Icon(
+                                      const SizedBox(width: 4),
+                                      const Icon(
                                         Icons.arrow_forward_ios_rounded,
-                                        color: AppColors.primaryOrange,
+                                        color: AppColors.actionBlue,
                                         size: 10,
                                       ),
                                     ],
@@ -222,9 +254,12 @@ class OnboardingScreen extends StatelessWidget {
 
                       const SizedBox(height: AppSpacing.s16),
 
-                      // ─── B. APPLE-STYLE HERO GLASS SHOWCASE ───────────────────
-                      _buildGlassContainer(
-                        borderRadius: 28,
+                      // ─── B. HERO SHOWCASE CARD ────────────────────────────────
+                      _buildContainerCard(
+                        cardColor: cardColor,
+                        cardBorder: cardBorder,
+                        isDark: isDark,
+                        borderRadius: 24,
                         padding: const EdgeInsets.all(AppSpacing.s24),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -233,10 +268,10 @@ class OnboardingScreen extends StatelessWidget {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFFF6D29).withValues(alpha: 0.14),
+                                color: surfaceTint,
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
-                                  color: const Color(0xFFFF6D29).withValues(alpha: 0.30),
+                                  color: isDark ? const Color(0xFF2C3E61) : const Color(0xFFBFDBFE),
                                   width: 1,
                                 ),
                               ),
@@ -248,10 +283,10 @@ class OnboardingScreen extends StatelessWidget {
                                     height: 6,
                                     decoration: const BoxDecoration(
                                       shape: BoxShape.circle,
-                                      color: Color(0xFFFF6D29),
+                                      color: AppColors.actionBlue,
                                       boxShadow: [
                                         BoxShadow(
-                                          color: Color(0xFFFF6D29),
+                                          color: AppColors.actionBlue,
                                           blurRadius: 6,
                                           spreadRadius: 1,
                                         ),
@@ -259,11 +294,11 @@ class OnboardingScreen extends StatelessWidget {
                                     ),
                                   ),
                                   const SizedBox(width: 6),
-                                  const Flexible(
+                                  Flexible(
                                     child: Text(
                                       'ACADEMIC SCHOLARSHIP PLATFORM',
-                                      style: TextStyle(
-                                        color: Color(0xFFFF8552),
+                                      style: GoogleFonts.poppins(
+                                        color: AppColors.actionBlue,
                                         fontSize: 10,
                                         fontWeight: FontWeight.w800,
                                         letterSpacing: 0.8,
@@ -279,13 +314,13 @@ class OnboardingScreen extends StatelessWidget {
                             const SizedBox(height: AppSpacing.s16),
 
                             // Main Headline
-                            const Text(
+                            Text(
                               'Find Scholarships.\nBuild Your Future.',
-                              style: TextStyle(
-                                color: Colors.white,
+                              style: GoogleFonts.poppins(
+                                color: textPrimary,
                                 fontSize: 26,
-                                fontWeight: FontWeight.w900,
-                                height: 1.15,
+                                fontWeight: FontWeight.w800,
+                                height: 1.2,
                                 letterSpacing: -0.5,
                               ),
                             ),
@@ -295,10 +330,10 @@ class OnboardingScreen extends StatelessWidget {
                             // Sub-headline
                             Text(
                               'Browse verified grant programs, apply with automated OCR document intake, and track your application status in real-time.',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.72),
+                              style: GoogleFonts.poppins(
+                                color: textSecondary,
                                 fontSize: 13,
-                                height: 1.45,
+                                height: 1.5,
                                 fontWeight: FontWeight.w400,
                               ),
                             ),
@@ -310,9 +345,9 @@ class OnboardingScreen extends StatelessWidget {
                               spacing: AppSpacing.s8,
                               runSpacing: AppSpacing.s8,
                               children: [
-                                _buildPillChip(Icons.verified_rounded, 'Verified Grants', const Color(0xFF10B981)),
-                                _buildPillChip(Icons.bolt_rounded, 'AI OCR Intake', const Color(0xFF38BDF8)),
-                                _buildPillChip(Icons.security_rounded, 'Official Portal', const Color(0xFFA78BFA)),
+                                _buildPillChip(Icons.verified_rounded, 'Verified Grants', const Color(0xFF10B981), surfaceTint, cardBorder, textPrimary),
+                                _buildPillChip(Icons.bolt_rounded, 'AI OCR Intake', const Color(0xFF0284C7), surfaceTint, cardBorder, textPrimary),
+                                _buildPillChip(Icons.security_rounded, 'Official Portal', const Color(0xFF7C3AED), surfaceTint, cardBorder, textPrimary),
                               ],
                             ),
                           ],
@@ -326,11 +361,11 @@ class OnboardingScreen extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
                         child: Row(
                           children: [
-                            const Expanded(
+                            Expanded(
                               child: Text(
                                 'PLATFORM CAPABILITIES',
-                                style: TextStyle(
-                                  color: Colors.white,
+                                style: GoogleFonts.poppins(
+                                  color: textPrimary,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: 1.1,
@@ -341,8 +376,8 @@ class OnboardingScreen extends StatelessWidget {
                             ),
                             Text(
                               'Core Features',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.45),
+                              style: GoogleFonts.poppins(
+                                color: textSecondary,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -353,26 +388,36 @@ class OnboardingScreen extends StatelessWidget {
 
                       const SizedBox(height: AppSpacing.s12),
 
-                      // ─── D. 2x2 APPLE-STYLE GLASS BENTO TILES ─────────────────
+                      // ─── D. 2x2 BENTO TILES ─────────────────────────────────
                       Column(
                         children: [
                           Row(
                             children: [
                               Expanded(
-                                child: _buildGlassBentoCard(
+                                child: _buildBentoCard(
                                   icon: Icons.verified_user_rounded,
                                   accentColor: const Color(0xFF10B981),
                                   title: 'Verified Sponsors',
                                   subtitle: 'Official providers',
+                                  cardColor: cardColor,
+                                  cardBorder: cardBorder,
+                                  isDark: isDark,
+                                  textPrimary: textPrimary,
+                                  textSecondary: textSecondary,
                                 ),
                               ),
                               const SizedBox(width: AppSpacing.s12),
                               Expanded(
-                                child: _buildGlassBentoCard(
+                                child: _buildBentoCard(
                                   icon: Icons.document_scanner_rounded,
-                                  accentColor: const Color(0xFF38BDF8),
+                                  accentColor: const Color(0xFF0284C7),
                                   title: 'OCR Verification',
                                   subtitle: 'Fast ID extraction',
+                                  cardColor: cardColor,
+                                  cardBorder: cardBorder,
+                                  isDark: isDark,
+                                  textPrimary: textPrimary,
+                                  textSecondary: textSecondary,
                                 ),
                               ),
                             ],
@@ -381,20 +426,30 @@ class OnboardingScreen extends StatelessWidget {
                           Row(
                             children: [
                               Expanded(
-                                child: _buildGlassBentoCard(
+                                child: _buildBentoCard(
                                   icon: Icons.radar_rounded,
-                                  accentColor: const Color(0xFFFF6D29),
+                                  accentColor: AppColors.actionBlue,
                                   title: 'Live Tracking',
                                   subtitle: 'Real-time updates',
+                                  cardColor: cardColor,
+                                  cardBorder: cardBorder,
+                                  isDark: isDark,
+                                  textPrimary: textPrimary,
+                                  textSecondary: textSecondary,
                                 ),
                               ),
                               const SizedBox(width: AppSpacing.s12),
                               Expanded(
-                                child: _buildGlassBentoCard(
+                                child: _buildBentoCard(
                                   icon: Icons.auto_awesome_rounded,
-                                  accentColor: const Color(0xFFA78BFA),
+                                  accentColor: const Color(0xFF7C3AED),
                                   title: 'Merit Ranking',
                                   subtitle: 'Criteria scoring',
+                                  cardColor: cardColor,
+                                  cardBorder: cardBorder,
+                                  isDark: isDark,
+                                  textPrimary: textPrimary,
+                                  textSecondary: textSecondary,
                                 ),
                               ),
                             ],
@@ -404,13 +459,16 @@ class OnboardingScreen extends StatelessWidget {
 
                       const SizedBox(height: AppSpacing.s24),
 
-                      // ─── E. FLOATING GLASS ACTION DOCK ────────────────────────
-                      _buildGlassContainer(
+                      // ─── E. ACTION DOCK ──────────────────────────────────────
+                      _buildContainerCard(
+                        cardColor: cardColor,
+                        cardBorder: cardBorder,
+                        isDark: isDark,
                         borderRadius: AppSpacing.radiusPanel,
                         padding: const EdgeInsets.all(AppSpacing.s16),
                         child: Column(
                           children: [
-                            // Primary Apple-style Glow Button
+                            // Primary Action Blue Button
                             Container(
                               width: double.infinity,
                               height: AppSpacing.buttonHeight,
@@ -418,12 +476,12 @@ class OnboardingScreen extends StatelessWidget {
                                 gradient: const LinearGradient(
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
-                                  colors: [Color(0xFFFF6D29), Color(0xFFFF8552)],
+                                  colors: [Color(0xFF305DE0), Color(0xFF305BFE)],
                                 ),
                                 borderRadius: BorderRadius.circular(AppSpacing.radiusControl),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: const Color(0xFFFF6D29).withValues(alpha: 0.40),
+                                    color: AppColors.actionBlue.withValues(alpha: 0.35),
                                     blurRadius: 18,
                                     offset: const Offset(0, 6),
                                   ),
@@ -438,26 +496,26 @@ class OnboardingScreen extends StatelessWidget {
                                     );
                                   },
                                   borderRadius: BorderRadius.circular(AppSpacing.radiusControl),
-                                  child: const Padding(
-                                    padding: EdgeInsets.symmetric(horizontal: AppSpacing.s12),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s12),
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
                                         Flexible(
                                           child: Text(
                                             'CREATE STUDENT ACCOUNT',
-                                            style: TextStyle(
+                                            style: GoogleFonts.poppins(
                                               color: Colors.white,
-                                              fontWeight: FontWeight.w900,
-                                              fontSize: 12.5,
-                                              letterSpacing: 0.6,
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 13,
+                                              letterSpacing: 0.5,
                                             ),
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
-                                        SizedBox(width: 6),
-                                        Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 16),
+                                        const SizedBox(width: 6),
+                                        const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 16),
                                       ],
                                     ),
                                   ),
@@ -467,15 +525,15 @@ class OnboardingScreen extends StatelessWidget {
 
                             const SizedBox(height: AppSpacing.s12),
 
-                            // Secondary Frosted Glass Button
+                            // Secondary Light Surface Button
                             Container(
                               width: double.infinity,
                               height: 48,
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.05),
+                                color: surfaceTint,
                                 borderRadius: BorderRadius.circular(AppSpacing.radiusControl),
                                 border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.16),
+                                  color: isDark ? const Color(0xFF2B3A57) : const Color(0xFFDCE5F2),
                                   width: 1,
                                 ),
                               ),
@@ -493,8 +551,8 @@ class OnboardingScreen extends StatelessWidget {
                                       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s12),
                                       child: Text(
                                         'SIGN IN TO EXISTING ACCOUNT',
-                                        style: TextStyle(
-                                          color: Colors.white.withValues(alpha: 0.9),
+                                        style: GoogleFonts.poppins(
+                                          color: textPrimary,
                                           fontWeight: FontWeight.w700,
                                           fontSize: 12,
                                           letterSpacing: 0.4,
@@ -514,13 +572,13 @@ class OnboardingScreen extends StatelessWidget {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.lock_outline_rounded, size: 11, color: Colors.white.withValues(alpha: 0.4)),
+                                Icon(Icons.lock_outline_rounded, size: 12, color: textSecondary),
                                 const SizedBox(width: 5),
                                 Flexible(
                                   child: Text(
                                     'Encrypted & Student-Centered Platform',
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.45),
+                                    style: GoogleFonts.poppins(
+                                      color: textSecondary,
                                       fontSize: 10.5,
                                       fontWeight: FontWeight.w500,
                                     ),
@@ -546,56 +604,65 @@ class OnboardingScreen extends StatelessWidget {
     );
   }
 
-  // ─── REUSABLE APPLE-STYLE GLASS CARD HELPER ─────────────────────────────
-  Widget _buildGlassContainer({
+  // ─── REUSABLE CARD CONTAINER HELPER ─────────────────────────────────────
+  Widget _buildContainerCard({
     required Widget child,
+    required Color cardColor,
+    required Color cardBorder,
+    required bool isDark,
     required double borderRadius,
     EdgeInsetsGeometry? padding,
   }) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(borderRadius),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          padding: padding,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.white.withValues(alpha: 0.09),
-                Colors.white.withValues(alpha: 0.04),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(borderRadius),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.16),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.25),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: child,
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(borderRadius),
+        border: Border.all(
+          color: cardBorder,
+          width: 1,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: isDark ? Colors.black.withValues(alpha: 0.35) : const Color(0x0C15265C),
+            blurRadius: isDark ? 20 : 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
+      child: child,
     );
   }
 
-  // ─── REUSABLE BENTO GLASS TILE ──────────────────────────────────────────
-  Widget _buildGlassBentoCard({
+  // ─── REUSABLE BENTO CARD ────────────────────────────────────────────────
+  Widget _buildBentoCard({
     required IconData icon,
     required Color accentColor,
     required String title,
     required String subtitle,
+    required Color cardColor,
+    required Color cardBorder,
+    required bool isDark,
+    required Color textPrimary,
+    required Color textSecondary,
   }) {
-    return _buildGlassContainer(
-      borderRadius: AppSpacing.radiusCard,
+    return Container(
       padding: const EdgeInsets.all(AppSpacing.s12),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
+        border: Border.all(
+          color: cardBorder,
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isDark ? Colors.black.withValues(alpha: 0.30) : const Color(0x0A15265C),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
@@ -604,10 +671,10 @@ class OnboardingScreen extends StatelessWidget {
             width: 34,
             height: 34,
             decoration: BoxDecoration(
-              color: accentColor.withValues(alpha: 0.16),
+              color: accentColor.withValues(alpha: isDark ? 0.16 : 0.10),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                color: accentColor.withValues(alpha: 0.35),
+                color: accentColor.withValues(alpha: isDark ? 0.35 : 0.25),
                 width: 1,
               ),
             ),
@@ -616,9 +683,9 @@ class OnboardingScreen extends StatelessWidget {
           const SizedBox(height: AppSpacing.s8),
           Text(
             title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
+            style: GoogleFonts.poppins(
+              color: textPrimary,
+              fontWeight: FontWeight.w700,
               fontSize: 12,
               letterSpacing: -0.2,
             ),
@@ -628,8 +695,8 @@ class OnboardingScreen extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             subtitle,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.55),
+            style: GoogleFonts.poppins(
+              color: textSecondary,
               fontSize: 10.0,
               height: 1.2,
             ),
@@ -642,24 +709,31 @@ class OnboardingScreen extends StatelessWidget {
   }
 
   // ─── REUSABLE PILL CHIP ────────────────────────────────────────────────
-  Widget _buildPillChip(IconData icon, String label, Color color) {
+  Widget _buildPillChip(
+    IconData icon,
+    String label,
+    Color color,
+    Color surfaceTint,
+    Color borderColor,
+    Color textColor,
+  ) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4.5),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: surfaceTint,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        border: Border.all(color: borderColor),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 11, color: color),
-          const SizedBox(width: 4),
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 5),
           Flexible(
             child: Text(
               label,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.85),
+              style: GoogleFonts.poppins(
+                color: textColor,
                 fontSize: 10.5,
                 fontWeight: FontWeight.w600,
               ),

@@ -3,7 +3,7 @@ import { SearchIcon, LockIcon, DocumentIcon, ChartIcon, PhoneIcon, CalendarIcon,
 
 const modularFeatures = [
   {
-    icon: <SearchIcon className="w-5 h-5 text-[#FF6D29]" />,
+    icon: <SearchIcon className="w-5 h-5 text-[#305BFE]" />,
     number: '01',
     heading: 'Discover Scholarships',
     description: 'Filter verified grant opportunities by degree program, year level, GWA threshold, and household income without manual spreadsheet searches.',
@@ -27,7 +27,7 @@ const modularFeatures = [
     description: 'Tesseract OCR automatically extracts key academic records, grades, and identification data. Students inspect, edit, and confirm every field before submission.',
     previewTitle: 'OCR Field Extraction & Pre-fill',
     previewItems: ['Student Full Name: Match Confirmed', 'GWA Extracted: 1.25 (User Verified)', 'School ID: PLM-2022-04918'],
-    toneClass: 'section-orange-tint',
+    toneClass: 'section-warm',
   },
   {
     icon: <ChartIcon className="w-5 h-5 text-indigo-600" />,
@@ -39,7 +39,7 @@ const modularFeatures = [
     toneClass: 'section-warm',
   },
   {
-    icon: <PhoneIcon className="w-5 h-5 text-[#FF6D29]" />,
+    icon: <PhoneIcon className="w-5 h-5 text-[#305BFE]" />,
     number: '05',
     heading: 'Communicate with Providers',
     description: 'Engage in dedicated, secure messaging channels directly within each application thread for clarifications, document resubmissions, and official notices.',
@@ -54,7 +54,7 @@ const modularFeatures = [
     description: 'Sponsors coordinate interview dates, examination sessions, and candidate acknowledgments with real-time push alerts and calendar synchronization.',
     previewTitle: 'Panel Scheduling Coordinator',
     previewItems: ['Session: Technical Evaluation Panel', 'Format: Virtual Meeting / On-Campus', 'Status: Candidate Acknowledged'],
-    toneClass: 'section-orange-tint',
+    toneClass: 'section-warm',
   },
 ]
 
@@ -72,7 +72,7 @@ export default function Features() {
               color: 'var(--color-text-secondary)'
             }}
           >
-            <span className="h-2 w-2 rounded-full bg-[#FF6D29]"></span>
+            <span className="h-2 w-2 rounded-full bg-[#305BFE]"></span>
             <span>Platform Architecture & Capabilities</span>
           </div>
 
@@ -90,7 +90,7 @@ export default function Features() {
           {modularFeatures.map((item) => (
             <div
               key={item.number}
-              className={`modular-card p-6 sm:p-7 flex flex-col justify-between ${item.toneClass}`}
+              className={`card-modern p-6 sm:p-7 flex flex-col justify-between ${item.toneClass}`}
             >
               <div className="space-y-4">
                 {/* Header Row */}
@@ -134,7 +134,7 @@ export default function Features() {
                 <div className="space-y-1.5 font-mono text-xs" style={{ color: 'var(--color-text-secondary)' }}>
                   {item.previewItems.map((point, pIdx) => (
                     <div key={pIdx} className="flex items-center gap-1.5">
-                      <span className="text-[#FF6D29]">›</span>
+                      <span className="text-[#305BFE]">›</span>
                       <span>{point}</span>
                     </div>
                   ))}

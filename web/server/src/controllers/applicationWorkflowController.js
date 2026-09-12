@@ -459,7 +459,7 @@ const sendMessage = async (req, res, next) => {
           subject: `ISKOLAR Application Update - New Secure Message`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 550px; margin: 0 auto; padding: 24px; background: #0D1E3B; color: #F4F0E8; border-radius: 16px;">
-              <h2 style="color: #FF6D29;">New Message Received</h2>
+              <h2 style="color: #305BFE;">New Message Received</h2>
               <p>Hello ${studentUser.name || 'Student'},</p>
               <p>There is an update regarding your application for <strong>${scholarship.title || 'Scholarship'}</strong>.</p>
               <p>The provider has sent you a secure message in your application conversation.</p>
@@ -588,7 +588,7 @@ const executeReviewAction = async (req, res, next) => {
           subject: 'ISKOLAR Application Update - Information Requested',
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 550px; margin: 0 auto; padding: 24px; background: #0D1E3B; color: #F4F0E8; border-radius: 16px;">
-              <h2 style="color: #FF6D29;">Additional Information Requested</h2>
+              <h2 style="color: #305BFE;">Additional Information Requested</h2>
               <p>Hello ${studentName},</p>
               <p>There is an update regarding your application for <strong>${scholarship.title || 'Scholarship'}</strong>.</p>
               <p><strong>Update:</strong> The provider has requested additional details to complete your evaluation.</p>
@@ -660,7 +660,7 @@ const executeReviewAction = async (req, res, next) => {
           subject: 'ISKOLAR Application Update - Document Resubmission Required',
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 550px; margin: 0 auto; padding: 24px; background: #0D1E3B; color: #F4F0E8; border-radius: 16px;">
-              <h2 style="color: #FF6D29;">Document Resubmission Required</h2>
+              <h2 style="color: #305BFE;">Document Resubmission Required</h2>
               <p>Hello ${studentName},</p>
               <p>There is an update regarding your application for <strong>${scholarship.title || 'Scholarship'}</strong>.</p>
               <p><strong>Update:</strong> A document needs to be resubmitted for verification.</p>

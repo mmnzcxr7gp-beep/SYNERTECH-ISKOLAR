@@ -22,6 +22,8 @@ export default function IskolarLogo({ size = 'md', showText = true, className = 
         <img
           src="/logo.png"
           alt="ISKOLAR Logo"
+          width="48"
+          height="48"
           className="h-full w-full object-contain p-0.5"
           onError={(e) => {
             // Fallback SVG vector mark if image fails to render

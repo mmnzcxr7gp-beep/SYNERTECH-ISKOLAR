@@ -103,8 +103,13 @@ function AdminProviderApprovalsView({ token }) {
   }, [token])
 
   const filteredProviders = providers.filter((p) => {
-    if (filter === 'pending') return !p.sponsor_verified || !p.organization_verified
-    if (filter === 'verified') return p.sponsor_verified && p.organization_verified
+    const accStatus = p.accountStatus || (p.isDeleted ? 'DELETION_PENDING' : p.isSuspended ? 'SUSPENDED' : 'ACTIVE')
+    const isRejected = accStatus === 'REJECTED' || p.verificationStatus === 'rejected'
+    const isVerified = isRejected ? false : (p.sponsor_verified && p.organization_verified)
+
+    if (filter === 'pending') return (!isVerified && !isRejected && accStatus !== 'SUSPENDED')
+    if (filter === 'verified') return isVerified
+    if (filter === 'rejected') return isRejected
     return true
   })
 
@@ -157,8 +162,9 @@ function AdminProviderApprovalsView({ token }) {
       <div className="flex gap-2 flex-wrap">
         {[
           { id: 'all', label: `All Providers (${providers.length})` },
-          { id: 'pending', label: `Pending Review (${providers.filter(p => !p.sponsor_verified || !p.organization_verified).length})` },
-          { id: 'verified', label: `Fully Verified (${providers.filter(p => p.sponsor_verified && p.organization_verified).length})` },
+          { id: 'pending', label: `Pending Review (${providers.filter(p => (!p.sponsor_verified || !p.organization_verified) && p.accountStatus !== 'REJECTED' && p.verificationStatus !== 'rejected' && p.accountStatus !== 'SUSPENDED').length})` },
+          { id: 'verified', label: `Fully Verified (${providers.filter(p => p.sponsor_verified && p.organization_verified && p.accountStatus !== 'REJECTED').length})` },
+          { id: 'rejected', label: `Rejected (${providers.filter(p => p.accountStatus === 'REJECTED' || p.verificationStatus === 'rejected').length})` },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -206,16 +212,17 @@ function AdminProviderApprovalsView({ token }) {
                 const regDate = prov.created_at || prov.createdAt
                   ? new Date(prov.created_at || prov.createdAt).toLocaleDateString()
                   : 'N/A'
-                const isVerified = prov.sponsor_verified && prov.organization_verified
                 const accStatus = prov.accountStatus || (prov.isDeleted ? 'DELETION_PENDING' : prov.isSuspended ? 'SUSPENDED' : 'ACTIVE')
+                const isRejected = accStatus === 'REJECTED' || prov.verificationStatus === 'rejected'
+                const isVerified = isRejected ? false : (prov.sponsor_verified && prov.organization_verified)
 
                 return (
                   <tr
                     key={prov.id}
                     onClick={() => handleViewAccount(prov, 'overview')}
-                    className="transition hover:bg-[#FF6D29]/10 cursor-pointer group"
+                    className="transition hover:bg-[#305BFE]/10 cursor-pointer group"
                   >
-                    <td className="px-4 py-3.5 text-xs font-bold group-hover:text-[#FF6D29] transition" style={{ color: 'var(--text-heading)' }}>
+                    <td className="px-4 py-3.5 text-xs font-bold group-hover:text-[#305BFE] transition" style={{ color: 'var(--text-heading)' }}>
                       <div>{prov.name || prov.company || `Provider #${prov.id}`}</div>
                       {prov.company && <div className="text-[10px] text-slate-400 font-normal">{prov.company}</div>}
                     </td>
@@ -229,18 +236,20 @@ function AdminProviderApprovalsView({ token }) {
                     </td>
                     <td className="px-4 py-3.5">
                       <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${
-                        isVerified
+                        isRejected
+                          ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+                          : isVerified
                           ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
                           : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
                       }`}>
-                        {isVerified ? 'Verified' : 'Pending Review'}
+                        {isRejected ? 'Rejected' : isVerified ? 'Verified' : 'Pending Review'}
                       </span>
                     </td>
                     <td className="px-4 py-3.5">
                       <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${
                         accStatus === 'ACTIVE'
                           ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                          : accStatus === 'SUSPENDED'
+                          : (accStatus === 'SUSPENDED' || accStatus === 'REJECTED')
                           ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
                           : accStatus === 'ARCHIVED'
                           ? 'bg-slate-500/15 text-slate-400 border-slate-500/30'
@@ -332,9 +341,14 @@ function AdminStudentsOversightView({ token }) {
 
     if (!matchQuery) return false
 
-    if (statusFilter === 'ACTIVE') return s.accountStatus === 'ACTIVE' || s.isVerified
-    if (statusFilter === 'PENDING') return s.accountStatus === 'PENDING_ADMIN_REVIEW' || (!s.isVerified && s.accountStatus !== 'SUSPENDED')
-    if (statusFilter === 'SUSPENDED') return s.accountStatus === 'SUSPENDED' || s.isSuspended
+    const accStatus = s.accountStatus || (s.isDeleted ? 'DELETION_PENDING' : s.isSuspended ? 'SUSPENDED' : 'ACTIVE')
+    const isRejected = accStatus === 'REJECTED' || s.verificationStatus === 'rejected'
+    const isVerified = isRejected ? false : Boolean(s.isVerified && accStatus === 'ACTIVE')
+
+    if (statusFilter === 'ACTIVE') return accStatus === 'ACTIVE' && isVerified
+    if (statusFilter === 'PENDING') return (accStatus === 'PENDING_ADMIN_REVIEW' || !isVerified) && accStatus !== 'SUSPENDED' && !isRejected
+    if (statusFilter === 'SUSPENDED') return accStatus === 'SUSPENDED' || s.isSuspended
+    if (statusFilter === 'REJECTED') return isRejected
 
     return true
   })
@@ -404,6 +418,7 @@ function AdminStudentsOversightView({ token }) {
             { id: 'ACTIVE', label: 'Active / Verified' },
             { id: 'PENDING', label: 'Pending Review' },
             { id: 'SUSPENDED', label: 'Suspended' },
+            { id: 'REJECTED', label: 'Rejected' },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -451,15 +466,16 @@ function AdminStudentsOversightView({ token }) {
                   ? new Date(st.created_at || st.createdAt).toLocaleDateString()
                   : 'N/A'
                 const accStatus = st.accountStatus || (st.isDeleted ? 'DELETION_PENDING' : st.isSuspended ? 'SUSPENDED' : 'ACTIVE')
-                const isVerified = st.isVerified || accStatus === 'ACTIVE'
+                const isRejected = accStatus === 'REJECTED' || st.verificationStatus === 'rejected'
+                const isVerified = isRejected ? false : Boolean(st.isVerified && accStatus === 'ACTIVE')
 
                 return (
                   <tr
                     key={st.id}
                     onClick={() => handleViewAccount(st, 'overview')}
-                    className="transition hover:bg-[#FF6D29]/10 cursor-pointer group"
+                    className="transition hover:bg-[#305BFE]/10 cursor-pointer group"
                   >
-                    <td className="px-4 py-3.5 text-xs font-bold group-hover:text-[#FF6D29] transition" style={{ color: 'var(--text-heading)' }}>
+                    <td className="px-4 py-3.5 text-xs font-bold group-hover:text-[#305BFE] transition" style={{ color: 'var(--text-heading)' }}>
                       <div>{st.name || `Student #${st.id}`}</div>
                       {(st.schoolName || st.school) && (
                         <div className="text-[10px] text-slate-400 font-normal">
@@ -477,18 +493,20 @@ function AdminStudentsOversightView({ token }) {
                     </td>
                     <td className="px-4 py-3.5">
                       <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${
-                        isVerified
+                        isRejected
+                          ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+                          : isVerified
                           ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
                           : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
                       }`}>
-                        {isVerified ? 'Verified' : 'Pending Review'}
+                        {isRejected ? 'Rejected' : isVerified ? 'Verified' : 'Pending Review'}
                       </span>
                     </td>
                     <td className="px-4 py-3.5">
                       <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${
                         accStatus === 'ACTIVE'
                           ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                          : accStatus === 'SUSPENDED'
+                          : (accStatus === 'SUSPENDED' || accStatus === 'REJECTED')
                           ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
                           : accStatus === 'ARCHIVED'
                           ? 'bg-slate-500/15 text-slate-400 border-slate-500/30'
@@ -647,7 +665,7 @@ function AdminAuditLogsView({ token }) {
                         e.stopPropagation()
                         setSelectedLog(log)
                       }}
-                      className="px-2.5 py-1 rounded-lg border text-[11px] font-bold transition group-hover:border-[#FF6D29] group-hover:text-[#FF6D29]"
+                      className="px-2.5 py-1 rounded-lg border text-[11px] font-bold transition group-hover:border-[#305BFE] group-hover:text-[#305BFE]"
                       style={{
                         backgroundColor: 'var(--color-surface-panel)',
                         borderColor: 'var(--border)',
@@ -697,7 +715,7 @@ function AdminAuditLogsView({ token }) {
               >
                 <div className="flex items-start justify-between gap-3 border-b border-slate-700/60 pb-4">
                   <div>
-                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-[#FF6D29]/20 text-[#FF6D29] border border-[#FF6D29]/30">
+                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-[#305BFE]/15 text-[#305BFE] border border-[#305BFE]/30">
                       Audit Event Record
                     </span>
                     <h3 className="text-base font-black mt-1 font-mono text-white">
@@ -746,7 +764,7 @@ function AdminAuditLogsView({ token }) {
 
                 {/* Payload Metadata */}
                 <div className="p-3 rounded-xl border border-slate-800 bg-black/60 font-mono text-[11px] space-y-1 overflow-x-auto">
-                  <div className="font-bold text-[10px] uppercase text-[#FF6D29]">Raw Event Details & Context</div>
+                  <div className="font-bold text-[10px] uppercase text-[#305BFE]">Raw Event Details & Context</div>
                   <pre className="text-[10px] text-slate-300 leading-relaxed">
                     {JSON.stringify(selectedLog.details || selectedLog, null, 2)}
                   </pre>
@@ -756,7 +774,7 @@ function AdminAuditLogsView({ token }) {
                   <button
                     type="button"
                     onClick={() => setSelectedLog(null)}
-                    className="px-5 py-2 rounded-xl text-xs font-bold bg-[#FF6D29] text-white hover:brightness-110 shadow-lg cursor-pointer transition"
+                    className="px-5 py-2 rounded-xl text-xs font-bold bg-[#305BFE] text-white hover:brightness-110 shadow-lg cursor-pointer transition"
                   >
                     Close Inspection
                   </button>
@@ -871,24 +889,27 @@ export default function ProviderDashboard({ onLogout }) {
     const isProdHost = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
     const safeBase = (isProdHost && (baseUrl || '').includes('localhost')) ? '' : (baseUrl || '')
 
-    // Primary attempt: safeBase + cleanEndpoint
+    // Primary attempt: configured API base + endpoint
     try {
       const res = await fetch(`${safeBase}${cleanEndpoint}`, options)
-      if (res.ok || res.status < 500) return res
+      // Accept all non-server-error responses (including 401, 403, 404) as valid
+      if (res.status < 500) return res
     } catch (err) {
-      // ignore and cascade
+      // Network error — cascade to same-origin fallback
     }
 
-    // Relative fallback: same-origin proxy (works seamlessly on Vercel / iskolar.org)
+    // Same-origin proxy fallback (works on Vercel / iskolar.org via rewrite rules)
+    // Only attempted on network failure or 5xx from primary
     try {
       const res = await fetch(cleanEndpoint, options)
-      if (res.ok || res.status < 500) return res
+      if (res.status < 500) return res
     } catch (err) {
-      // ignore and cascade
+      // Both attempts failed — rethrow so callers see the error
+      throw new Error(`Network error: unable to reach API for ${cleanEndpoint}`)
     }
 
-    // Direct cloud backend fallback
-    return await fetch(`https://iskolar-api.onrender.com${cleanEndpoint}`, options)
+    // If same-origin returned 5xx, still return it so callers can handle the status
+    throw new Error(`Server error: API unavailable for ${cleanEndpoint}`)
   }
 
   useEffect(() => {
@@ -917,7 +938,15 @@ export default function ProviderDashboard({ onLogout }) {
 
         if (!profileRes.ok) {
           if (profileRes.status === 401) {
+            // Session invalid or expired — force re-login
             logout()
+            return
+          }
+          if (profileRes.status === 403) {
+            // Valid session but access denied for this role/resource
+            setError('Access denied. Your account may not have permission for this workspace.')
+            setLoading(false)
+            setDashboardLoading(false)
             return
           }
           throw new Error(`Profile request failed: ${profileRes.status}`)
@@ -1028,8 +1057,8 @@ export default function ProviderDashboard({ onLogout }) {
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3 text-sm" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-secondary)' }}>
-        <div className="h-8 w-8 rounded-full border-2 border-[#FF6D29] border-t-transparent animate-spin" />
-        <div className="font-bold text-xs uppercase tracking-widest text-[#FF6D29]">Loading Workspace…</div>
+        <div className="h-8 w-8 rounded-full border-2 border-[#305BFE] border-t-transparent animate-spin" />
+        <div className="font-bold text-xs uppercase tracking-widest text-[#305BFE]">Loading Workspace…</div>
       </div>
     )
   }
@@ -1089,7 +1118,7 @@ export default function ProviderDashboard({ onLogout }) {
 
         {/* User Identity Chip */}
         <div className="px-5 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
-          <div className="text-[10px] font-extrabold uppercase tracking-widest text-[#FF6D29]">
+          <div className="text-[10px] font-extrabold uppercase tracking-widest text-[#305BFE]">
             {isAdmin ? 'System Administrator' : 'Authenticated Sponsor'}
           </div>
           <div className="text-sm font-black truncate" style={{ color: 'var(--text-heading)' }}>
@@ -1113,7 +1142,7 @@ export default function ProviderDashboard({ onLogout }) {
                 }}
                 className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition text-left text-xs font-bold cursor-pointer ${
                   isActive
-                    ? 'bg-gradient-to-r from-[#FF6D29] to-[#FF8552] text-white shadow-md'
+                    ? 'bg-gradient-to-r from-[#305BFE] to-[#4F96FF] text-white shadow-md'
                     : 'hover:bg-[var(--color-surface-panel)]'
                 }`}
                 style={{
@@ -1180,7 +1209,7 @@ export default function ProviderDashboard({ onLogout }) {
             </button>
 
             <div className="flex items-center gap-2 text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
-              <span className="hidden sm:inline font-bold text-[#FF6D29]">ISKOLAR</span>
+              <span className="hidden sm:inline font-bold text-[#305BFE]">ISKOLAR</span>
               <span className="hidden sm:inline">/</span>
               <span className="hidden sm:inline">{isAdmin ? 'Administration' : 'Provider Portal'}</span>
               <span className="hidden sm:inline">/</span>
@@ -1212,7 +1241,7 @@ export default function ProviderDashboard({ onLogout }) {
                 aria-haspopup="true"
                 aria-label="User Profile Menu"
               >
-                <span className="h-6 w-6 rounded-full bg-[#FF6D29]/20 text-[#FF6D29] flex items-center justify-center font-black text-[11px]">
+                <span className="h-6 w-6 rounded-full bg-[#305BFE]/20 text-[#305BFE] flex items-center justify-center font-black text-[11px]">
                   {(user?.name || user?.email || 'U').charAt(0).toUpperCase()}
                 </span>
                 <span className="hidden md:inline max-w-[120px] truncate">{user?.name || 'Account'}</span>
@@ -1287,9 +1316,9 @@ export default function ProviderDashboard({ onLogout }) {
                   <span
                     className="inline-flex items-center gap-2 rounded-full px-3.5 py-1 text-xs font-extrabold uppercase tracking-wider border mb-2"
                     style={{
-                      backgroundColor: 'rgba(255, 109, 41, 0.10)',
-                      color: 'var(--primary)',
-                      borderColor: 'rgba(255, 109, 41, 0.25)'
+                      backgroundColor: 'rgba(48, 91, 254, 0.10)',
+                      color: '#305BFE',
+                      borderColor: 'rgba(48, 91, 254, 0.25)'
                     }}
                   >
                     {isAdmin ? 'System Administration Portal' : 'Scholarship Management Portal'}
@@ -1341,8 +1370,8 @@ export default function ProviderDashboard({ onLogout }) {
                     {
                       title: 'Active Scholarships',
                       value: adminOverview?.counts?.openScholarships ?? dashboard?.openScholarshipsCount ?? 0,
-                      icon: <DocumentIcon className="w-5 h-5 text-[#FF6D29]" />,
-                      accent: '#FF6D29',
+                      icon: <DocumentIcon className="w-5 h-5 text-[#305BFE]" />,
+                      accent: '#305BFE',
                       subtitle: 'Published Grant Programs',
                       link: '#admin/scholarships'
                     },
@@ -1357,7 +1386,7 @@ export default function ProviderDashboard({ onLogout }) {
                   ].map((item) => (
                     <SpotlightCard
                       key={item.title}
-                      className="p-5 flex flex-col justify-between cursor-pointer hover:border-[var(--primary)] transition"
+                      className="p-5 flex flex-col justify-between cursor-pointer hover:border-[#305BFE] transition"
                       onClick={() => { if (item.link) window.location.hash = item.link }}
                     >
                       <div className="flex items-center justify-between">
@@ -1382,8 +1411,8 @@ export default function ProviderDashboard({ onLogout }) {
                     {
                       title: 'Total Applications',
                       value: dashboard?.applicationsCount ?? 0,
-                      icon: <DocumentIcon className="w-5 h-5 text-[#FF6D29]" />,
-                      accent: '#FF6D29',
+                      icon: <DocumentIcon className="w-5 h-5 text-[#305BFE]" />,
+                      accent: '#305BFE',
                       subtitle: 'All Program Submissions',
                       link: '#providers/applicants'
                     },
@@ -1452,14 +1481,14 @@ export default function ProviderDashboard({ onLogout }) {
                     onClick={() => { window.location.hash = isAdmin ? '#admin/create' : '#providers/create' }}
                     className="btn-secondary p-3.5 text-xs font-extrabold text-center hover:border-[var(--primary)] transition flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    <SparklesIcon className="w-4 h-4 text-[#FF6D29]" />
+                    <SparklesIcon className="w-4 h-4 text-[#305BFE]" />
                     <span>Create Scholarship</span>
                   </button>
                   <button
                     onClick={() => { window.location.hash = isAdmin ? '#admin/applicants' : '#providers/applicants' }}
                     className="btn-secondary p-3.5 text-xs font-extrabold text-center hover:border-[var(--primary)] transition flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    <GraduationCapIcon className="w-4 h-4 text-[#FF8552]" />
+                    <GraduationCapIcon className="w-4 h-4 text-[#4F96FF]" />
                     <span>Review Candidates</span>
                   </button>
                   <button
@@ -1487,7 +1516,7 @@ export default function ProviderDashboard({ onLogout }) {
               <React.Suspense
                 fallback={
                   <div className="flex items-center justify-center p-12 min-h-[350px]">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: 'var(--primary, #FF6D29)' }} />
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: 'var(--primary, #305BFE)' }} />
                   </div>
                 }
               >

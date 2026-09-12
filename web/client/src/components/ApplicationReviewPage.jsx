@@ -16,7 +16,7 @@ const statusBadge = (status) => {
   const normalized = String(status || '').toLowerCase()
   if (normalized === 'approved') return 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
   if (normalized === 'rejected') return 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30'
-  if (normalized === 'pending review') return 'bg-[#FF6D29]/15 text-[#FF6D29] border border-[#FF6D29]/30'
+  if (normalized === 'pending review') return 'bg-[#305BFE]/15 text-[#305BFE] border border-[#305BFE]/30'
   if (normalized === 'needs resubmission') return 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
   return 'bg-[var(--bg-input)] text-[var(--text-secondary)] border border-[var(--border)]'
 }
@@ -200,10 +200,36 @@ export default function ApplicationReviewPage({ token, scholarshipId }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <div className="text-center">
-          <div className="mb-4 inline-block animate-spin rounded-full border-4 border-[var(--border)] border-t-[var(--primary)] h-8 w-8"></div>
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Loading applicant records…</p>
+      <div className="w-full py-6 px-4" aria-busy="true" aria-label="Loading applicant records">
+        <div
+          className="rounded-3xl border p-6 sm:p-8 shadow-2xl backdrop-blur-xl animate-pulse space-y-6"
+          style={{
+            backgroundColor: 'var(--bg-modal)',
+            borderColor: 'var(--border)'
+          }}
+        >
+          {/* Header Skeleton */}
+          <div className="border-b pb-6 space-y-3" style={{ borderColor: 'var(--border)' }}>
+            <div className="skeleton h-4 w-32 rounded-lg" />
+            <div className="skeleton h-8 w-64 rounded-xl" />
+            <div className="skeleton h-4 w-96 rounded-lg" />
+          </div>
+
+          {/* 4 Stats Cards Skeleton */}
+          <div className="grid gap-4 sm:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="skeleton h-20 rounded-2xl" />
+            ))}
+          </div>
+
+          {/* Filters Skeleton */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="skeleton h-14 rounded-2xl" />
+            <div className="skeleton h-14 rounded-2xl" />
+          </div>
+
+          {/* Table Skeleton */}
+          <div className="skeleton h-80 rounded-2xl" />
         </div>
       </div>
     )
@@ -257,7 +283,7 @@ export default function ApplicationReviewPage({ token, scholarshipId }) {
                 {applications.filter((a) => a.status === 'Approved').length}
               </p>
             </div>
-            <div className="rounded-2xl border border-[#FF6D29]/30 bg-[#FF6D29]/10 p-4">
+            <div className="rounded-2xl border border-[#305BFE]/30 bg-[#305BFE]/10 p-4">
               <p className="text-xs uppercase tracking-wider font-semibold" style={{ color: 'var(--primary)' }}>Pending Review</p>
               <p className="mt-1 text-2xl font-bold" style={{ color: 'var(--primary)' }}>
                 {applications.filter((a) => a.status === 'Pending Review').length}
@@ -406,16 +432,22 @@ export default function ApplicationReviewPage({ token, scholarshipId }) {
                 <h3 className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--primary)' }}>Student Profile</h3>
                 <div className="grid gap-2 text-xs sm:grid-cols-2">
                   <p style={{ color: 'var(--text-secondary)' }}>
-                    <span className="font-semibold" style={{ color: 'var(--text-muted)' }}>Email:</span> {selectedApp.studentEmail || 'N/A'}
+                    <span className="font-semibold" style={{ color: 'var(--text-muted)' }}>Email:</span> {selectedApp.studentEmail || selectedApp.student_email || 'N/A'}
                   </p>
                   <p style={{ color: 'var(--text-secondary)' }}>
-                    <span className="font-semibold" style={{ color: 'var(--text-muted)' }}>School:</span> {selectedApp.studentSchool || 'N/A'}
+                    <span className="font-semibold" style={{ color: 'var(--text-muted)' }}>School:</span> {selectedApp.studentSchool || selectedApp.student_profile?.school || selectedApp.school || 'Not specified'}
                   </p>
                   <p style={{ color: 'var(--text-secondary)' }}>
-                    <span className="font-semibold" style={{ color: 'var(--text-muted)' }}>Year / Grade:</span> {selectedApp.studentGrade || 'N/A'}
+                    <span className="font-semibold" style={{ color: 'var(--text-muted)' }}>Course:</span> {selectedApp.studentCourse || selectedApp.student_profile?.course || selectedApp.course || 'Not specified'}
                   </p>
                   <p style={{ color: 'var(--text-secondary)' }}>
-                    <span className="font-semibold" style={{ color: 'var(--text-muted)' }}>Submission Date:</span> {formatDateTime(selectedApp.appliedAt)}
+                    <span className="font-semibold" style={{ color: 'var(--text-muted)' }}>Year / Grade:</span> {selectedApp.studentGrade || selectedApp.student_profile?.yearLevel || selectedApp.yearLevel || 'N/A'}
+                  </p>
+                  <p style={{ color: 'var(--text-secondary)' }}>
+                    <span className="font-semibold" style={{ color: 'var(--text-muted)' }}>GPA:</span> {selectedApp.gpa ?? selectedApp.student_profile?.gpa ?? 'N/A'}
+                  </p>
+                  <p style={{ color: 'var(--text-secondary)' }}>
+                    <span className="font-semibold" style={{ color: 'var(--text-muted)' }}>Submission Date:</span> {formatDateTime(selectedApp.appliedAt || selectedApp.applied_at)}
                   </p>
                 </div>
               </div>
