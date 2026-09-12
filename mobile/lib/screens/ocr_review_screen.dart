@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../services/ocr_service.dart';
 import '../utils/app_colors.dart';
+import '../utils/app_spacing.dart';
 import '../widgets/primary_button.dart';
 
 class OcrReviewScreen extends StatefulWidget {
@@ -77,28 +79,54 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: isDark ? AppColors.darkBackground : AppColors.mainBackground,
       appBar: AppBar(
-        title: const Text('OCR Results Review'),
+        title: Text(
+          'OCR Results Review',
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: isDark ? AppColors.darkTextPrimary : AppColors.primaryNavy,
+          ),
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        iconTheme: IconThemeData(
+          color: isDark ? AppColors.darkTextPrimary : AppColors.primaryNavy,
+        ),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Image Preview
+              // Image Preview Card
               Container(
                 height: 180,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white24),
+                  color: isDark ? AppColors.darkSurface : AppColors.cardSurface,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
+                  border: Border.all(
+                    color: isDark ? AppColors.darkBorder : AppColors.border,
+                    width: 1.0,
+                  ),
+                  boxShadow: isDark
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.25),
+                            blurRadius: 18,
+                            offset: const Offset(0, 6),
+                          ),
+                        ]
+                      : AppColors.cardShadow,
                 ),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
                   child: widget.imageBytes != null
                       ? Image.memory(
                           widget.imageBytes!,
@@ -112,9 +140,9 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
                               width: double.infinity,
                             )
                           : Container(
-                              color: AppColors.surface,
+                              color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
                               child: const Center(
-                                child: Icon(Icons.document_scanner, color: AppColors.primary, size: 48),
+                                child: Icon(Icons.document_scanner_rounded, color: AppColors.actionBlue, size: 48),
                               ),
                             ),
                 ),
@@ -123,50 +151,143 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
 
               Text(
                 'Verify Extracted Information',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? AppColors.darkTextPrimary : AppColors.primaryNavy,
+                ),
               ),
               const SizedBox(height: 6),
-              const Text(
+              Text(
                 'We ran AI OCR to extract information. Please correct any mistakes below.',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                style: GoogleFonts.poppins(
+                  color: isDark ? AppColors.darkTextSecondary : AppColors.secondaryText,
+                  fontSize: 13,
+                  height: 1.45,
+                ),
               ),
               const SizedBox(height: 20),
 
-              // Inputs
-              TextFormField(
-                controller: _nameController,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  labelText: 'Full Name',
-                  prefixIcon: Icon(Icons.person_outline),
+              // Inputs Card
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.darkSurface : AppColors.cardSurface,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
+                  border: Border.all(
+                    color: isDark ? AppColors.darkBorder : AppColors.border,
+                    width: 1.0,
+                  ),
+                  boxShadow: isDark
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.25),
+                            blurRadius: 18,
+                            offset: const Offset(0, 6),
+                          ),
+                        ]
+                      : AppColors.cardShadow,
                 ),
-                onChanged: (_) => _verifyFields(),
-              ),
-              const SizedBox(height: 14),
+                child: Column(
+                  children: [
+                    TextFormField(
+                      controller: _nameController,
+                      style: GoogleFonts.poppins(
+                        color: isDark ? AppColors.darkTextPrimary : AppColors.primaryNavy,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      decoration: InputDecoration(
+                        labelText: 'Full Name',
+                        labelStyle: GoogleFonts.poppins(
+                          color: isDark ? AppColors.darkTextSecondary : AppColors.secondaryText,
+                          fontSize: 13,
+                        ),
+                        prefixIcon: const Icon(Icons.person_outline_rounded, color: AppColors.actionBlue, size: 20),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusInput),
+                          borderSide: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusInput),
+                          borderSide: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusInput),
+                          borderSide: const BorderSide(color: AppColors.actionBlue, width: 1.5),
+                        ),
+                      ),
+                      onChanged: (_) => _verifyFields(),
+                    ),
+                    const SizedBox(height: 14),
 
-              TextFormField(
-                controller: _idNumberController,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  labelText: 'Document/ID Number',
-                  prefixIcon: Icon(Icons.badge_outlined),
-                ),
-                onChanged: (_) => _verifyFields(),
-              ),
-              const SizedBox(height: 14),
+                    TextFormField(
+                      controller: _idNumberController,
+                      style: GoogleFonts.poppins(
+                        color: isDark ? AppColors.darkTextPrimary : AppColors.primaryNavy,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      decoration: InputDecoration(
+                        labelText: 'Document/ID Number',
+                        labelStyle: GoogleFonts.poppins(
+                          color: isDark ? AppColors.darkTextSecondary : AppColors.secondaryText,
+                          fontSize: 13,
+                        ),
+                        prefixIcon: const Icon(Icons.badge_outlined, color: AppColors.actionBlue, size: 20),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusInput),
+                          borderSide: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusInput),
+                          borderSide: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusInput),
+                          borderSide: const BorderSide(color: AppColors.actionBlue, width: 1.5),
+                        ),
+                      ),
+                      onChanged: (_) => _verifyFields(),
+                    ),
+                    const SizedBox(height: 14),
 
-              TextFormField(
-                controller: _expiryController,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  labelText: 'Expiration Date (if applicable)',
-                  prefixIcon: Icon(Icons.event_outlined),
-                  hintText: 'YYYY-MM-DD',
+                    TextFormField(
+                      controller: _expiryController,
+                      style: GoogleFonts.poppins(
+                        color: isDark ? AppColors.darkTextPrimary : AppColors.primaryNavy,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      decoration: InputDecoration(
+                        labelText: 'Expiration Date (if applicable)',
+                        labelStyle: GoogleFonts.poppins(
+                          color: isDark ? AppColors.darkTextSecondary : AppColors.secondaryText,
+                          fontSize: 13,
+                        ),
+                        prefixIcon: const Icon(Icons.event_outlined, color: AppColors.actionBlue, size: 20),
+                        hintText: 'YYYY-MM-DD',
+                        hintStyle: GoogleFonts.poppins(
+                          color: isDark ? AppColors.darkTextSecondary.withValues(alpha: 0.5) : AppColors.secondaryText.withValues(alpha: 0.5),
+                          fontSize: 13,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusInput),
+                          borderSide: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusInput),
+                          borderSide: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusInput),
+                          borderSide: const BorderSide(color: AppColors.actionBlue, width: 1.5),
+                        ),
+                      ),
+                      onChanged: (_) => _verifyFields(),
+                    ),
+                  ],
                 ),
-                onChanged: (_) => _verifyFields(),
               ),
               const SizedBox(height: 24),
 
@@ -175,18 +296,38 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
                 const Center(
                   child: Padding(
                     padding: EdgeInsets.all(16),
-                    child: CircularProgressIndicator(),
+                    child: CircularProgressIndicator(color: AppColors.actionBlue, strokeWidth: 2.5),
                   ),
                 )
               else if (_error != null)
-                Text(
-                  'Error running data matching check: $_error',
-                  style: const TextStyle(color: Colors.red, fontSize: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusInput),
+                    border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Error running data matching check: $_error',
+                          style: GoogleFonts.poppins(color: AppColors.error, fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
                 )
               else if (_checkResult != null) ...[
-                const Text(
+                Text(
                   'AI Data Matching Check',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                  style: GoogleFonts.poppins(
+                    color: isDark ? AppColors.darkTextPrimary : AppColors.primaryNavy,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 // Warnings
@@ -195,18 +336,18 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.yellow.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.yellow.withValues(alpha: 0.2)),
+                      color: AppColors.warning.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusInput),
+                      border: Border.all(color: AppColors.warning.withValues(alpha: 0.25)),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.warning_amber_rounded, color: Colors.yellow),
+                        const Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 20),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             w['message'] as String? ?? 'Data discrepancy found',
-                            style: const TextStyle(color: Colors.yellow, fontSize: 12),
+                            style: GoogleFonts.poppins(color: AppColors.warning, fontSize: 12.5, fontWeight: FontWeight.w500),
                           ),
                         ),
                       ],
@@ -219,18 +360,18 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.red.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
+                      color: AppColors.error.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusInput),
+                      border: Border.all(color: AppColors.error.withValues(alpha: 0.25)),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.error_outline_rounded, color: Colors.red),
+                        const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 20),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             'Mismatch on ${m['field']}: profile has "${m['profile']}" but document has "${m['document']}"',
-                            style: const TextStyle(color: Colors.red, fontSize: 12),
+                            style: GoogleFonts.poppins(color: AppColors.error, fontSize: 12.5, fontWeight: FontWeight.w500),
                           ),
                         ),
                       ],
@@ -241,27 +382,27 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
                 if ((_checkResult!['mismatches'] as List? ?? []).isEmpty &&
                     (_checkResult!['warnings'] as List? ?? []).isEmpty)
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: Colors.green.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.green.withValues(alpha: 0.2)),
+                      color: AppColors.success.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusInput),
+                      border: Border.all(color: AppColors.success.withValues(alpha: 0.25)),
                     ),
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(Icons.check_circle_outline_rounded, color: Colors.green),
-                        SizedBox(width: 10),
+                        const Icon(Icons.check_circle_outline_rounded, color: AppColors.success, size: 20),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             'Extracted fields match your profile data perfectly.',
-                            style: TextStyle(color: Colors.green, fontSize: 12),
+                            style: GoogleFonts.poppins(color: AppColors.success, fontSize: 12.5, fontWeight: FontWeight.w600),
                           ),
                         ),
                       ],
                     ),
                   ),
               ],
-              const SizedBox(height: 32),
+              const SizedBox(height: 28),
 
               PrimaryButton(
                 label: 'Confirm & Save Info',

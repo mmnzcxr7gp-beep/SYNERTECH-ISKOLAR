@@ -252,8 +252,9 @@ export default function ScholarshipEditPage({ token, scholarshipId, onUpdated })
                 <div className="grid gap-5">
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
-                      <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Program Type</label>
+                      <label htmlFor="edit-program-type" className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Program Type</label>
                       <select
+                        id="edit-program-type"
                         value={programType}
                         onChange={(e) => setProgramType(e.target.value)}
                         className="input-field mt-2 w-full p-3 text-sm focus:outline-none"
@@ -270,8 +271,9 @@ export default function ScholarshipEditPage({ token, scholarshipId, onUpdated })
                     </div>
                     {(programType === 'Allowance' || programType === 'Scholarship + Allowance') && (
                       <div>
-                        <label className="block text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Monthly Allowance (₱)</label>
+                        <label htmlFor="edit-allowance" className="block text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Monthly Allowance (₱)</label>
                         <input
+                          id="edit-allowance"
                           value={allowance}
                           onChange={(e) => setAllowance(e.target.value)}
                           className="input-field mt-2 w-full p-3 text-sm focus:outline-none"
@@ -290,8 +292,9 @@ export default function ScholarshipEditPage({ token, scholarshipId, onUpdated })
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Title</label>
+                    <label htmlFor="edit-title" className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Title</label>
                     <input
+                      id="edit-title"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                       className="input-field mt-2 w-full p-3 text-sm focus:outline-none"
@@ -305,8 +308,9 @@ export default function ScholarshipEditPage({ token, scholarshipId, onUpdated })
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Description</label>
+                    <label htmlFor="edit-description" className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Description</label>
                     <textarea
+                      id="edit-description"
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       className="input-field mt-2 min-h-[140px] w-full p-3 text-sm focus:outline-none"
@@ -319,8 +323,9 @@ export default function ScholarshipEditPage({ token, scholarshipId, onUpdated })
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Benefits Summary</label>
+                    <label htmlFor="edit-benefits" className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Benefits Summary</label>
                     <textarea
+                      id="edit-benefits"
                       value={benefits}
                       onChange={(e) => setBenefits(e.target.value)}
                       className="input-field mt-2 min-h-[100px] w-full p-3 text-sm focus:outline-none"
@@ -333,8 +338,9 @@ export default function ScholarshipEditPage({ token, scholarshipId, onUpdated })
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Eligibility Instructions</label>
+                    <label htmlFor="edit-eligibility" className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Eligibility Instructions</label>
                     <textarea
+                      id="edit-eligibility"
                       value={eligibilityRequirements}
                       onChange={(e) => setEligibilityRequirements(e.target.value)}
                       className="input-field mt-2 min-h-[100px] w-full p-3 text-sm focus:outline-none"
@@ -348,8 +354,9 @@ export default function ScholarshipEditPage({ token, scholarshipId, onUpdated })
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
-                      <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Slots Available</label>
+                      <label htmlFor="edit-slots" className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Slots Available</label>
                       <input
+                        id="edit-slots"
                         value={slots}
                         onChange={(e) => setSlots(e.target.value)}
                         className="input-field mt-2 w-full p-3 text-sm focus:outline-none"
@@ -363,8 +370,9 @@ export default function ScholarshipEditPage({ token, scholarshipId, onUpdated })
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Application Deadline</label>
+                      <label htmlFor="edit-deadline" className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Application Deadline</label>
                       <input
+                        id="edit-deadline"
                         value={deadline}
                         onChange={(e) => setDeadline(e.target.value)}
                         className="input-field mt-2 w-full p-3 text-sm focus:outline-none"
@@ -378,8 +386,9 @@ export default function ScholarshipEditPage({ token, scholarshipId, onUpdated })
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Status</label>
+                    <label htmlFor="edit-status" className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Status</label>
                     <select
+                      id="edit-status"
                       value={status}
                       onChange={(e) => setStatus(e.target.value)}
                       className="input-field mt-2 w-full p-3 text-sm focus:outline-none"
@@ -421,8 +430,8 @@ export default function ScholarshipEditPage({ token, scholarshipId, onUpdated })
                         }}
                         className={`rounded-2xl border px-4 py-2.5 text-left text-xs font-semibold transition ${
                           isSelected
-                            ? 'bg-[#FF6D29] text-white font-bold'
-                            : 'hover:border-[#FF6D29]/50'
+                            ? 'bg-[#305BFE] text-white font-bold'
+                            : 'hover:border-[#305BFE]/50'
                         }`}
                         style={{
                           backgroundColor: isSelected ? 'var(--primary)' : 'var(--bg-card)',
@@ -436,9 +445,10 @@ export default function ScholarshipEditPage({ token, scholarshipId, onUpdated })
                   })}
                 </div>
                 <div className="pt-3 border-t" style={{ borderColor: 'var(--border)' }}>
-                  <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Custom Requirement</label>
+                  <label htmlFor="edit-custom-requirement" className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Custom Requirement</label>
                   <div className="mt-2 flex flex-col gap-2 sm:flex-row">
                     <input
+                      id="edit-custom-requirement"
                       value={customRequirement}
                       onChange={(e) => setCustomRequirement(e.target.value)}
                       className="input-field flex-1 p-2.5 text-xs focus:outline-none"
@@ -479,6 +489,7 @@ export default function ScholarshipEditPage({ token, scholarshipId, onUpdated })
                         {req}
                         <button
                           type="button"
+                          aria-label={`Remove requirement: ${req}`}
                           onClick={() => {
                             setSelectedRequirements((current) => current.filter((item) => item !== req))
                             setCustomRequirements((current) => current.filter((item) => item !== req))
@@ -508,7 +519,7 @@ export default function ScholarshipEditPage({ token, scholarshipId, onUpdated })
                   {posting ? 'Saving…' : 'Save Changes'}
                 </button>
               </div>
-              {formMessage ? <div className="text-sm text-rose-400">{formMessage}</div> : null}
+              {formMessage ? <div role="status" aria-live="polite" className="text-sm text-rose-400">{formMessage}</div> : null}
             </form>
 
             <aside className="space-y-6">

@@ -31,7 +31,7 @@ class DashboardHeader extends StatelessWidget {
                 ),
               ),
             ),
-            // Subtle warm orange accent glow
+            // Subtle blue accent glow
             Positioned(
               top: -80,
               left: -80,
@@ -39,7 +39,7 @@ class DashboardHeader extends StatelessWidget {
                 width: 180,
                 height: 180,
                 decoration: BoxDecoration(
-                  color: AppColors.primaryOrange.withAlpha(35),
+                  color: AppColors.actionBlue.withAlpha(35),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -51,7 +51,7 @@ class DashboardHeader extends StatelessWidget {
                 width: 220,
                 height: 220,
                 decoration: BoxDecoration(
-                  color: AppColors.orangeDarkAction.withAlpha(28),
+                  color: AppColors.primaryNavy.withAlpha(28),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -95,7 +95,7 @@ class DashboardHeader extends StatelessWidget {
                     ),
                     child: const Icon(
                       Icons.dashboard_customize_rounded,
-                      color: AppColors.primaryOrange,
+                      color: AppColors.actionBlue,
                       size: 32,
                     ),
                   ),

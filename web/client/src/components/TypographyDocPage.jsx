@@ -7,12 +7,12 @@ export default function TypographyDocPage() {
       <header className="border-b pb-6" style={{ borderColor: 'var(--color-border)' }}>
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <div className="text-xs uppercase tracking-wider font-semibold text-[#E85D04] mb-1">
+            <div className="text-xs uppercase tracking-wider font-semibold text-[#305BFE] mb-1">
               Design System Specification
             </div>
             <h1 className="text-page-title">Enterprise Typography & Token System</h1>
             <p className="text-body mt-2 max-w-2xl text-[var(--color-text-secondary)]">
-              The official Microsoft Fluent 2 & Apple Human Interface Guidelines design identity for the ISKOLAR 2.0 Web Portal and Mobile Application, engineered for clarity, accessibility, and school administrative use.
+              The official ISKOLAR 2.0 design identity for the Web Portal and Mobile Application, engineered with Poppins geometric typography for modern clarity, defense-ready elegance, and WCAG AA accessibility.
             </p>
           </div>
           <a href="#home" className="btn-secondary text-xs">
@@ -27,18 +27,18 @@ export default function TypographyDocPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="modular-card p-6 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#E85D04]">Web System Stack</span>
-              <span className="text-xs font-mono text-[var(--color-text-muted)]">--font-system</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-[#305BFE]">Primary Brand Stack</span>
+              <span className="text-xs font-mono text-[var(--color-text-muted)]">--font-heading</span>
             </div>
-            <div className="text-2xl font-semibold" style={{ fontFamily: 'var(--font-heading)' }}>
-              Segoe UI Variable / SF Pro Text
+            <div className="text-2xl font-bold" style={{ fontFamily: 'var(--font-heading)' }}>
+              Poppins
             </div>
             <p className="text-caption">
-              Clean native system font stack prioritizing Segoe UI Variable on Windows and SF Pro Text on macOS/iOS, falling back to clean system sans-serif.
+              Modern geometric font stack loaded via Google Fonts with robust system fallbacks (Inter, system-ui, -apple-system, sans-serif) across all mobile and web interfaces.
             </p>
             <div className="pt-2 border-t text-xs space-y-1" style={{ borderColor: 'var(--color-border)' }}>
               <div className="font-semibold text-[var(--color-text-heading)]">Approved Weights:</div>
-              <div className="text-[var(--color-text-secondary)]">Regular (400), Medium (500), Semibold (600), Bold (700)</div>
+              <div className="text-[var(--color-text-secondary)]">Regular (400), Medium (500), Semibold (600), Bold (700), Extra-bold (800)</div>
             </div>
           </div>
 

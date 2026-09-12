@@ -57,14 +57,18 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scaffoldBg = isDark ? AppColors.darkBackground : AppColors.mainBackground;
+    final titleColor = isDark ? AppColors.darkTextPrimary : AppColors.primaryNavy;
+
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: scaffoldBg,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
           'Transaction History',
-          style: AppTypography.cardTitle(color: Colors.white),
+          style: AppTypography.cardTitle(color: titleColor),
         ),
       ),
       body: SafeArea(
@@ -83,13 +87,13 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                         const EdgeInsets.symmetric(horizontal: 0, vertical: 6),
                     child: Row(
                       children: [
-                        _buildFilterChip('all', 'All'),
+                        _buildFilterChip('all', 'All', isDark),
                         const SizedBox(width: 8),
-                        _buildFilterChip('completed', 'Completed'),
+                        _buildFilterChip('completed', 'Completed', isDark),
                         const SizedBox(width: 8),
-                        _buildFilterChip('pending', 'Pending'),
+                        _buildFilterChip('pending', 'Pending', isDark),
                         const SizedBox(width: 8),
-                        _buildFilterChip('failed', 'Failed'),
+                        _buildFilterChip('failed', 'Failed', isDark),
                       ],
                     ),
                   ),
@@ -104,13 +108,18 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    const Icon(
+                                    Icon(
                                       Icons.receipt_long_outlined,
                                       size: 64,
-                                      color: Colors.grey,
+                                      color: isDark ? AppColors.darkTextSecondary : AppColors.secondaryText,
                                     ),
                                     const SizedBox(height: 16),
-                                    Text('No transactions found', style: AppTypography.secondary(color: AppColors.textMuted)),
+                                    Text(
+                                      'No transactions found',
+                                      style: AppTypography.secondary(
+                                        color: isDark ? AppColors.darkTextSecondary : AppColors.secondaryText,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               )
@@ -121,7 +130,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                                 itemBuilder: (context, index) {
                                   final transaction = _transactions[index];
                                   return RepaintBoundary(
-                                    child: _buildTransactionTile(transaction),
+                                    child: _buildTransactionTile(transaction, isDark),
                                   );
                                 },
                               ),
@@ -135,13 +144,19 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
     );
   }
 
-  Widget _buildFilterChip(String value, String label) {
+  Widget _buildFilterChip(String value, String label, bool isDark) {
     final isSelected = _selectedFilter == value;
+    final unselectedLabelColor = isDark ? AppColors.darkTextSecondary : AppColors.primaryNavy;
+    final unselectedBg = isDark ? AppColors.darkSurface : AppColors.pureWhite;
+    final borderColor = isSelected
+        ? AppColors.actionBlue
+        : (isDark ? AppColors.darkBorder : AppColors.border);
+
     return FilterChip(
       label: Text(
         label,
         style: AppTypography.caption(
-          color: isSelected ? Colors.white : Colors.black87,
+          color: isSelected ? Colors.white : unselectedLabelColor,
         ),
       ),
       selected: isSelected,
@@ -152,15 +167,13 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
         });
         _loadTransactions();
       },
-      backgroundColor: Colors.white,
-      selectedColor: AppColors.primary.withValues(alpha: 0.2),
-      side: BorderSide(
-        color: isSelected ? AppColors.primary : Colors.grey.shade300,
-      ),
+      backgroundColor: unselectedBg,
+      selectedColor: AppColors.actionBlue,
+      side: BorderSide(color: borderColor),
     );
   }
 
-  Widget _buildTransactionTile(Map<String, dynamic> transaction) {
+  Widget _buildTransactionTile(Map<String, dynamic> transaction, bool isDark) {
     final status = transaction['status'] as String? ?? 'unknown';
     final amount = transaction['amount'] as num? ?? 0;
     final date = transaction['createdAt'] as String?;
@@ -171,13 +184,27 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
     final statusColor = _getStatusColor(status);
     final statusIcon = _getStatusIcon(status);
 
+    final cardBg = isDark ? AppColors.darkSurface : AppColors.pureWhite;
+    final cardBorder = isDark ? AppColors.darkBorder : AppColors.border;
+    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.primaryNavy;
+    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.secondaryText;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade800),
-        borderRadius: BorderRadius.circular(12),
-        color: AppColors.elevatedBackground,
+        border: Border.all(color: cardBorder),
+        borderRadius: BorderRadius.circular(16),
+        color: cardBg,
+        boxShadow: [
+          BoxShadow(
+            color: isDark
+                ? Colors.black.withValues(alpha: 0.15)
+                : const Color(0xFF15265C).withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -191,14 +218,14 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                   children: [
                     Text(
                       _formatTransactionType(type),
-                      style: AppTypography.cardTitle(color: Colors.white).copyWith(fontSize: 14),
+                      style: AppTypography.cardTitle(color: textPrimary).copyWith(fontSize: 14),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Ref: $referenceNumber',
                       style: AppTypography.technical(
                         fontSize: 12,
-                        color: AppColors.textMuted,
+                        color: textSecondary,
                       ),
                     ),
                   ],
@@ -209,7 +236,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                 children: [
                   Text(
                     'PHP ${amount.toStringAsFixed(2)}',
-                    style: AppTypography.cardTitle(color: Colors.white).copyWith(fontSize: 14),
+                    style: AppTypography.cardTitle(color: textPrimary).copyWith(fontSize: 14),
                   ),
                   const SizedBox(height: 4),
                   Container(
@@ -240,7 +267,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
             Text(
               date,
               style: AppTypography.caption(
-                color: AppColors.textMuted,
+                color: textSecondary,
               ),
             ),
         ],
@@ -254,7 +281,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
         return AppColors.success;
       case 'pending':
       case 'processing':
-        return AppColors.primaryOrange;
+        return AppColors.warning;
       case 'failed':
       case 'cancelled':
         return AppColors.error;

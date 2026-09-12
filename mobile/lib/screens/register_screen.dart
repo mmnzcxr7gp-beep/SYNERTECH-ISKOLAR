@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../services/otp_service.dart';
 import '../utils/app_colors.dart';
@@ -188,7 +189,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         title: const Row(
           children: [
-            Icon(Icons.shield_outlined, color: AppColors.primaryOrange, size: 24),
+            Icon(Icons.shield_outlined, color: AppColors.actionBlue, size: 24),
             SizedBox(width: 10),
             Text(
               'Privacy Policy',
@@ -245,7 +246,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ElevatedButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryOrange,
+              backgroundColor: AppColors.actionBlue,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
@@ -293,16 +294,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
+  bool get _isDark => Theme.of(context).brightness == Brightness.dark;
+  Color get _bgColor => _isDark ? AppColors.darkBackground : AppColors.mainBackground;
+  Color get _cardColor => _isDark ? AppColors.surfaceDark : AppColors.pureWhite;
+  Color get _cardBorder => _isDark ? const Color(0xFF22314D) : AppColors.border;
+  Color get _textPrimary => _isDark ? AppColors.darkTextPrimary : AppColors.primaryNavy;
+  Color get _textSecondary => _isDark ? AppColors.darkTextSecondary : AppColors.secondaryText;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: _bgColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: _currentStep > 0 && _currentStep < 5
             ? IconButton(
-                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                icon: Icon(Icons.arrow_back_rounded, color: _textPrimary),
                 onPressed: () {
                   setState(() {
                     _errorMessage = null;
@@ -311,13 +319,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 },
               )
             : IconButton(
-                icon: const Icon(Icons.close_rounded, color: Colors.white),
+                icon: Icon(Icons.close_rounded, color: _textPrimary),
                 onPressed: () => Navigator.of(context).pop(),
               ),
         title: _currentStep > 0 && _currentStep <= 3
             ? Text(
                 'Step $_currentStep of 3',
-                style: const TextStyle(color: AppColors.primary, fontSize: 14, fontWeight: FontWeight.bold),
+                style: GoogleFonts.poppins(color: AppColors.actionBlue, fontSize: 14, fontWeight: FontWeight.bold),
               )
             : null,
         centerTitle: true,
@@ -362,22 +370,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
         const SizedBox(height: 24),
         const ISKOLARLogo(size: 88),
         const SizedBox(height: 24),
-        const Text(
+        Text(
           'Create your student account',
           textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Colors.white,
+          style: GoogleFonts.poppins(
+            color: _textPrimary,
             fontSize: 26,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 0.5,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.5,
           ),
         ),
         const SizedBox(height: 12),
         Text(
           'Register to discover scholarship opportunities and manage your applications.',
           textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.7),
+          style: GoogleFonts.poppins(
+            color: _textSecondary,
             fontSize: 14,
             height: 1.5,
           ),
@@ -386,9 +394,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
         Container(
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: _cardColor,
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+            border: Border.all(color: _cardBorder),
+            boxShadow: [
+              BoxShadow(
+                color: _isDark ? Colors.black.withValues(alpha: 0.30) : const Color(0x0C15265C),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
           padding: const EdgeInsets.all(24),
           child: Column(
@@ -415,18 +430,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Row(
       children: [
         CircleAvatar(
-          backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+          backgroundColor: AppColors.actionBlue.withValues(alpha: _isDark ? 0.20 : 0.10),
           radius: 20,
-          child: Icon(icon, color: AppColors.primary, size: 20),
+          child: Icon(icon, color: AppColors.actionBlue, size: 20),
         ),
         const SizedBox(width: 14),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+              Text(title, style: GoogleFonts.poppins(color: _textPrimary, fontWeight: FontWeight.bold, fontSize: 14)),
               const SizedBox(height: 2),
-              Text(desc, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+              Text(desc, style: GoogleFonts.poppins(color: _textSecondary, fontSize: 12)),
             ],
           ),
         ),
@@ -446,9 +461,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Create Your Account', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+          Text('Create Your Account', style: GoogleFonts.poppins(color: _textPrimary, fontSize: 24, fontWeight: FontWeight.bold)),
           const SizedBox(height: 6),
-          const Text('Step 1 of 3: Personal & Login Details', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+          Text('Step 1 of 3: Personal & Login Details', style: GoogleFonts.poppins(color: _textSecondary, fontSize: 14)),
           const SizedBox(height: 24),
 
           // Name Fields
@@ -524,14 +539,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   child: LinearProgressIndicator(
                     value: passwordStrength,
                     color: _getStrengthColor(passwordStrength),
-                    backgroundColor: Colors.white10,
+                    backgroundColor: _isDark ? Colors.white10 : const Color(0xFFE2E8F0),
                     minHeight: 4,
                   ),
                 ),
                 const SizedBox(width: 10),
                 Text(
                   _getStrengthLabel(passwordStrength),
-                  style: TextStyle(color: _getStrengthColor(passwordStrength), fontSize: 12, fontWeight: FontWeight.bold),
+                  style: GoogleFonts.poppins(color: _getStrengthColor(passwordStrength), fontSize: 12, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -558,10 +573,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   onPressed: () => setState(() => _currentStep = 0),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    side: const BorderSide(color: Colors.white24),
+                    side: BorderSide(color: _isDark ? Colors.white24 : AppColors.border),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
-                  child: const Text('BACK', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  child: Text('BACK', style: GoogleFonts.poppins(color: _textPrimary, fontWeight: FontWeight.bold)),
                 ),
               ),
               const SizedBox(width: 12),
@@ -593,9 +608,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Student Information', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+          Text('Student Information', style: GoogleFonts.poppins(color: _textPrimary, fontSize: 24, fontWeight: FontWeight.bold)),
           const SizedBox(height: 6),
-          const Text('Step 2 of 3: Academic & School Details', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+          Text('Step 2 of 3: Academic & School Details', style: GoogleFonts.poppins(color: _textSecondary, fontSize: 14)),
           const SizedBox(height: 24),
 
           StyledTextField(
@@ -625,23 +640,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Year Level', style: TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
+              Text('Year Level', style: GoogleFonts.poppins(color: _textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
               const SizedBox(height: 6),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: _cardColor,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                  border: Border.all(color: _cardBorder),
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     value: _yearLevel,
                     isExpanded: true,
-                    dropdownColor: AppColors.surface,
-                    style: const TextStyle(color: Colors.white, fontSize: 15),
+                    dropdownColor: _cardColor,
+                    style: GoogleFonts.poppins(color: _textPrimary, fontSize: 15),
                     items: _yearLevelOptions.map((opt) {
-                      return DropdownMenuItem(value: opt, child: Text(opt));
+                      return DropdownMenuItem(value: opt, child: Text(opt, style: GoogleFonts.poppins(color: _textPrimary)));
                     }).toList(),
                     onChanged: (val) {
                       if (val != null) setState(() => _yearLevel = val);
@@ -668,10 +683,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   onPressed: () => setState(() => _currentStep = 1),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    side: const BorderSide(color: Colors.white24),
+                    side: BorderSide(color: _isDark ? Colors.white24 : AppColors.border),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
-                  child: const Text('BACK', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  child: Text('BACK', style: GoogleFonts.poppins(color: _textPrimary, fontWeight: FontWeight.bold)),
                 ),
               ),
               const SizedBox(width: 12),
@@ -698,9 +713,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Complete Your Profile', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+        Text('Complete Your Profile', style: GoogleFonts.poppins(color: _textPrimary, fontSize: 24, fontWeight: FontWeight.bold)),
         const SizedBox(height: 6),
-        const Text('Step 3 of 3: Profile Photo & Additional Details', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+        Text('Step 3 of 3: Profile Photo & Additional Details', style: GoogleFonts.poppins(color: _textSecondary, fontSize: 14)),
         const SizedBox(height: 24),
 
         // Large Circular Avatar Placeholder
@@ -711,10 +726,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 onTap: _pickProfilePicture,
                 child: CircleAvatar(
                   radius: 54,
-                  backgroundColor: AppColors.surface,
+                  backgroundColor: _isDark ? AppColors.surfaceDark : AppColors.lightBlueSurface,
                   backgroundImage: _profilePicturePath != null ? FileImage(File(_profilePicturePath!)) : null,
                   child: _profilePicturePath == null
-                      ? const Icon(Icons.person_rounded, size: 54, color: AppColors.textSecondary)
+                      ? Icon(Icons.person_rounded, size: 54, color: _textSecondary)
                       : null,
                 ),
               ),
@@ -725,7 +740,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   onTap: _pickProfilePicture,
                   child: Container(
                     padding: const EdgeInsets.all(8),
-                    decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                    decoration: const BoxDecoration(color: AppColors.actionBlue, shape: BoxShape.circle),
                     child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 20),
                   ),
                 ),
@@ -734,8 +749,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        const Center(
-          child: Text('Tap to upload profile picture', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+        Center(
+          child: Text('Tap to upload profile picture', style: GoogleFonts.poppins(color: _textSecondary, fontSize: 12)),
         ),
         const SizedBox(height: 24),
 
@@ -775,10 +790,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 onPressed: () => setState(() => _currentStep = 2),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  side: const BorderSide(color: Colors.white24),
+                  side: BorderSide(color: _isDark ? Colors.white24 : AppColors.border),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
-                child: const Text('BACK', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                child: Text('BACK', style: GoogleFonts.poppins(color: _textPrimary, fontWeight: FontWeight.bold)),
               ),
             ),
             const SizedBox(width: 12),
@@ -801,9 +816,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Review Your Information', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+        Text('Review Your Information', style: GoogleFonts.poppins(color: _textPrimary, fontSize: 24, fontWeight: FontWeight.bold)),
         const SizedBox(height: 6),
-        const Text('Please verify your registration details before submission', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+        Text('Please verify your registration details before submission', style: GoogleFonts.poppins(color: _textSecondary, fontSize: 14)),
         const SizedBox(height: 20),
 
         if (_errorMessage != null) ...[
@@ -819,7 +834,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               children: [
                 const Icon(Icons.error_outline, color: Colors.red),
                 const SizedBox(width: 10),
-                Expanded(child: Text(_errorMessage!, style: const TextStyle(color: Colors.white, fontSize: 13))),
+                Expanded(child: Text(_errorMessage!, style: GoogleFonts.poppins(color: _textPrimary, fontSize: 13))),
               ],
             ),
           ),
@@ -858,7 +873,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: Checkbox(
                 value: _privacyConsent,
                 onChanged: _isLoading ? null : (val) => setState(() => _privacyConsent = val ?? false),
-                activeColor: AppColors.primary,
+                activeColor: AppColors.actionBlue,
               ),
             ),
             const SizedBox(width: 10),
@@ -867,14 +882,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 onTap: () {
                   Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()));
                 },
-                child: const Text.rich(
+                child: Text.rich(
                   TextSpan(
                     text: 'I agree to the ',
-                    style: TextStyle(color: Colors.white, fontSize: 13),
-                    children: [
+                    style: GoogleFonts.poppins(color: _textPrimary, fontSize: 13),
+                    children: const [
                       TextSpan(
                         text: 'Privacy Policy & Terms of Service',
-                        style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, decoration: TextDecoration.underline),
+                        style: TextStyle(color: AppColors.actionBlue, fontWeight: FontWeight.bold, decoration: TextDecoration.underline),
                       ),
                     ],
                   ),
@@ -892,10 +907,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 onPressed: _isLoading ? null : () => setState(() => _currentStep = 3),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  side: const BorderSide(color: Colors.white24),
+                  side: BorderSide(color: _isDark ? Colors.white24 : AppColors.border),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
-                child: const Text('BACK', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                child: Text('BACK', style: GoogleFonts.poppins(color: _textPrimary, fontWeight: FontWeight.bold)),
               ),
             ),
             const SizedBox(width: 12),
@@ -917,15 +932,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: _cardColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(color: _cardBorder),
+        boxShadow: [
+          BoxShadow(
+            color: _isDark ? Colors.black.withValues(alpha: 0.25) : const Color(0x0A15265C),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 14)),
-          const Divider(color: Colors.white10, height: 20),
+          Text(title, style: GoogleFonts.poppins(color: AppColors.actionBlue, fontWeight: FontWeight.bold, fontSize: 14)),
+          Divider(color: _isDark ? Colors.white10 : AppColors.border, height: 20),
           ...children,
         ],
       ),
@@ -938,12 +960,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+          Text(label, style: GoogleFonts.poppins(color: _textSecondary, fontSize: 13)),
           Flexible(
             child: Text(
               value,
               textAlign: TextAlign.end,
-              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+              style: GoogleFonts.poppins(color: _textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -967,16 +989,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: const Icon(Icons.check_rounded, color: Colors.green, size: 54),
         ),
         const SizedBox(height: 24),
-        const Text(
+        Text(
           'Account Created Successfully',
           textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+          style: GoogleFonts.poppins(color: _textPrimary, fontSize: 24, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
         Text(
           'Please verify your email (${_emailController.text}) to activate your student account.',
           textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 14, height: 1.5),
+          style: GoogleFonts.poppins(color: _textSecondary, fontSize: 14, height: 1.5),
         ),
         const SizedBox(height: 40),
 
@@ -1006,11 +1028,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
           },
           style: OutlinedButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 16),
-            side: const BorderSide(color: Colors.white24),
+            side: BorderSide(color: _isDark ? Colors.white24 : AppColors.border),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             minimumSize: const Size(double.infinity, 50),
           ),
-          child: const Text('GO TO LOGIN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          child: Text('GO TO LOGIN', style: GoogleFonts.poppins(color: _textPrimary, fontWeight: FontWeight.bold)),
         ),
       ],
     );

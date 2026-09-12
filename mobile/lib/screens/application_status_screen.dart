@@ -62,7 +62,7 @@ class _ApplicationStatusScreenState extends State<ApplicationStatusScreen> {
       case 'pending review':
         return AppColors.warning;
       case 'needs resubmission':
-        return AppColors.primaryOrange;
+        return AppColors.actionBlue;
       default:
         return AppColors.textSecondaryDark;
     }

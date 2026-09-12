@@ -207,6 +207,8 @@ class AuthService {
     String? yearLevel,
     String? achievements,
     String? mobileNumber,
+    String? gpa,
+    String? familyIncome,
     dynamic profilePicture,
   }) async {
     // If there's a profile picture, use multipart upload
@@ -220,6 +222,8 @@ class AuthService {
       if (yearLevel != null) fields['yearLevel'] = yearLevel;
       if (achievements != null) fields['achievements'] = achievements;
       if (mobileNumber != null) fields['mobileNumber'] = mobileNumber;
+      if (gpa != null) fields['gpa'] = gpa;
+      if (familyIncome != null) fields['familyIncome'] = familyIncome;
 
       final response = await ApiService.multipartUpload(
         '/auth/student/profile',
@@ -245,6 +249,8 @@ class AuthService {
     if (yearLevel != null) body['yearLevel'] = yearLevel;
     if (achievements != null) body['achievements'] = achievements;
     if (mobileNumber != null) body['mobileNumber'] = mobileNumber;
+    if (gpa != null) body['gpa'] = gpa;
+    if (familyIncome != null) body['familyIncome'] = familyIncome;
 
     final response = await ApiService.put(
       '/auth/student/profile',

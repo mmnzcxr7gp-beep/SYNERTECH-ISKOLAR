@@ -31,16 +31,18 @@ const initFirebase = () => {
         const decoded = Buffer.from(serviceAccountJson, 'base64').toString('utf8');
         serviceAccount = JSON.parse(decoded);
       }
+      const certFn = firebaseAdmin.credential?.cert || firebaseAdmin.cert;
       firebaseAdmin.initializeApp({
-        credential: firebaseAdmin.credential.cert(serviceAccount),
+        credential: certFn(serviceAccount),
       });
       messagingInstance = firebaseAdmin.messaging();
       console.log('✓ Firebase Admin SDK initialized (from JSON env)');
     } else if (serviceAccountPath) {
       // File path to service account key
       const serviceAccount = require(serviceAccountPath);
+      const certFn = firebaseAdmin.credential?.cert || firebaseAdmin.cert;
       firebaseAdmin.initializeApp({
-        credential: firebaseAdmin.credential.cert(serviceAccount),
+        credential: certFn(serviceAccount),
       });
       messagingInstance = firebaseAdmin.messaging();
       console.log('✓ Firebase Admin SDK initialized (from file)');

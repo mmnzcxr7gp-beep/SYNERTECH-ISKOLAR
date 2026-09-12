@@ -297,10 +297,17 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
   // Dialog: Respond to Information Request
   void _openMoreInfoResponseDialog() {
     final textCtrl = TextEditingController();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final sheetBg = isDark ? AppColors.darkSurface : AppColors.pureWhite;
+    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.primaryNavy;
+    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.secondaryText;
+    final inputBg = isDark ? AppColors.darkBackground : AppColors.lightBlueSurface;
+    final cardBorder = isDark ? AppColors.darkBorder : AppColors.border;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surfaceDark,
+      backgroundColor: sheetBg,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -315,10 +322,10 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
+            Text(
               'Submit Requested Information',
               style: TextStyle(
-                color: Colors.white,
+                color: textPrimary,
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
               ),
@@ -327,8 +334,8 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
             Text(
               _workflowData?['moreInformationRequest']?['instructions'] ??
                   'Please provide the requested details below.',
-              style: const TextStyle(
-                color: AppColors.textSecondaryDark,
+              style: TextStyle(
+                color: textSecondary,
                 fontSize: 13,
               ),
             ),
@@ -336,14 +343,23 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
             TextField(
               controller: textCtrl,
               maxLines: 4,
-              style: const TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(color: textPrimary, fontSize: 13),
               decoration: InputDecoration(
                 hintText: 'Enter your response here...',
-                hintStyle: const TextStyle(color: AppColors.textSecondaryDark),
+                hintStyle: TextStyle(color: textSecondary),
                 filled: true,
-                fillColor: AppColors.backgroundDark,
+                fillColor: inputBg,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: cardBorder),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: cardBorder),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: AppColors.actionBlue),
                 ),
               ),
             ),
@@ -376,19 +392,12 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryOrange,
+                backgroundColor: AppColors.actionBlue,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
               ),
-              child: const Text(
-                'Submit Response',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
+              child: const Text('Submit Response', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -401,10 +410,17 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
     final noteCtrl = TextEditingController();
     final docType =
         _workflowData?['resubmissionRequest']?['documentType'] ?? 'Document';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final sheetBg = isDark ? AppColors.darkSurface : AppColors.pureWhite;
+    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.primaryNavy;
+    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.secondaryText;
+    final inputBg = isDark ? AppColors.darkBackground : AppColors.lightBlueSurface;
+    final cardBorder = isDark ? AppColors.darkBorder : AppColors.border;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surfaceDark,
+      backgroundColor: sheetBg,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -421,8 +437,8 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
           children: [
             Text(
               'Resubmit: $docType',
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: textPrimary,
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
               ),
@@ -436,22 +452,22 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.backgroundDark,
+                color: inputBg,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white12),
+                border: Border.all(color: cardBorder),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.cloud_upload_outlined,
-                    color: AppColors.primaryOrange,
+                    color: AppColors.actionBlue,
                     size: 28,
                   ),
-                  SizedBox(width: 12),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       'Ready to attach updated official document',
-                      style: TextStyle(color: Colors.white70, fontSize: 13),
+                      style: TextStyle(color: textSecondary, fontSize: 13),
                     ),
                   ),
                 ],
@@ -461,14 +477,23 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
             TextField(
               controller: noteCtrl,
               maxLines: 2,
-              style: const TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(color: textPrimary, fontSize: 13),
               decoration: InputDecoration(
                 hintText: 'Add note for reviewer (optional)...',
-                hintStyle: const TextStyle(color: AppColors.textSecondaryDark),
+                hintStyle: TextStyle(color: textSecondary),
                 filled: true,
-                fillColor: AppColors.backgroundDark,
+                fillColor: inputBg,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: cardBorder),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: cardBorder),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: AppColors.actionBlue),
                 ),
               ),
             ),
@@ -507,7 +532,7 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryOrange,
+                backgroundColor: AppColors.actionBlue,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
@@ -1101,7 +1126,7 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
                           Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: AppColors.primaryOrange.withValues(alpha: 0.15),
+                              color: AppColors.actionBlue.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Icon(
@@ -1110,7 +1135,7 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
                                   : doc.isPdf
                                   ? Icons.picture_as_pdf_rounded
                                   : Icons.insert_drive_file_rounded,
-                              color: AppColors.primaryOrange,
+                              color: AppColors.actionBlue,
                               size: 24,
                             ),
                           ),
@@ -1147,7 +1172,7 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
                                 ? null
                                 : () => _viewDocument(doc),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primaryOrange,
+                              backgroundColor: AppColors.actionBlue,
                               foregroundColor: Colors.white,
                               elevation: 0,
                               padding: const EdgeInsets.symmetric(

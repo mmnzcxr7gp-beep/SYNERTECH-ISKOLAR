@@ -133,6 +133,7 @@ const submitStudentVerification = async (req, res, next) => {
       email: req.user.email,
       lrn,
       schoolName,
+      school: schoolName,
       verificationStatus: 'pending',
       verificationSubmittedAt: new Date(),
       documents: {
@@ -187,6 +188,8 @@ const submitStudentVerification = async (req, res, next) => {
       student = {
         userId,
         email: req.user.email,
+        schoolName,
+        school: schoolName,
         verificationStatus: 'pending',
         verificationSubmittedAt: updateData.verificationSubmittedAt,
         documents: updateData.documents,
@@ -194,8 +197,22 @@ const submitStudentVerification = async (req, res, next) => {
       };
     }
 
-    // Also update db.data compatibility cache
+    // Also update db.data compatibility cache and discrete MongoDB collections
     const { db } = require('../config/db');
+    if (schoolName) {
+      if (db.collections?.users) {
+        await db.collections.users.updateOne(
+          { $or: [{ id: userId }, { id: Number(userId) }, { id: String(userId) }] },
+          { $set: { school: schoolName, schoolName: schoolName } }
+        ).catch(() => {});
+      }
+      if (db.collections?.student_profiles) {
+        await db.collections.student_profiles.updateOne(
+          { $or: [{ user_id: userId }, { user_id: Number(userId) }, { user_id: String(userId) }] },
+          { $set: { school: schoolName, schoolName: schoolName } }
+        ).catch(() => {});
+      }
+    }
     if (db.data) {
       if (!db.data.student_profiles) db.data.student_profiles = [];
       let prof = db.data.student_profiles.find((p) => p.user_id === userId);
@@ -203,6 +220,10 @@ const submitStudentVerification = async (req, res, next) => {
         prof.verificationStatus = 'pending';
         prof.isVerified = false;
         prof.documents = updateData.documents;
+        if (schoolName) {
+          prof.school = schoolName;
+          prof.schoolName = schoolName;
+        }
       }
       let usr = (db.data.users || []).find((u) => u.id === userId);
       if (usr) {
@@ -210,6 +231,10 @@ const submitStudentVerification = async (req, res, next) => {
         usr.isVerified = false;
         usr.student_verified = false;
         usr.is_verified = false;
+        if (schoolName) {
+          usr.school = schoolName;
+          usr.schoolName = schoolName;
+        }
       }
 
       if (!db.data.documents) db.data.documents = [];

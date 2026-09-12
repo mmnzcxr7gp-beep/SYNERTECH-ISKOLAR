@@ -680,51 +680,107 @@ const softDeleteScholarship = async (req, res, next) => {
 const listStudents = async (req, res, next) => {
   try {
     const { Student } = require('../models');
-    const users = db.data.users || [];
-    const studentProfiles = db.data.student_profiles || [];
+    let users = [];
+    let studentProfiles = [];
+
+    if (db.collections?.users) {
+      users = await db.collections.users.find({
+        role: { $in: ['student', 'applicant', 'STUDENT', 'APPLICANT'] },
+      }).toArray();
+      studentProfiles = db.collections.student_profiles
+        ? await db.collections.student_profiles.find().toArray()
+        : (db.data.student_profiles || []);
+    } else {
+      users = (db.data.users || []).filter(
+        (u) => u.role === 'student' || u.role === 'applicant' || u.role === 'STUDENT' || u.role === 'APPLICANT'
+      );
+      studentProfiles = db.data.student_profiles || [];
+    }
 
     const studentsByUserId = {};
 
-    users
-      .filter((u) => u.role === 'student' || u.role === 'applicant')
-      .forEach((user) => {
-        const profile = studentProfiles.find((p) => String(p.user_id) === String(user.id)) || {};
-        studentsByUserId[String(user.id)] = {
-          id: user.id,
-          email: user.email,
-          name: user.name || '',
-          role: user.role || 'student',
-          accountStatus: user.accountStatus || 'ACTIVE',
-          lrn: profile.lrn || '',
-          schoolName: profile.schoolName || profile.school || '',
-          gpa: profile.gpa || null,
-          familyIncome: profile.family_income || null,
-          verificationStatus: user.verificationStatus || profile.verificationStatus || 'pending',
-          isVerified: !!(user.emailVerified || profile.isVerified),
-          createdAt: user.created_at || user.createdAt,
-          profileType: 'json',
-        };
-      });
+    users.forEach((user) => {
+      const profile = studentProfiles.find((p) => String(p.user_id) === String(user.id) || String(p.userId) === String(user.id) || p.email === user.email) || {};
+      const isRejected = user.accountStatus === 'REJECTED' || user.accountStatus === 'rejected' || user.verificationStatus === 'rejected' || profile.verificationStatus === 'rejected';
+      const isSuspended = Boolean(user.isSuspended || user.accountStatus === 'SUSPENDED');
+      const isDeleted = Boolean(user.isDeleted || user.accountStatus === 'DELETED');
+
+      let accStatus = 'ACTIVE';
+      if (isDeleted) accStatus = 'DELETED';
+      else if (isRejected) accStatus = 'REJECTED';
+      else if (isSuspended) accStatus = 'SUSPENDED';
+      else if (user.accountStatus) accStatus = String(user.accountStatus).toUpperCase();
+
+      const isVerified = isRejected ? false : !!(user.isVerified || user.student_verified || (user.emailVerified && accStatus === 'ACTIVE') || profile.isVerified);
+      const verStatus = isRejected ? 'rejected' : (user.verificationStatus || profile.verificationStatus || (isVerified ? 'verified' : 'pending'));
+
+      studentsByUserId[String(user.id)] = {
+        id: user.id,
+        email: user.email,
+        name: user.name || profile.name || '',
+        role: user.role || 'student',
+        accountStatus: accStatus,
+        lrn: profile.lrn || user.lrn || '',
+        schoolName: profile.schoolName || profile.school || user.schoolName || user.school || '',
+        course: profile.course || user.course || '',
+        yearLevel: profile.yearLevel || profile.year_level || user.yearLevel || '',
+        gpa: profile.gpa ?? user.gpa ?? null,
+        familyIncome: profile.family_income ?? user.family_income ?? null,
+        verificationStatus: verStatus,
+        isVerified,
+        isSuspended,
+        isDeleted,
+        rejectionReason: user.rejectionReason || profile.rejectionReason || null,
+        createdAt: user.created_at || user.createdAt,
+        profileType: 'json',
+      };
+    });
 
     if (mongoose.connection.readyState === 1 && Student && typeof Student.find === 'function') {
       try {
         const mongoStudents = await Student.find().lean();
         mongoStudents.forEach((st) => {
           const key = String(st.userId || st._id);
-          const existing = studentsByUserId[key] || {};
-          studentsByUserId[key] = {
+          const existing = studentsByUserId[key] || Object.values(studentsByUserId).find((s) => s.email === st.email) || {};
+          const existingKey = existing.id ? String(existing.id) : key;
+
+          const isRejected =
+            existing.accountStatus === 'REJECTED' ||
+            existing.verificationStatus === 'rejected' ||
+            st.accountStatus === 'REJECTED' ||
+            st.accountStatus === 'rejected' ||
+            st.verificationStatus === 'rejected';
+
+          let finalStatus = existing.accountStatus || 'ACTIVE';
+          if (isRejected) {
+            finalStatus = 'REJECTED';
+          } else if (existing.accountStatus) {
+            finalStatus = existing.accountStatus;
+          } else if (st.accountStatus) {
+            finalStatus = String(st.accountStatus).toUpperCase();
+          }
+
+          const finalIsVerified = isRejected ? false : (existing.isVerified !== undefined ? existing.isVerified : !!st.isVerified);
+          const finalVerStatus = isRejected ? 'rejected' : (existing.verificationStatus || st.verificationStatus || (finalIsVerified ? 'verified' : 'pending'));
+
+          studentsByUserId[existingKey] = {
             ...existing,
-            id: st.userId || st._id,
+            id: existing.id || st.userId || st._id,
             email: st.email || existing.email || '',
             name: st.firstName ? `${st.firstName} ${st.lastName || ''}`.trim() : existing.name || '',
             role: 'student',
-            accountStatus: st.accountStatus || existing.accountStatus || 'ACTIVE',
+            accountStatus: finalStatus,
             lrn: st.lrn || existing.lrn || '',
-            schoolName: st.schoolName || existing.schoolName || '',
-            gpa: st.gpa || existing.gpa || null,
-            familyIncome: st.familyIncome || existing.familyIncome || null,
-            verificationStatus: st.verificationStatus || existing.verificationStatus || 'pending',
-            isVerified: st.isVerified !== undefined ? !!st.isVerified : existing.isVerified,
+            schoolName: st.schoolName || st.school || existing.schoolName || '',
+            course: st.course || existing.course || '',
+            yearLevel: st.yearLevel || st.gradeLevel || existing.yearLevel || '',
+            gpa: st.gpa ?? existing.gpa ?? null,
+            familyIncome: st.familyIncome ?? existing.familyIncome ?? null,
+            verificationStatus: finalVerStatus,
+            isVerified: finalIsVerified,
+            isSuspended: existing.isSuspended || finalStatus === 'SUSPENDED',
+            isDeleted: existing.isDeleted || finalStatus === 'DELETED',
+            rejectionReason: existing.rejectionReason || st.verificationRejectionReason || null,
             createdAt: st.createdAt || existing.createdAt,
             profileType: 'mongo',
           };
@@ -1386,10 +1442,75 @@ const rejectAccount = async (req, res, next) => {
     const updateFields = {
       accountStatus: 'REJECTED',
       verificationStatus: 'rejected',
+      status: 'rejected',
+      isVerified: false,
+      student_verified: false,
+      is_verified: false,
+      emailVerified: false,
+      sponsor_verified: false,
+      organization_verified: false,
       rejectionReason: reason.trim(),
+      rejectedAt: new Date().toISOString(),
+      rejectedBy: String(adminUser.id || adminUser._id),
     };
 
     await updateUserById(user.id || id, updateFields);
+
+    // Sync student_profiles in MongoDB and in-memory
+    if (db.collections?.student_profiles) {
+      await db.collections.student_profiles.updateOne(
+        { $or: [{ user_id: user.id }, { user_id: Number(user.id) }, { user_id: String(user.id) }, { email: user.email }] },
+        { $set: { isVerified: false, verificationStatus: 'rejected', accountStatus: 'REJECTED', status: 'rejected', rejectionReason: reason.trim() } }
+      ).catch(() => {});
+    }
+    const inMemProfile = (db.data.student_profiles || []).find((p) => String(p.user_id) === String(user.id) || p.email === user.email);
+    if (inMemProfile) {
+      Object.assign(inMemProfile, { isVerified: false, verificationStatus: 'rejected', accountStatus: 'REJECTED', status: 'rejected', rejectionReason: reason.trim() });
+    }
+
+    // Sync Mongoose collections if connected
+    if (mongoose.connection.readyState === 1) {
+      try {
+        const { Student } = require('../models/Student');
+        const { Provider } = require('../models/Provider');
+        const { User: UserModel } = require('../models/User');
+
+        if (Student && typeof Student.findOneAndUpdate === 'function') {
+          await Student.findOneAndUpdate(
+            { $or: [{ userId: user.id }, { userId: String(user.id) }, { user_id: user.id }, { email: user.email }] },
+            { isVerified: false, verificationStatus: 'rejected', accountStatus: 'rejected', verificationRejectionReason: reason.trim(), verificationRejectedAt: new Date() }
+          );
+        }
+        if (Provider && typeof Provider.findOneAndUpdate === 'function') {
+          await Provider.findOneAndUpdate(
+            { $or: [{ userId: user.id }, { userId: String(user.id) }, { user_id: user.id }, { email: user.email }] },
+            { isVerified: false, verificationStatus: 'rejected', sponsor_verified: false, organization_verified: false, accountStatus: 'rejected', verificationRejectionReason: reason.trim(), verificationRejectedAt: new Date() }
+          );
+        }
+        if (UserModel && typeof UserModel.findOneAndUpdate === 'function') {
+          await UserModel.findOneAndUpdate(
+            { $or: [{ id: user.id }, { _id: user._id }, { email: user.email }] },
+            { accountStatus: 'REJECTED', verificationStatus: 'rejected', isVerified: false, rejectionReason: reason.trim() }
+          );
+        }
+      } catch (mongoSyncErr) {
+        console.warn('[rejectAccount] Mongo sync notice:', mongoSyncErr?.message);
+      }
+    }
+
+    // Revoke all active sessions and tokens for rejected user
+    try {
+      const { revokeUserTokens } = require('../middleware/authMiddleware');
+      if (typeof revokeUserTokens === 'function') {
+        await revokeUserTokens(user.id || user._id, 'account_rejection');
+      }
+    } catch (_) {}
+
+    // In-app notification for rejected user
+    try {
+      const { createNotification } = require('../utils/notificationService');
+      await createNotification(user.id, 'Account Application Rejected', `Your account application has been reviewed and rejected. Reason: ${reason.trim()}`, 'ACCOUNT_REJECTED');
+    } catch (_) {}
 
     // Audit Log
     try {
@@ -1417,6 +1538,8 @@ const rejectAccount = async (req, res, next) => {
         id: user.id,
         email: user.email,
         accountStatus: 'REJECTED',
+        verificationStatus: 'rejected',
+        isVerified: false,
         rejectionReason: reason.trim(),
       },
     });
@@ -1495,6 +1618,39 @@ const suspendAccount = async (req, res, next) => {
       suspendedBy,
       suspensionReason,
     });
+
+    if (db.collections?.student_profiles) {
+      await db.collections.student_profiles.updateOne(
+        { $or: [{ user_id: user.id }, { user_id: Number(user.id) }, { user_id: String(user.id) }, { email: user.email }] },
+        { $set: { accountStatus: 'SUSPENDED', isSuspended: true } }
+      ).catch(() => {});
+    }
+
+    if (mongoose.connection.readyState === 1) {
+      try {
+        const { Student } = require('../models/Student');
+        const { Provider } = require('../models/Provider');
+        const { User: UserModel } = require('../models/User');
+        if (Student && typeof Student.findOneAndUpdate === 'function') {
+          await Student.findOneAndUpdate(
+            { $or: [{ userId: user.id }, { userId: String(user.id) }, { user_id: user.id }, { email: user.email }] },
+            { accountStatus: 'suspended' }
+          );
+        }
+        if (Provider && typeof Provider.findOneAndUpdate === 'function') {
+          await Provider.findOneAndUpdate(
+            { $or: [{ userId: user.id }, { userId: String(user.id) }, { user_id: user.id }, { email: user.email }] },
+            { accountStatus: 'suspended' }
+          );
+        }
+        if (UserModel && typeof UserModel.findOneAndUpdate === 'function') {
+          await UserModel.findOneAndUpdate(
+            { $or: [{ id: user.id }, { _id: user._id }, { email: user.email }] },
+            { accountStatus: 'SUSPENDED', isSuspended: true, suspendedAt, suspendedBy, suspensionReason }
+          );
+        }
+      } catch (_) {}
+    }
 
     // Revoke all active sessions and disconnect Socket.IO connections for suspended user
     try {
@@ -1577,6 +1733,39 @@ const reactivateAccount = async (req, res, next) => {
       suspendedBy: null,
       suspensionReason: null,
     });
+
+    if (db.collections?.student_profiles) {
+      await db.collections.student_profiles.updateOne(
+        { $or: [{ user_id: user.id }, { user_id: Number(user.id) }, { user_id: String(user.id) }, { email: user.email }] },
+        { $set: { accountStatus: 'ACTIVE', isSuspended: false } }
+      ).catch(() => {});
+    }
+
+    if (mongoose.connection.readyState === 1) {
+      try {
+        const { Student } = require('../models/Student');
+        const { Provider } = require('../models/Provider');
+        const { User: UserModel } = require('../models/User');
+        if (Student && typeof Student.findOneAndUpdate === 'function') {
+          await Student.findOneAndUpdate(
+            { $or: [{ userId: user.id }, { userId: String(user.id) }, { user_id: user.id }, { email: user.email }] },
+            { accountStatus: 'active' }
+          );
+        }
+        if (Provider && typeof Provider.findOneAndUpdate === 'function') {
+          await Provider.findOneAndUpdate(
+            { $or: [{ userId: user.id }, { userId: String(user.id) }, { user_id: user.id }, { email: user.email }] },
+            { accountStatus: 'active' }
+          );
+        }
+        if (UserModel && typeof UserModel.findOneAndUpdate === 'function') {
+          await UserModel.findOneAndUpdate(
+            { $or: [{ id: user.id }, { _id: user._id }, { email: user.email }] },
+            { accountStatus: 'ACTIVE', isSuspended: false, suspendedAt: null, suspendedBy: null, suspensionReason: null }
+          );
+        }
+      } catch (_) {}
+    }
 
     // Audit Log
     try {

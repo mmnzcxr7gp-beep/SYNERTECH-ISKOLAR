@@ -52,10 +52,10 @@ export default function Footer() {
               Platform
             </div>
             <ul className="space-y-2 text-sm">
-              <li><a href="#scholarships" className="body-text hover:text-[#FF6D29] transition">Browse Scholarships</a></li>
-              <li><a href="#how-it-works" className="body-text hover:text-[#FF6D29] transition">How It Works</a></li>
-              <li><a href="#eligibility" className="body-text hover:text-[#FF6D29] transition">Eligibility Modules</a></li>
-              <li><a href="#download" className="body-text hover:text-[#FF6D29] transition">Mobile Application</a></li>
+              <li><a href="#scholarships" className="body-text hover:text-[#305BFE] transition">Browse Scholarships</a></li>
+              <li><a href="#how-it-works" className="body-text hover:text-[#305BFE] transition">How It Works</a></li>
+              <li><a href="#eligibility" className="body-text hover:text-[#305BFE] transition">Eligibility Modules</a></li>
+              <li><a href="#download" className="body-text hover:text-[#305BFE] transition">Mobile Application</a></li>
             </ul>
           </div>
 
@@ -65,10 +65,10 @@ export default function Footer() {
               Governance & Trust
             </div>
             <ul className="space-y-2 text-sm">
-              <li><a href="#safety" className="body-text hover:text-[#FF6D29] transition">Security & Privacy</a></li>
-              <li><a href="#about" className="body-text hover:text-[#FF6D29] transition">Data Protection</a></li>
-              <li><a href="#accessibility" className="body-text hover:text-[#FF6D29] transition">Accessibility Statement</a></li>
-              <li><a href="#terms" className="body-text hover:text-[#FF6D29] transition">Terms of Service</a></li>
+              <li><a href="#safety" className="body-text hover:text-[#305BFE] transition">Security & Privacy</a></li>
+              <li><a href="#about" className="body-text hover:text-[#305BFE] transition">Data Protection</a></li>
+              <li><a href="#accessibility" className="body-text hover:text-[#305BFE] transition">Accessibility Statement</a></li>
+              <li><a href="#terms" className="body-text hover:text-[#305BFE] transition">Terms of Service</a></li>
             </ul>
           </div>
 
@@ -78,9 +78,9 @@ export default function Footer() {
               Support & Inquiries
             </div>
             <ul className="space-y-2 text-sm">
-              <li><a href="mailto:iskolar.official@gmail.com" className="body-text hover:text-[#FF6D29] transition">iskolar.official@gmail.com</a></li>
-              <li><a href="#help" className="body-text hover:text-[#FF6D29] transition">Help Center & FAQs</a></li>
-              <li><a href="#provider-info" className="body-text hover:text-[#FF6D29] transition">Provider Onboarding</a></li>
+              <li><a href="mailto:iskolar.official@gmail.com" className="body-text hover:text-[#305BFE] transition">iskolar.official@gmail.com</a></li>
+              <li><a href="#help" className="body-text hover:text-[#305BFE] transition">Help Center & FAQs</a></li>
+              <li><a href="#provider-info" className="body-text hover:text-[#305BFE] transition">Provider Onboarding</a></li>
               <li><span className="meta-text text-xs">Metro Manila, Philippines</span></li>
             </ul>
           </div>
@@ -93,13 +93,13 @@ export default function Footer() {
             © 2026 SYNERTECH ISKOLAR. Capstone Academic Evaluation Platform. All rights reserved.
           </div>
           <div className="flex flex-wrap gap-4">
-            <a href="#typography" className="hover:text-[#FF6D29] transition font-semibold">Typography System</a>
+            <a href="#typography" className="hover:text-[#305BFE] transition font-semibold">Typography System</a>
             <span>•</span>
-            <a href="#privacy" className="hover:text-[#FF6D29] transition">Privacy Policy</a>
+            <a href="#privacy" className="hover:text-[#305BFE] transition">Privacy Policy</a>
             <span>•</span>
-            <a href="#terms" className="hover:text-[#FF6D29] transition">Terms of Use</a>
+            <a href="#terms" className="hover:text-[#305BFE] transition">Terms of Use</a>
             <span>•</span>
-            <a href="#accessibility" className="hover:text-[#FF6D29] transition">Accessibility</a>
+            <a href="#accessibility" className="hover:text-[#305BFE] transition">Accessibility</a>
           </div>
         </div>
 

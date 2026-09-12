@@ -456,12 +456,12 @@ class _InfoBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.panelDark,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.primaryOrange.withValues(alpha: 0.2)),
+        border: Border.all(color: AppColors.actionBlue.withValues(alpha: 0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 13, color: AppColors.primaryOrange),
+          Icon(icon, size: 13, color: AppColors.actionBlue),
           const SizedBox(width: 6),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,

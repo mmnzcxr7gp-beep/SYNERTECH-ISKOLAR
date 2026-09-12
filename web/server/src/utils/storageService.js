@@ -289,21 +289,23 @@ class R2StorageDriver {
 
   async exists(storedKey) {
     if (!this.isConfigured) return false;
+    this.ensureClient();
     const { HeadObjectCommand } = require('@aws-sdk/client-s3');
-    const { withRetry } = require('./resilience');
 
     try {
       const command = new HeadObjectCommand({
         Bucket: this.bucket,
         Key: storedKey,
       });
-      await withRetry(
-        () => this.s3Client.send(command),
-        { retries: 2, baseDelayMs: 300, name: 'r2.exists' }
-      );
+      await this.s3Client.send(command);
       return true;
     } catch (err) {
-      if (err.name === 'NoSuchKey' || err.name === 'NotFound' || err.$metadata?.httpStatusCode === 404) {
+      if (
+        err.name === 'NoSuchKey' ||
+        err.name === 'NotFound' ||
+        err.$metadata?.httpStatusCode === 404 ||
+        (err.name === 'UnknownError' && err.$metadata?.httpStatusCode === 404)
+      ) {
         return false;
       }
       throw err;

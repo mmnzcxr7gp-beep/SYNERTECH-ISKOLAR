@@ -16,7 +16,7 @@ export default function ProcessStrip() {
         style={{ backgroundColor: 'var(--color-bg-panel)' }}
       >
         <div className="flex items-center gap-2 pl-2 sm:pl-3">
-          <span className="h-2.5 w-2.5 rounded-full bg-[#FF6D29]"></span>
+          <span className="h-2.5 w-2.5 rounded-full bg-[#305BFE]"></span>
           <span className="text-xs sm:text-sm font-bold tracking-tight" style={{ color: 'var(--color-text-heading)' }}>
             Application Pathway:
           </span>

@@ -85,12 +85,21 @@ class _ChatbotPageState extends State<ChatbotPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFF0A090C),
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: const Color(0xFF0A090C),
         elevation: 0,
-        title: const Text('ISKOLAR Assistant'),
         centerTitle: true,
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: const Text(
+          'ISKOLAR Assistant',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+            letterSpacing: 0.5,
+          ),
+        ),
       ),
       body: SafeArea(
         child: Column(
@@ -103,8 +112,12 @@ class _ChatbotPageState extends State<ChatbotPage> {
                   final msg = _messages[index];
                   final isStudent = msg.from == MessageFrom.student;
 
-                  final bubbleColor = isStudent ? AppColors.primary : AppColors.surface;
-                  final textColor = isStudent ? Colors.black : AppColors.textPrimary;
+                  final bubbleColor = isStudent
+                      ? AppColors.actionBlue
+                      : const Color(0xFF17151E);
+                  final textColor = isStudent
+                      ? Colors.white
+                      : const Color(0xFFF3EFF8);
 
                   final align = isStudent ? Alignment.centerRight : Alignment.centerLeft;
 
@@ -113,29 +126,42 @@ class _ChatbotPageState extends State<ChatbotPage> {
                     child: Container(
                       margin: const EdgeInsets.symmetric(vertical: 6),
                       constraints: const BoxConstraints(maxWidth: 320),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
                         color: bubbleColor,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.only(
+                          topLeft: const Radius.circular(18),
+                          topRight: const Radius.circular(18),
+                          bottomLeft: Radius.circular(isStudent ? 18 : 4),
+                          bottomRight: Radius.circular(isStudent ? 4 : 18),
+                        ),
                         boxShadow: isStudent
                             ? [
                                 BoxShadow(
-                                  color: AppColors.primary.withValues(alpha: 0.25),
+                                  color: AppColors.actionBlue.withValues(alpha: 0.35),
                                   blurRadius: 14,
-                                  offset: const Offset(0, 6),
+                                  offset: const Offset(0, 4),
                                 ),
                               ]
-                            : null,
+                            : [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.35),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
                         border: isStudent
                             ? null
-                            : Border.all(color: AppColors.border.withValues(alpha: 0.05)),
+                            : Border.all(color: Colors.white.withValues(alpha: 0.12)),
                       ),
                       child: Text(
                         msg.text,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: textColor,
-                              fontWeight: FontWeight.w600,
-                            ),
+                        style: TextStyle(
+                          color: textColor,
+                          fontWeight: isStudent ? FontWeight.w500 : FontWeight.w400,
+                          fontSize: 14.5,
+                          height: 1.45,
+                        ),
                       ),
                     ),
                   );
@@ -143,34 +169,34 @@ class _ChatbotPageState extends State<ChatbotPage> {
               ),
             ),
             Container(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
               decoration: BoxDecoration(
-                color: AppColors.background,
-                border: Border(top: BorderSide(color: AppColors.border.withValues(alpha: 0.05))),
+                color: const Color(0xFF0A090C),
+                border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.10))),
               ),
               child: Row(
                 children: [
                   Expanded(
                     child: TextField(
                       controller: _controller,
-                      style: const TextStyle(color: AppColors.textPrimary),
+                      style: const TextStyle(color: Colors.white, fontSize: 14.5),
                       decoration: InputDecoration(
                         hintText: 'Type your question...',
-                        hintStyle: TextStyle(color: AppColors.textSecondary.withValues(alpha: 0.9)),
+                        hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 14),
                         filled: true,
-                        fillColor: AppColors.surface,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        fillColor: const Color(0xFF17151E),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: AppColors.border.withValues(alpha: 0.05)),
+                          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: AppColors.border.withValues(alpha: 0.05)),
+                          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
-                          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                          borderSide: const BorderSide(color: AppColors.actionBlue, width: 1.8),
                         ),
                       ),
                       onSubmitted: (_) => _send(),
@@ -182,14 +208,15 @@ class _ChatbotPageState extends State<ChatbotPage> {
                     child: ElevatedButton.icon(
                       onPressed: _isSending ? null : _send,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.black,
+                        backgroundColor: AppColors.actionBlue,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
                       ),
-                      icon: const Icon(Icons.send_rounded),
-                      label: const Text('Send'),
+                      icon: const Icon(Icons.send_rounded, size: 18),
+                      label: const Text('Send', style: TextStyle(fontWeight: FontWeight.w600)),
                     ),
                   ),
                 ],

@@ -94,7 +94,38 @@ const sendMail = async ({ to, subject, html }) => {
       } catch (e) {}
     });
 
-    // 2. Try Nodemailer transport if available
+    // 2. HTTPS Email Provider Adapter (Port 443 REST API - bypasses Render Free SMTP 25/465/587 blocking)
+    if (process.env.RESEND_API_KEY) {
+      try {
+        const fromAddress = process.env.EMAIL_FROM || 'ISKOLAR <onboarding@resend.dev>';
+        const resendRes = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: fromAddress,
+            to: [to],
+            subject,
+            html,
+          }),
+          signal: AbortSignal.timeout(10000),
+        });
+        if (resendRes.ok) {
+          const resendData = await resendRes.json();
+          console.log(`✓ Email delivered via Resend HTTPS API (id: ${resendData.id}) to [${masked}]`);
+          return true;
+        } else {
+          const errBody = await resendRes.text();
+          console.warn(`⚠️ Resend HTTPS API error (${resendRes.status}):`, errBody);
+        }
+      } catch (err) {
+        console.warn(`⚠️ Resend HTTPS dispatch exception:`, err.message);
+      }
+    }
+
+    // 3. Try Nodemailer transport if available
     const activeTransporter = transporter || (await Promise.race([
       transporterPromise,
       new Promise((resolve) => setTimeout(() => resolve(null), 2000)),
@@ -118,12 +149,16 @@ const sendMail = async ({ to, subject, html }) => {
           console.log(`📬 [Ethereal Test Inbox URL]: ${previewUrl}`);
         }
       }
+
+      if (sendResult) return true;
     }
 
-    return true;
+    // Neither Resend nor SMTP succeeded
+    console.warn(`⚠️ [Email] No transport delivered email to [${masked}]`);
+    return false;
   } catch (err) {
-    console.log(`ℹ️ Email Dispatch handled for ${maskEmail(to)}: ${err.message}`);
-    return true;
+    console.error(`✗ [Email] Dispatch failed for ${maskEmail(to)}: ${err.message}`);
+    return false;
   }
 };
 
@@ -429,7 +464,7 @@ const sendScheduleNotificationEmail = async ({
   const html = `
     <div style="font-family: 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #0D1E3B; color: #F4F0E8; border-radius: 24px; border: 1px solid #C5A28C;">
       <div style="text-align: center; margin-bottom: 24px;">
-        <span style="background: rgba(255, 109, 41, 0.2); color: #FF6D29; border: 1px solid rgba(255, 109, 41, 0.4); padding: 8px 18px; border-radius: 50px; font-weight: 800; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase;">
+        <span style="background: rgba(48, 91, 254, 0.15); color: #305BFE; border: 1px solid rgba(48, 91, 254, 0.35); padding: 8px 18px; border-radius: 50px; font-weight: 800; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase;">
           ${typeLabel}
         </span>
       </div>
@@ -450,7 +485,7 @@ const sendScheduleNotificationEmail = async ({
           </tr>
           <tr>
             <td style="padding: 8px 0; color: #8FA2C0;">Date:</td>
-            <td style="padding: 8px 0; font-weight: 700; color: #FF6D29; text-align: right;">${date}</td>
+            <td style="padding: 8px 0; font-weight: 700; color: #305BFE; text-align: right;">${date}</td>
           </tr>
           <tr>
             <td style="padding: 8px 0; color: #8FA2C0;">Time:</td>

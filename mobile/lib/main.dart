@@ -69,7 +69,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'ISKOLAR',
       theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.theme,
+      darkTheme: AppTheme.darkTheme,
       themeMode: themeProvider.themeMode,
       debugShowCheckedModeBanner: false,
       home: const SplashScreen(),

@@ -126,7 +126,7 @@ function PrivacyPolicyModal({ open, onCancel, onAgree }) {
             type="button"
             onClick={onAgree}
             className="w-full sm:w-auto px-6 py-3 rounded-xl font-bold text-xs tracking-wider uppercase text-white shadow-lg transition hover:brightness-110"
-            style={{ background: 'var(--primary, #FF6D29)' }}
+            style={{ background: 'var(--primary, #305BFE)' }}
           >
             I Agree and Create Account
           </button>

@@ -27,12 +27,12 @@ export default function StudentRedirectNotice({ user, onLogout }) {
         <div
           className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-extrabold tracking-wider uppercase border mb-4"
           style={{
-            backgroundColor: 'rgba(255, 109, 41, 0.10)',
+            backgroundColor: 'rgba(48, 91, 254, 0.10)',
             color: 'var(--primary)',
-            borderColor: 'rgba(255, 109, 41, 0.25)'
+            borderColor: 'rgba(48, 91, 254, 0.25)'
           }}
         >
-          <PhoneIcon className="w-3.5 h-3.5 text-[#FF6D29]" />
+          <PhoneIcon className="w-3.5 h-3.5 text-[#305BFE]" />
           <span>Mobile Platform Exclusive</span>
         </div>
 

@@ -18,20 +18,24 @@ const getNotifications = async (req, res, next) => {
 
     if (mongoose.connection.readyState === 1) {
       const numId = Number(userId);
-      const userQueries = [
-        { userId },
-        { userId: String(userId) },
-        ...(!Number.isNaN(numId) ? [{ userId: numId }] : []),
-        { user_id: userId },
-        { user_id: String(userId) },
-        ...(!Number.isNaN(numId) ? [{ user_id: numId }] : []),
+      const targetIds = [userId, String(userId)];
+      if (!Number.isNaN(numId)) targetIds.push(numId);
+
+      const orClauses = [
+        { userId: { $in: targetIds } },
+        { user_id: { $in: targetIds } },
       ];
       if (req.user?.email) {
-        userQueries.push({ email: req.user.email });
+        orClauses.push({ email: req.user.email });
       }
-      const userQuery = { $or: userQueries };
+      const userQuery = { $or: orClauses };
       [notifications, total, unreadCount] = await Promise.all([
-        Notification.find(userQuery).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+        Notification.find(userQuery)
+          .select('userId user_id title message type route read createdAt data')
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit)
+          .lean(),
         Notification.countDocuments(userQuery),
         Notification.countDocuments({ ...userQuery, read: false }),
       ]);

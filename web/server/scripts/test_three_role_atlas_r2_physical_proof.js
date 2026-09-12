@@ -85,7 +85,9 @@ async function runThreeRolePhysicalProof() {
   db.data.applications.push({
     id: appId,
     scholarship_id: scholarshipId,
+    scholarshipId: scholarshipId,
     student_id: studentId,
+    studentId: studentId,
     provider_id: providerId,
     status: 'pending',
     createdAt: new Date().toISOString(),
@@ -110,9 +112,17 @@ async function runThreeRolePhysicalProof() {
 
   // Step 5: PHYSICAL CLOUD VERIFICATION IN MONGODB ATLAS
   console.log(`\n[STAGE 4] DIRECT PHYSICAL QUERY TO MONGODB ATLAS CLUSTER...`);
-  const rawAtlasDoc = await db.collection.findOne({ _id: 'iskolar_state' });
-  const rawAppInAtlas = (rawAtlasDoc.applications || []).find(a => a.id === appId);
-  const rawDocInAtlas = (rawAtlasDoc.documents || []).find(d => d.id === docId);
+  let rawAppInAtlas = null;
+  let rawDocInAtlas = null;
+
+  if (db.collections && db.collections.applications) {
+    rawAppInAtlas = await db.collections.applications.findOne({ id: appId });
+    rawDocInAtlas = await db.collections.documents.findOne({ id: docId });
+  } else if (db.collection) {
+    const rawAtlasDoc = await db.collection.findOne({ _id: 'iskolar_state' });
+    rawAppInAtlas = (rawAtlasDoc?.applications || []).find(a => a.id === appId);
+    rawDocInAtlas = (rawAtlasDoc?.documents || []).find(d => d.id === docId);
+  }
 
   if (!rawAppInAtlas || rawAppInAtlas.status !== 'approved') {
     throw new Error(`Physical Atlas query failed: Application #${appId} not found with status approved in Atlas`);
@@ -141,6 +151,12 @@ async function runThreeRolePhysicalProof() {
   // Step 7: Clean up test records
   console.log(`\n[STAGE 6] Cleaning up test records from Atlas and R2...`);
   await storageService.r2Driver.delete(docKey);
+  if (db.collections) {
+    if (db.collections.applications) await db.collections.applications.deleteOne({ id: appId });
+    if (db.collections.documents) await db.collections.documents.deleteOne({ id: docId });
+    if (db.collections.scholarships) await db.collections.scholarships.deleteOne({ id: scholarshipId });
+    if (db.collections.users) await db.collections.users.deleteOne({ id: providerId });
+  }
   db.data.applications = db.data.applications.filter(a => a.id !== appId);
   db.data.documents = db.data.documents.filter(d => d.id !== docId);
   db.data.scholarships = db.data.scholarships.filter(s => s.id !== scholarshipId);

@@ -50,7 +50,7 @@ export default function AccountActionsMenu({
   standardActions.push({
     id: 'view_account',
     label: 'View Account',
-    icon: <ShieldIcon className="w-3.5 h-3.5 text-[#FF6D29]" />,
+    icon: <ShieldIcon className="w-3.5 h-3.5 text-[#305BFE]" />,
     handler: () => onViewAccount && onViewAccount(account, 'overview')
   })
 
@@ -445,10 +445,10 @@ export default function AccountActionsMenu({
         aria-label={`Open actions for ${displayName}`}
         aria-haspopup="menu"
         aria-expanded={isOpen}
-        className="p-1.5 rounded-lg border transition cursor-pointer text-slate-300 hover:text-white hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-[#FF6D29] active:scale-95"
+        className="p-1.5 rounded-lg border transition cursor-pointer text-slate-300 hover:text-white hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-[#305BFE] active:scale-95"
         style={{
-          backgroundColor: isOpen ? 'rgba(255, 109, 41, 0.15)' : 'var(--color-surface-panel, rgba(30, 41, 59, 0.6))',
-          borderColor: isOpen ? 'var(--primary, #FF6D29)' : 'var(--border, rgba(255, 255, 255, 0.1))'
+          backgroundColor: isOpen ? 'rgba(48, 91, 254, 0.15)' : 'var(--color-surface-panel, rgba(30, 41, 59, 0.6))',
+          borderColor: isOpen ? 'var(--primary, #305BFE)' : 'var(--border, rgba(255, 255, 255, 0.1))'
         }}
       >
         <MoreVerticalIcon className="w-4 h-4" />

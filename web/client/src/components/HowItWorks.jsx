@@ -6,7 +6,7 @@ const workflowSteps = [
     step: '1',
     title: 'Browse',
     description: 'Explore verified scholarship opportunities from accredited foundations, corporations, and universities.',
-    icon: <SearchIcon className="w-5 h-5 text-[#FF6D29]" />,
+    icon: <SearchIcon className="w-5 h-5 text-[#305BFE]" />,
   },
   {
     step: '2',
@@ -30,7 +30,7 @@ const workflowSteps = [
     step: '5',
     title: 'Provider Review',
     description: 'Sponsor review committees evaluate submissions, conduct interviews, and coordinate candidate qualifications.',
-    icon: <ChartIcon className="w-5 h-5 text-[#FF6D29]" />,
+    icon: <ChartIcon className="w-5 h-5 text-[#305BFE]" />,
   },
   {
     step: '6',
@@ -54,7 +54,7 @@ export default function HowItWorks() {
               color: 'var(--color-text-secondary)'
             }}
           >
-            <span className="h-2 w-2 rounded-full bg-[#FF6D29]"></span>
+            <span className="h-2 w-2 rounded-full bg-[#305BFE]"></span>
             <span>Lifecycle Walkthrough</span>
           </div>
 
@@ -72,7 +72,7 @@ export default function HowItWorks() {
           {workflowSteps.map((item) => (
             <div
               key={item.step}
-              className="modular-card p-6 sm:p-7 flex flex-col justify-between"
+              className="card-modern p-6 sm:p-7 flex flex-col justify-between"
               style={{ backgroundColor: 'var(--color-bg-elevated)' }}
             >
               <div className="space-y-3.5">
@@ -86,7 +86,7 @@ export default function HowItWorks() {
                   >
                     {item.icon}
                   </div>
-                  <span className="font-mono text-xs font-bold px-2.5 py-1 rounded bg-[#FF6D29]/10 text-[#FF6D29]">
+                  <span className="font-mono text-xs font-bold px-2.5 py-1 rounded bg-[#305BFE]/10 text-[#93ABFF]">
                     STEP {item.step}
                   </span>
                 </div>
@@ -101,7 +101,7 @@ export default function HowItWorks() {
               </div>
 
               <div className="mt-5 pt-4 border-t flex items-center gap-2 text-xs font-semibold" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-muted)' }}>
-                <span className="h-1.5 w-1.5 rounded-full bg-[#FF6D29]"></span>
+                <span className="h-1.5 w-1.5 rounded-full bg-[#305BFE]"></span>
                 <span>Standardized Workflow</span>
               </div>
             </div>
@@ -110,7 +110,7 @@ export default function HowItWorks() {
 
         {/* Explicit OCR Legal Disclaimer Callout */}
         <div
-          className="modular-card p-5 sm:p-6 border-l-4 border-l-[#FF6D29] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+          className="modular-card p-5 sm:p-6 border-l-4 border-l-[#305BFE] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
           style={{ backgroundColor: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }}
         >
           <div className="space-y-1">

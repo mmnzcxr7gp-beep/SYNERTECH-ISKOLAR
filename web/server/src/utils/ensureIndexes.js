@@ -83,8 +83,10 @@ const ensureIndexes = async (mongoose) => {
       collection: 'notifications',
       indexes: [
         { key: { userId: 1, read: 1 }, options: { background: true, name: 'idx_notif_user_read' } },
+        { key: { user_id: 1, read: 1 }, options: { background: true, name: 'idx_notif_user_id_read' } },
         { key: { createdAt: -1 }, options: { background: true, name: 'idx_notif_created' } },
         { key: { userId: 1, createdAt: -1 }, options: { background: true, name: 'idx_notif_user_date' } },
+        { key: { user_id: 1, createdAt: -1 }, options: { background: true, name: 'idx_notif_user_id_date' } },
       ],
     },
 
@@ -167,35 +169,19 @@ const ensureIndexes = async (mongoose) => {
             ]).toArray().catch(() => []);
 
             if (duplicates.length > 0) {
-              logger.warn(`[ensureIndexes] Found ${duplicates.length} duplicate group(s) in ${collection}. Pruning duplicate entries to enforce unique index ${options.name}...`);
-              for (const dup of duplicates) {
-                const idsToDelete = Array.isArray(dup.ids) ? dup.ids.slice(1) : [];
-                if (idsToDelete.length > 0) {
-                  await col.deleteMany({ _id: { $in: idsToDelete } }).catch(() => {});
-                }
-              }
-              const remaining = await col.aggregate([
-                { $match: { [keyFields[0]]: { $exists: true, $ne: null } } },
-                { $group: { _id: groupFields, count: { $sum: 1 }, ids: { $push: '$_id' } } },
-                { $match: { count: { $gt: 1 } } },
-                { $limit: 1 },
-              ]).toArray().catch(() => []);
-
-              if (remaining.length > 0) {
-                const errMsg = `[ensureIndexes] ⚠️ BLOCKED: Mandatory unique constraint ${options.name} on ${collection} cannot be enforced because ${remaining.length} duplicate group(s) exist. Database uniqueness is NOT satisfied.`;
-                logger.error(errMsg, {
-                  duplicateCount: remaining.length,
-                  sampleDuplicates: remaining,
-                });
-                ensureIndexes.uniquenessBlocked = true;
-                ensureIndexes.uniquenessError = new MandatoryUniqueIndexError(errMsg, {
-                  collection,
-                  indexName: options.name,
-                  key,
-                  duplicates: remaining,
-                });
-                throw ensureIndexes.uniquenessError;
-              }
+              const errMsg = `[ensureIndexes] ⚠️ BLOCKED: Mandatory unique constraint ${options.name} on ${collection} cannot be enforced because ${duplicates.length} duplicate group(s) exist. Database uniqueness is NOT satisfied.`;
+              logger.error(errMsg, {
+                duplicateCount: duplicates.length,
+                sampleDuplicates: duplicates,
+              });
+              ensureIndexes.uniquenessBlocked = true;
+              ensureIndexes.uniquenessError = new MandatoryUniqueIndexError(errMsg, {
+                collection,
+                indexName: options.name,
+                key,
+                duplicates,
+              });
+              throw ensureIndexes.uniquenessError;
             }
 
             // If a non-unique index on the same key exists, drop it so unique index can be created

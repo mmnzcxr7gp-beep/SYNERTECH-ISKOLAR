@@ -208,7 +208,7 @@ export default function SchedulingPage({ token, user }) {
       </div>
 
       {error && (
-        <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs font-bold text-rose-400">
+        <div role="alert" aria-live="polite" className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs font-bold text-rose-400">
           {error}
         </div>
       )}
@@ -221,8 +221,9 @@ export default function SchedulingPage({ token, user }) {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>Event Type *</label>
+                <label htmlFor="scheduling-event-type" className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>Event Type *</label>
                 <select
+                  id="scheduling-event-type"
                   value={type}
                   onChange={(e) => setType(e.target.value)}
                   className="w-full rounded-xl border p-2.5 text-xs font-medium focus:outline-none cursor-pointer"
@@ -239,8 +240,9 @@ export default function SchedulingPage({ token, user }) {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>Event Title *</label>
+                <label htmlFor="scheduling-event-title" className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>Event Title *</label>
                 <input
+                  id="scheduling-event-title"
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
@@ -256,8 +258,9 @@ export default function SchedulingPage({ token, user }) {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>Instructions</label>
+                <label htmlFor="scheduling-instructions" className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>Instructions</label>
                 <textarea
+                  id="scheduling-instructions"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Instructions for the applicant, presentation requirements, or venue directions..."
@@ -273,8 +276,9 @@ export default function SchedulingPage({ token, user }) {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>Date *</label>
+                  <label htmlFor="scheduling-date" className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>Date *</label>
                   <input
+                    id="scheduling-date"
                     type="date"
                     min={todayStr}
                     value={date}
@@ -290,8 +294,9 @@ export default function SchedulingPage({ token, user }) {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>Time (PHT) *</label>
+                  <label htmlFor="scheduling-time" className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>Time (PHT) *</label>
                   <input
+                    id="scheduling-time"
                     type="time"
                     value={time}
                     onChange={(e) => setTime(e.target.value)}
@@ -307,8 +312,9 @@ export default function SchedulingPage({ token, user }) {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>Venue / Meeting Link</label>
+                <label htmlFor="scheduling-venue" className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>Venue / Meeting Link</label>
                 <input
+                  id="scheduling-venue"
                   type="text"
                   value={meetingLink || venue}
                   onChange={(e) => {
@@ -326,8 +332,9 @@ export default function SchedulingPage({ token, user }) {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>Assign Candidate</label>
+                <label htmlFor="scheduling-assigned-student" className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>Assign Candidate</label>
                 <select
+                  id="scheduling-assigned-student"
                   value={assignedStudentId}
                   onChange={(e) => setAssignedStudentId(e.target.value)}
                   className="w-full rounded-xl border p-2.5 text-xs font-medium focus:outline-none cursor-pointer"
@@ -418,7 +425,7 @@ export default function SchedulingPage({ token, user }) {
                             href={s.meetingLink}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="underline font-bold text-[#FF6D29] flex items-center gap-1"
+                            className="underline font-bold text-[#305BFE] flex items-center gap-1"
                           >
                             <span>{s.meetingLink}</span>
                             <ExternalLinkIcon className="w-3 h-3" />
@@ -457,6 +464,7 @@ export default function SchedulingPage({ token, user }) {
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
+                  aria-label="Previous page"
                   disabled={currentPage === 1}
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   className="px-3 py-1.5 rounded-xl border text-xs font-bold transition disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed hover:bg-[var(--color-surface-panel)]"
@@ -468,10 +476,11 @@ export default function SchedulingPage({ token, user }) {
                   <button
                     key={pageNum}
                     type="button"
+                    aria-label={`Page ${pageNum}`}
                     onClick={() => setCurrentPage(pageNum)}
                     className={`min-w-[32px] h-8 rounded-xl text-xs font-bold transition border cursor-pointer ${
                       currentPage === pageNum
-                        ? 'bg-gradient-to-r from-[#FF6D29] to-[#FF8552] text-white border-[#FF6D29] shadow-sm'
+                        ? 'bg-gradient-to-r from-[#305BFE] to-[#4F96FF] text-white border-[#305BFE] shadow-sm'
                         : 'hover:bg-[var(--color-surface-panel)]'
                     }`}
                     style={{
@@ -485,6 +494,7 @@ export default function SchedulingPage({ token, user }) {
                 ))}
                 <button
                   type="button"
+                  aria-label="Next page"
                   disabled={currentPage === totalPages}
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   className="px-3 py-1.5 rounded-xl border text-xs font-bold transition disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed hover:bg-[var(--color-surface-panel)]"

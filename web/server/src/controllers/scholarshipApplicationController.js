@@ -431,13 +431,23 @@ const getApplicants = async (req, res, next) => {
     const applicantsWithStudentInfo = await Promise.all(
       applications.map(async (app) => {
         const student = await Student.findOne({ userId: app.studentId }).select(
-          'email schoolName gradeLevel'
+          'email schoolName school gradeLevel yearLevel course'
         );
+        let fallbackUser = null;
+        if (!student || (!student.schoolName && !student.school)) {
+          const { User } = require('../models');
+          if (User && typeof User.findOne === 'function') {
+            fallbackUser = await User.findOne({
+              $or: [{ id: app.studentId }, { id: Number(app.studentId) }, { _id: app.studentId }]
+            }).select('email school schoolName yearLevel course').catch(() => null);
+          }
+        }
         return {
           ...app.toObject(),
-          studentEmail: student?.email || 'N/A',
-          studentSchool: student?.schoolName || 'N/A',
-          studentGrade: student?.gradeLevel || 'N/A',
+          studentEmail: student?.email || fallbackUser?.email || 'N/A',
+          studentSchool: student?.schoolName || student?.school || fallbackUser?.school || fallbackUser?.schoolName || 'Not specified',
+          studentCourse: student?.course || fallbackUser?.course || 'Not specified',
+          studentGrade: student?.gradeLevel || student?.yearLevel || fallbackUser?.yearLevel || 'N/A',
         };
       })
     );
@@ -485,14 +495,24 @@ const getApplicationDetails = async (req, res, next) => {
 
     // Get student info
     const student = await Student.findOne({ userId: application.studentId });
+    let fallbackUser = null;
+    if (!student || (!student.schoolName && !student.school)) {
+      const { User } = require('../models');
+      if (User && typeof User.findOne === 'function') {
+        fallbackUser = await User.findOne({
+          $or: [{ id: application.studentId }, { id: Number(application.studentId) }, { _id: application.studentId }]
+        }).select('email school schoolName yearLevel course').catch(() => null);
+      }
+    }
 
     res.json({
       message: 'Application details retrieved',
       application,
       studentInfo: {
-        email: student?.email,
-        schoolName: student?.schoolName,
-        gradeLevel: student?.gradeLevel,
+        email: student?.email || fallbackUser?.email,
+        schoolName: student?.schoolName || student?.school || fallbackUser?.school || fallbackUser?.schoolName || 'Not specified',
+        course: student?.course || fallbackUser?.course || 'Not specified',
+        gradeLevel: student?.gradeLevel || student?.yearLevel || fallbackUser?.yearLevel || 'N/A',
       },
     });
   } catch (error) {

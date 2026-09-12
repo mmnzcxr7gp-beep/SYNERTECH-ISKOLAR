@@ -489,7 +489,7 @@ async function run() {
     // 3.5 Verify zero signing secrets in Git tracked files
     try {
       const trackedSecrets = execSync(
-        'git grep -E "storePassword=[^Y]|keyPassword=[^Y]" 2>/dev/null || true',
+        'git grep -E "storePassword=[^Y]|keyPassword=[^Y]" -- ":(exclude)*test_sec01*" 2>/dev/null || true',
         { encoding: 'utf8' }
       ).trim();
       assert.strictEqual(trackedSecrets, '', 'No real signing passwords may be tracked in Git');
