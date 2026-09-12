@@ -64,11 +64,7 @@
 | Firebase | Unconfigured (graceful fallback) | — | — |
 | Socket.IO | YES (initialized) | — | — |
 | Client using it | React via Vercel proxy + Flutter APK | — | — |
-<<<<<<< HEAD
-| Result | **PASS (noted items)** | NOT FOUND | NOT FOUND |
-=======
 | Result | **PASS** (fixes deployed `2f50502`) | NOT FOUND | NOT FOUND |
->>>>>>> audit/ccit-msc-it-security-audit
 
 **Service relationship:** One unified backend. There are no separate web/mobile/worker backends, no staging vs production split, and no duplicate or obsolete services discoverable from the repository.
 
