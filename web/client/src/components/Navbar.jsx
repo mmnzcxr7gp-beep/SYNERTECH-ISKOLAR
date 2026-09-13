@@ -122,13 +122,13 @@ export default function Navbar({ currentUser, activeSection, onLogin, onLogout }
                 <button
                   onClick={onLogin}
                   type="button"
-                  className="!hidden sm:!inline-flex btn-secondary py-2 px-3.5 text-xs font-bold cursor-pointer"
+                  className="btn-secondary py-1.5 sm:py-2 px-2.5 sm:px-3.5 text-xs font-bold cursor-pointer inline-flex items-center"
                 >
                   Sign In
                 </button>
                 <a
                   href="#download"
-                  className="!hidden sm:!inline-flex btn-primary py-2 px-3.5 text-xs font-bold"
+                  className="hidden sm:inline-flex btn-primary py-2 px-3.5 text-xs font-bold"
                 >
                   Get Started
                 </a>
