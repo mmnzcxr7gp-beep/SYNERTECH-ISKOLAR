@@ -38,12 +38,20 @@ export default function Navbar({ currentUser, activeSection, onLogin, onLogout }
   })()
 
   const navLinks = [
+    { href: '#home', label: 'Home', id: 'home' },
     { href: '#scholarships', label: 'Scholarships', id: 'scholarships' },
     { href: '#how-it-works', label: 'How It Works', id: 'how-it-works' },
     { href: '#eligibility', label: 'Eligibility', id: 'eligibility' },
     { href: '#safety', label: 'About & Trust', id: 'safety' },
     { href: '#download', label: 'Mobile App', id: 'download' },
   ]
+
+  const handleNavClick = (e, linkId) => {
+    if (activeSection === linkId || (linkId === 'safety' && (activeSection === 'about' || activeSection === 'about-trust'))) {
+      e.preventDefault()
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
 
   return (
     <>
@@ -52,7 +60,11 @@ export default function Navbar({ currentUser, activeSection, onLogin, onLogout }
           
           {/* Logo & Role Badge */}
           <div className="flex items-center gap-3">
-            <a href="#home" className="transition hover:opacity-90 flex items-center">
+            <a
+              href="#home"
+              onClick={(e) => handleNavClick(e, 'home')}
+              className="transition hover:opacity-90 flex items-center"
+            >
               <IskolarLogo size="sm" />
             </a>
             {roleLabel && (
@@ -73,11 +85,12 @@ export default function Navbar({ currentUser, activeSection, onLogin, onLogout }
           {/* Desktop Navigation Links */}
           <nav className="hidden lg:flex items-center gap-1" aria-label="Primary Navigation">
             {!isLoggedIn && navLinks.map((link) => {
-              const isActive = activeSection === link.id
+              const isActive = activeSection === link.id || (link.id === 'safety' && (activeSection === 'about' || activeSection === 'about-trust'))
               return (
                 <a
                   key={link.id}
                   href={link.href}
+                  onClick={(e) => handleNavClick(e, link.id)}
                   className="nav-text px-3.5 py-1.5 rounded-lg transition"
                   style={{
                     color: isActive ? 'var(--color-brand-primary)' : 'var(--color-text-secondary)',
@@ -198,20 +211,26 @@ export default function Navbar({ currentUser, activeSection, onLogin, onLogout }
 
               {/* Mobile Navigation Links */}
               <nav className="mt-6 space-y-1.5" aria-label="Mobile Drawer Navigation">
-                {navLinks.map((link) => (
-                  <a
-                    key={link.id}
-                    href={link.href}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="block px-4 py-2.5 rounded-lg text-sm font-semibold transition hover:bg-[var(--color-bg-panel)]"
-                    style={{
-                      color: activeSection === link.id ? 'var(--color-brand-primary)' : 'var(--color-text-primary)',
-                      backgroundColor: activeSection === link.id ? 'var(--color-brand-subtle)' : 'transparent',
-                    }}
-                  >
-                    {link.label}
-                  </a>
-                ))}
+                {navLinks.map((link) => {
+                  const isActive = activeSection === link.id || (link.id === 'safety' && (activeSection === 'about' || activeSection === 'about-trust'))
+                  return (
+                    <a
+                      key={link.id}
+                      href={link.href}
+                      onClick={(e) => {
+                        setMobileMenuOpen(false)
+                        handleNavClick(e, link.id)
+                      }}
+                      className="block px-4 py-2.5 rounded-lg text-sm font-semibold transition hover:bg-[var(--color-bg-panel)]"
+                      style={{
+                        color: isActive ? 'var(--color-brand-primary)' : 'var(--color-text-primary)',
+                        backgroundColor: isActive ? 'var(--color-brand-subtle)' : 'transparent',
+                      }}
+                    >
+                      {link.label}
+                    </a>
+                  )
+                })}
               </nav>
             </div>
 

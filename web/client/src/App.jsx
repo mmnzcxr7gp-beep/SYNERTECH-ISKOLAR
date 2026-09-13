@@ -181,7 +181,7 @@ function AppContent() {
       }
 
       // ── About & Trust Page ─────────────────────────────────────────
-      if (activeSection === 'safety') {
+      if (activeSection === 'safety' || activeSection === 'about' || activeSection === 'about-trust') {
         return (
           <PageWrapper
             title="About & Trust"

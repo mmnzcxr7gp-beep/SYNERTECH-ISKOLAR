@@ -47,7 +47,15 @@ export default function Dither({
     let isIntersecting = true
     let resizeTimer = null
     let observer = null
-    let renderer, scene, camera, material, geometry, mesh
+    let renderer = null
+    let scene = null
+    let camera = null
+    let material = null
+    let geometry = null
+    let mesh = null
+    let handleResize = null
+    let handlePointerMove = null
+    let handleVisibilityChange = null
 
     // Defer WebGL setup by 50ms to yield the main thread for instant DOM paint and top Speed Index
     const initTimer = setTimeout(() => {
@@ -181,8 +189,7 @@ export default function Dither({
     }
 
     // Dynamic resize handler
-    let resizeTimer
-    const handleResize = () => {
+    handleResize = () => {
       clearTimeout(resizeTimer)
       resizeTimer = setTimeout(() => {
         if (!container || !renderer || !material || isDestroyed) return
@@ -196,7 +203,7 @@ export default function Dither({
     window.addEventListener('resize', handleResize)
 
     // Optional pointer interaction
-    const handlePointerMove = (e) => {
+    handlePointerMove = (e) => {
       if (!enableMouseInteraction || !container || !material) return
       const rect = container.getBoundingClientRect()
       const x = (e.clientX - rect.left) / rect.width
@@ -209,7 +216,6 @@ export default function Dither({
     }
 
     // IntersectionObserver to pause rendering when off-screen
-    let observer = null
     if (typeof IntersectionObserver !== 'undefined') {
       observer = new IntersectionObserver(
         ([entry]) => {
@@ -224,7 +230,7 @@ export default function Dither({
     }
 
     // VisibilityChange handler to pause when tab is hidden
-    const handleVisibilityChange = () => {
+    handleVisibilityChange = () => {
       if (document.hidden && animationFrameId) {
         cancelAnimationFrame(animationFrameId)
         animationFrameId = null
@@ -241,17 +247,7 @@ export default function Dither({
     if (disableAnimation || prefersReducedMotion) {
       material.uniforms.uTime.value = 0
       renderer.render(scene, camera)
-      return () => {
-        isDestroyed = true
-        if (observer) observer.disconnect()
-        window.removeEventListener('resize', handleResize)
-        if (enableMouseInteraction) window.removeEventListener('pointermove', handlePointerMove)
-        document.removeEventListener('visibilitychange', handleVisibilityChange)
-        geometry?.dispose()
-        material?.dispose()
-        renderer?.dispose()
-        renderer?.forceContextLoss()
-      }
+      return
     }
 
     const renderLoop = (now) => {
@@ -275,20 +271,24 @@ export default function Dither({
   }, 50)
 
     return () => {
-      isDestroyed = true
-      clearTimeout(initTimer)
-      if (resizeTimer) clearTimeout(resizeTimer)
-      if (animationFrameId) cancelAnimationFrame(animationFrameId)
-      if (observer) observer.disconnect()
-      window.removeEventListener('resize', handleResize)
-      if (enableMouseInteraction) window.removeEventListener('pointermove', handlePointerMove)
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      try {
+        isDestroyed = true
+        clearTimeout(initTimer)
+        if (resizeTimer) clearTimeout(resizeTimer)
+        if (animationFrameId) cancelAnimationFrame(animationFrameId)
+        if (observer) observer.disconnect()
+        if (handleResize) window.removeEventListener('resize', handleResize)
+        if (handlePointerMove) window.removeEventListener('pointermove', handlePointerMove)
+        if (handleVisibilityChange) document.removeEventListener('visibilitychange', handleVisibilityChange)
 
-      if (mesh) scene?.remove(mesh)
-      geometry?.dispose()
-      material?.dispose()
-      renderer?.dispose()
-      renderer?.forceContextLoss()
+        if (mesh && scene) scene.remove(mesh)
+        geometry?.dispose()
+        material?.dispose()
+        renderer?.dispose()
+        renderer?.forceContextLoss()
+      } catch (cleanupErr) {
+        console.warn('Dither cleanup notice:', cleanupErr?.message || cleanupErr)
+      }
     }
   }, [waveColor, disableAnimation, enableMouseInteraction, mouseRadius, colorNum, pixelSize, waveAmplitude, waveFrequency, waveSpeed])
 
