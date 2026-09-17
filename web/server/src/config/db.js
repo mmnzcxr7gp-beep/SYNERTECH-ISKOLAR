@@ -977,6 +977,7 @@ const connectDb = async () => {
       serverSelectionTimeoutMS: 15000,
       retryWrites: true,
       retryReads: true,
+      autoSelectFamily: false,
     });
 
     client.on('open', () => {
@@ -1089,6 +1090,45 @@ const connectDb = async () => {
         console.error(`❌ [FATAL] Production database connection failed: ${err?.message || err}`);
         throw new Error(`FATAL: Production database connection failed: ${err?.message || err}`);
       }
+
+      // In development/test mode, if primary connection failed, attempt fallback to local MongoDB instance
+      if (uriToUse !== fallbackUri) {
+        console.warn(`⚠️ Primary MongoDB connection failed (${err?.message || err}). Attempting fallback to local MongoDB (${fallbackUri})...`);
+        try {
+          const fallbackClient = new MongoClient(fallbackUri, {
+            serverSelectionTimeoutMS: 3000,
+            connectTimeoutMS: 3000,
+            autoSelectFamily: false,
+          });
+          await fallbackClient.connect();
+          mongoClientInstance = fallbackClient;
+          db.client = fallbackClient;
+          const fbDb = fallbackClient.db(resolveDbName(fallbackUri));
+          db.collections = {
+            users: fbDb.collection('users'),
+            student_profiles: fbDb.collection('student_profiles'),
+            scholarships: fbDb.collection('scholarships'),
+            applications: fbDb.collection('applications'),
+            documents: fbDb.collection('documents'),
+            schedules: fbDb.collection('schedules'),
+            otps: fbDb.collection('otps'),
+            manual_review_logs: fbDb.collection('manual_review_logs'),
+            ocr_extractions: fbDb.collection('ocr_extractions'),
+            automatic_check_results: fbDb.collection('automatic_check_results'),
+            system_metadata: fbDb.collection('system_metadata'),
+            app_state: fbDb.collection('app_state'),
+          };
+          db.collection = db.collections.app_state;
+          db.lastError = null;
+          console.log('✓ Successfully connected to local fallback database', fbDb.databaseName);
+          await db.read();
+          await seedDefaultUsers();
+          return db;
+        } catch (fbErr) {
+          console.warn('⚠️ Local MongoDB fallback also unavailable:', fbErr?.message || fbErr);
+        }
+      }
+
       console.warn('⚠️ Running in development in-memory mode (no persistence)');
 
       db.lastError = err?.message || String(err);

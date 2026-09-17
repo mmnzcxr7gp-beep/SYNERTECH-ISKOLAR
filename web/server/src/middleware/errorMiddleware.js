@@ -165,17 +165,34 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // MongoDB connection errors
-  if (err.name === 'MongoNetworkError' || err.name === 'MongoTimeoutError') {
+  // MongoDB / Database connection and availability errors
+  const isDbUnavailable =
+    err.name === 'MongoNetworkError' ||
+    err.name === 'MongoTimeoutError' ||
+    err.name === 'MongoServerSelectionError' ||
+    err.name === 'MongoTopologyClosedError' ||
+    err.name === 'MongoNotConnectedError' ||
+    err.name === 'MongooseServerSelectionError' ||
+    err.name === 'MongoNetworkTimeoutError' ||
+    (typeof err.message === 'string' && (
+      err.message.includes('SSL alert') ||
+      err.message.includes('tlsv1 alert') ||
+      err.message.includes('Could not connect to any servers in your MongoDB') ||
+      err.message.includes('buffering timed out') ||
+      (err.message.includes('ECONNREFUSED') && (err.message.includes('27017') || err.message.includes('mongo')))
+    ));
+
+  if (isDbUnavailable) {
     return res.status(503).json({
       success: false,
       code: 'STORAGE_UNAVAILABLE',
       errorCode: 'DB_UNAVAILABLE',
-      message: 'Database temporarily unavailable',
+      message: 'Database temporarily unavailable. Please verify network access or try again shortly.',
       retryable: true,
       requestId,
     });
   }
+
 
   // Default error response — consistent shape without leaking stack traces or internal paths
   const safeMessage = (err.message && !err.message.includes('/') && !err.message.includes('\\'))

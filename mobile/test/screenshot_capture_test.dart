@@ -17,9 +17,15 @@ import 'package:iskolar_mobile/screens/splash_screen.dart';
 import 'package:iskolar_mobile/screens/sponsor_admin_notice_screen.dart';
 import 'package:iskolar_mobile/screens/student_profile_edit_screen.dart';
 import 'package:iskolar_mobile/services/ocr_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:iskolar_mobile/utils/app_theme.dart';
 
 void main() {
+  setUpAll(() {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    SharedPreferences.setMockInitialValues({});
+  });
+
   final outputDir = Directory('../audit/screenshots/flutter');
   if (!outputDir.existsSync()) {
     outputDir.createSync(recursive: true);
@@ -111,7 +117,7 @@ void main() {
       if (byteData != null) {
         final pngBytes = byteData.buffer.asUint8List();
         final file = File('${outputDir.path}/$filename');
-        await file.writeAsBytes(pngBytes);
+        file.writeAsBytesSync(pngBytes);
       }
     }
 
@@ -281,5 +287,5 @@ void main() {
         isDark: true,
       );
     });
-  });
+  }, skip: Platform.environment['GENERATE_SCREENSHOTS'] != 'true');
 }

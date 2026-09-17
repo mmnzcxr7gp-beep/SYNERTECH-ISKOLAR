@@ -433,6 +433,7 @@ const connectMongoose = async () => {
       serverSelectionTimeoutMS: 15000,
       retryWrites: true,
       retryReads: true,
+      autoSelectFamily: false,
     });
     console.log('✓ [Mongoose] connected to', mongoose.connection.name);
 
@@ -449,8 +450,28 @@ const connectMongoose = async () => {
     }
   } catch (err) {
     console.error('✗ Mongoose connection failed:', err?.message || err);
-    if (process.env.NODE_ENV === 'production') {
+    if (process.env.NODE_ENV === 'production' || process.env.RENDER === 'true') {
       throw err; // Fail closed in production if MongoDB connection fails
+    }
+
+    const localFallbackUri = 'mongodb://127.0.0.1:27017/iskolar';
+    if (uri !== localFallbackUri) {
+      console.warn(`⚠️ Attempting Mongoose fallback to local database (${localFallbackUri})...`);
+      try {
+        await mongoose.connect(localFallbackUri, {
+          dbName: 'iskolar',
+          serverSelectionTimeoutMS: 3000,
+          autoSelectFamily: false,
+        });
+        console.log('✓ [Mongoose] connected to fallback', mongoose.connection.name);
+        try {
+          const { ensureIndexes } = require('./utils/ensureIndexes');
+          await ensureIndexes(mongoose);
+        } catch (_) {}
+        return;
+      } catch (fbErr) {
+        console.warn('⚠️ Local Mongoose fallback also unavailable:', fbErr?.message || fbErr);
+      }
     }
     console.warn('⚠️ Continuing with fallback mode');
   }

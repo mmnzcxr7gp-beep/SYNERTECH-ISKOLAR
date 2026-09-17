@@ -120,9 +120,18 @@ class _LoginScreenState extends State<LoginScreen>
     } catch (error) {
       final String userFriendlyMsg;
       if (error is ApiException) {
-        userFriendlyMsg = error.message.contains('Invalid credentials')
-            ? 'Invalid email or password. Please check your login details.'
-            : error.message;
+        if (error.message.contains('Invalid credentials')) {
+          userFriendlyMsg = 'Invalid email or password. Please check your login details.';
+        } else if (error.statusCode == 503 ||
+            error.message.toLowerCase().contains('database') ||
+            error.message.toLowerCase().contains('temporarily unavailable')) {
+          userFriendlyMsg = 'Database connection is temporarily unavailable. Please try again in a moment.';
+        } else if ((error.statusCode != null && error.statusCode! >= 500) ||
+            error.message.toLowerCase().contains('unexpected server error')) {
+          userFriendlyMsg = 'Server encountered a technical error. Please try again shortly or contact support.';
+        } else {
+          userFriendlyMsg = error.message;
+        }
       } else {
         userFriendlyMsg = 'Unable to sign in. Please check your internet connection.';
       }
