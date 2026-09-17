@@ -1,6 +1,7 @@
 const path = require('path');
 const fs = require('fs');
 const storageService = require('../utils/storageService');
+const authenticityService = require('../utils/documentAuthenticityService');
 
 /* ================= FIELD PATTERNS ================= */
 const fieldPatterns = {
@@ -47,19 +48,14 @@ const fieldPatterns = {
 
 /* ================= EXTRACT FIELDS ================= */
 const extractFields = (text) => {
-  const fields = {};
-
-  for (const [fieldName, patterns] of Object.entries(fieldPatterns)) {
-    for (const pattern of patterns) {
-      const match = text.match(pattern);
-      if (match && match[1]) {
-        fields[fieldName] = match[1].trim();
-        break;
-      }
-    }
-  }
-
+  // Use evidence-based extraction — only returns validated fields with source proof
+  const { fields } = authenticityService.extractFieldsWithEvidence(text, fieldPatterns);
   return fields;
+};
+
+/* ================= EXTRACT FIELDS WITH EVIDENCE ================= */
+const extractFieldsWithEvidence = (text) => {
+  return authenticityService.extractFieldsWithEvidence(text, fieldPatterns);
 };
 
 /* ================= DETECT DOCUMENT TYPE ================= */
@@ -77,8 +73,11 @@ const detectDocumentType = (text) => {
   if (lower.includes('sss')) return 'sss_id';
   if (lower.includes('unified') && lower.includes('multi-purpose')) return 'umid';
   if (lower.includes('national id') || lower.includes('philsys')) return 'national_id';
+  // TOR and COG before generic school_id check
+  if (lower.includes('transcript of records') || lower.includes('official transcript') || lower.includes('scholastic record')) return 'transcript_of_records';
+  if (lower.includes('certificate of grades') || lower.includes('grade report') || lower.includes('grade slip')) return 'certificate_of_grades';
+  if (lower.includes('certificate of registration') || lower.includes('enrollment form') || lower.includes('registration form')) return 'certificate_of_registration';
   if (lower.includes('student') || lower.includes('school') || lower.includes('university')) return 'school_id';
-  if (lower.includes('certificate of registration') || lower.includes('cor')) return 'certificate_of_registration';
 
   return 'unknown';
 };
@@ -138,9 +137,20 @@ const extractFromDocument = async (req, res, next) => {
     }
 
     const fallbackService = require('../utils/manualReviewFallbackService');
-    const extractedFields = extractFields(rawText);
     const documentType = detectDocumentType(rawText);
     const roundedConfidence = Math.round(confidence);
+
+    // Evidence-based extraction — each field carries source proof
+    const { fields: extractedFields, evidence: extractionEvidence } = extractFieldsWithEvidence(rawText);
+
+    // Document correctness basis — structural markers + authenticity scoring
+    const documentBasis = authenticityService.assessDocumentAuthenticity({
+      rawText,
+      confidence: roundedConfidence,
+      documentType,
+      extractedFields,
+      evidence: extractionEvidence,
+    });
 
     const fallbackCheck = fallbackService.checkOcrFallbackNeeded({
       rawText,
@@ -163,7 +173,10 @@ const extractFromDocument = async (req, res, next) => {
       fallbackTriggered: fallbackCheck.needsFallback,
       manualReviewReason: fallbackCheck.primaryReasonText,
       studentNotice,
-      message: fallbackCheck.needsFallback
+      documentBasis,
+      message: !documentBasis.isCorrectPaper
+        ? 'Warning: The uploaded image does not appear to be a valid ' + (documentBasis.structuralMarkers.documentTypeLabel || 'document') + '. Please upload a clear photo of the correct document.'
+        : fallbackCheck.needsFallback
         ? 'Manual Review Required: The system could not confidently verify all information in this document. An authorized scholarship provider will review it manually.'
         : 'Document processed successfully. Please review and confirm the extracted information.',
       filePath: `/uploads/${path.basename(filePath || 'document.png')}`,
@@ -501,6 +514,7 @@ const scanDocumentById = async (req, res, next) => {
     }
 
     // If we have a readable file buffer and haven't scanned yet, run Tesseract OCR
+    let ocrActuallyRan = false;
     if (fileBuffer && (!rawText || Object.keys(extractedFields).length === 0)) {
       try {
         const taskQueue = require('../utils/taskQueue');
@@ -514,23 +528,31 @@ const scanDocumentById = async (req, res, next) => {
         if (result && result.data) {
           rawText = result.data.text || '';
           confidence = Math.round(result.data.confidence || 0);
-          extractedFields = extractFields(rawText);
-          documentType = detectDocumentType(rawText);
+          ocrActuallyRan = true;
         }
       } catch (ocrErr) {
         console.warn('[scanDocumentById] Tesseract recognition fallback:', ocrErr.message);
       }
     }
 
-    // Populate fallback extracted fields from document metadata if still empty
-    if (Object.keys(extractedFields).length === 0) {
-      extractedFields = {
-        fullName: doc.extracted_name || doc.student_name || '',
-        idNumber: doc.id_number || doc.extractedIdNumber || '',
-        dateOfBirth: doc.date_of_birth || doc.dob || '',
-        expirationDate: doc.expiry_date || '',
-      };
+    // ANTI-HALLUCINATION: Evidence-based extraction only — never use stored metadata as fake scan results
+    let extractionEvidence = {};
+    if (rawText && rawText.trim()) {
+      const result = extractFieldsWithEvidence(rawText);
+      extractedFields = result.fields;
+      extractionEvidence = result.evidence;
+      documentType = detectDocumentType(rawText);
     }
+    // If OCR didn't extract anything, fields stay empty — we do NOT hallucinate from metadata
+
+    // Document correctness basis — structural markers + authenticity scoring
+    const documentBasis = authenticityService.assessDocumentAuthenticity({
+      rawText,
+      confidence,
+      documentType,
+      extractedFields,
+      evidence: extractionEvidence,
+    });
 
     // Check if manual review fallback is needed
     const fallbackCheck = fallbackService.checkOcrFallbackNeeded({
@@ -568,6 +590,7 @@ const scanDocumentById = async (req, res, next) => {
     doc.verificationFlags = flags;
     doc.ocrConfidence = confidence;
     doc.documentType = documentType;
+    doc.documentBasis = documentBasis;
     if (typeof db.write === 'function') await db.write();
 
     return res.json({
@@ -582,7 +605,11 @@ const scanDocumentById = async (req, res, next) => {
       flags,
       fallbackTriggered: fallbackCheck.needsFallback,
       reviewStatus: fallbackCheck.reviewStatus,
-      message: 'Document scan & verification completed successfully.',
+      documentBasis,
+      ocrActuallyScanned: ocrActuallyRan || Boolean(rawText && rawText.trim()),
+      message: !documentBasis.isCorrectPaper
+        ? 'Warning: This does not appear to be a valid ' + (documentBasis.structuralMarkers.documentTypeLabel || 'document') + '. Uploaded image may be incorrect.'
+        : 'Document scan & verification completed successfully.',
     });
   } catch (err) {
     next(err);
@@ -591,6 +618,7 @@ const scanDocumentById = async (req, res, next) => {
 
 module.exports = {
   extractFields,
+  extractFieldsWithEvidence,
   detectDocumentType,
   extractFromDocument,
   verifyDocumentData,

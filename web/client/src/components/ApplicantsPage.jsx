@@ -937,30 +937,68 @@ export default function ApplicantsPage({ token }) {
                           <span className="font-bold truncate" style={{ color: 'var(--text-heading)' }}>
                             {doc.requirement_name || doc.originalname || 'Document'}
                           </span>
-                          {(() => {
-                            const isExtracted = doc.ocr_status === 'VERIFIED' || doc.ocr_status === 'EXTRACTED' || doc.ocrStatus === 'EXTRACTED' || (doc.ocr_result && doc.ocr_result.status === 'VERIFIED_MATCH');
-                            const isFailed = doc.ocr_status === 'FAILED' || doc.ocrStatus === 'FAILED';
+                          <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                            {(() => {
+                              const basis = doc.documentBasis || doc.document_basis || doc.ocr_result?.documentBasis || doc.ocr_result?.document_basis;
+                              if (!basis) return null;
+                              const score = basis.authenticityScore ?? 0;
+                              const verdict = basis.verdict;
 
-                            if (isExtracted) {
+                              if (verdict === 'GENUINE_DOCUMENT') {
+                                return (
+                                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30" title={`Authenticity score: ${score}%. Structural markers verified.`}>
+                                    🛡️ Genuine ({score}%)
+                                  </span>
+                                );
+                              }
+                              if (verdict === 'LIKELY_GENUINE') {
+                                return (
+                                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-teal-500/15 text-teal-600 dark:text-teal-400 border border-teal-500/30" title={`Authenticity score: ${score}%. Likely genuine document.`}>
+                                    🛡️ Likely Genuine ({score}%)
+                                  </span>
+                                );
+                              }
+                              if (verdict === 'UNCERTAIN') {
+                                return (
+                                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30" title={`Authenticity score: ${score}%. Manual verification advised.`}>
+                                    ⚠️ Uncertain Paper ({score}%)
+                                  </span>
+                                );
+                              }
+                              if (verdict === 'NOT_A_VALID_DOCUMENT' || basis.isCorrectPaper === false) {
+                                return (
+                                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30" title={`Authenticity score: ${score}%. Document failed structural marker validation.`}>
+                                    ✕ Invalid Paper ({score}%)
+                                  </span>
+                                );
+                              }
+                              return null;
+                            })()}
+                            {(() => {
+                              const isExtracted = doc.ocr_status === 'VERIFIED' || doc.ocr_status === 'EXTRACTED' || doc.ocrStatus === 'EXTRACTED' || (doc.ocr_result && doc.ocr_result.status === 'VERIFIED_MATCH');
+                              const isFailed = doc.ocr_status === 'FAILED' || doc.ocrStatus === 'FAILED';
+
+                              if (isExtracted) {
+                                return (
+                                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                                    ✓ OCR Extracted
+                                  </span>
+                                );
+                              }
+                              if (isFailed) {
+                                return (
+                                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+                                    ✕ OCR Failed
+                                  </span>
+                                );
+                              }
                               return (
-                                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                                  ✓ OCR Extracted
+                                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                                  ⏳ Pending OCR Scan
                                 </span>
                               );
-                            }
-                            if (isFailed) {
-                              return (
-                                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
-                                  ✕ OCR Failed
-                                </span>
-                              );
-                            }
-                            return (
-                              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-                                ⏳ Pending OCR Scan
-                              </span>
-                            );
-                          })()}
+                            })()}
+                          </div>
                         </div>
                         <div className="flex items-center justify-between pt-1 text-[11px]">
                           <span style={{ color: 'var(--text-muted)' }}>{formatDate(doc.uploaded_at)}</span>
