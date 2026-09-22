@@ -21,6 +21,7 @@ class OtpVerificationScreen extends StatefulWidget {
     this.yearLevel = '',
     this.profilePicturePath,
     this.privacyConsent = false,
+    this.devOTP,
   });
 
   final String email;
@@ -33,6 +34,7 @@ class OtpVerificationScreen extends StatefulWidget {
   final String yearLevel;
   final String? profilePicturePath;
   final bool privacyConsent;
+  final String? devOTP;
 
   @override
   State<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
@@ -44,6 +46,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
   bool _isLoading = false;
   bool _isResending = false;
+  String? _activeDevOtp;
   String _selectedMethod = 'email'; // 'email' or 'phone'
   int _secondsRemaining = 300; // 5 minutes
   int _attemptsRemaining = 3;
@@ -52,6 +55,12 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   @override
   void initState() {
     super.initState();
+    _activeDevOtp = widget.devOTP;
+    if (_activeDevOtp != null && _activeDevOtp!.length == 6) {
+      for (int i = 0; i < 6; i++) {
+        _otpControllers[i].text = _activeDevOtp![i];
+      }
+    }
     _startTimer();
   }
 
@@ -187,15 +196,21 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     setState(() => _isResending = true);
 
     try {
-      await OtpService.resendOtp(email: widget.email);
+      final res = await OtpService.resendOtp(email: widget.email);
 
       if (!mounted) return;
 
       setState(() {
+        _activeDevOtp = res.devOTP ?? _activeDevOtp;
         _secondsRemaining = 300;
         _attemptsRemaining = 3;
         for (var controller in _otpControllers) {
           controller.clear();
+        }
+        if (_activeDevOtp != null && _activeDevOtp!.length == 6) {
+          for (int i = 0; i < 6; i++) {
+            _otpControllers[i].text = _activeDevOtp![i];
+          }
         }
         _isResending = false;
       });
@@ -264,6 +279,33 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 ],
               ),
             ),
+            if (_activeDevOtp != null && _activeDevOtp!.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.verified_user_outlined, color: AppColors.primary, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Demo / Verification Code: $_activeDevOtp (Auto-filled)',
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
 
             // Choose Verification Method Header

@@ -137,9 +137,10 @@ const buildApp = () => {
 
   // Pillar 9: Rate Limiting
   const rateLimit = require('express-rate-limit');
+  const isDevOrTest = process.env.NODE_ENV !== 'production';
   const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 1000,
+    max: process.env.STRESS_TEST === 'true' ? 500000 : (isDevOrTest ? 10000 : 1000),
     standardHeaders: true,
     legacyHeaders: false,
     message: {
@@ -150,7 +151,6 @@ const buildApp = () => {
   app.use('/api/', apiLimiter);
 
   // P1 FIX: Rate limiting on authentication endpoints to prevent brute force
-  const isDevOrTest = process.env.NODE_ENV !== 'production';
 
   const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -433,7 +433,7 @@ const connectMongoose = async () => {
       serverSelectionTimeoutMS: 15000,
       retryWrites: true,
       retryReads: true,
-      autoSelectFamily: false,
+      autoSelectFamily: true,
     });
     console.log('✓ [Mongoose] connected to', mongoose.connection.name);
 
@@ -461,7 +461,7 @@ const connectMongoose = async () => {
         await mongoose.connect(localFallbackUri, {
           dbName: 'iskolar',
           serverSelectionTimeoutMS: 3000,
-          autoSelectFamily: false,
+          autoSelectFamily: true,
         });
         console.log('✓ [Mongoose] connected to fallback', mongoose.connection.name);
         try {

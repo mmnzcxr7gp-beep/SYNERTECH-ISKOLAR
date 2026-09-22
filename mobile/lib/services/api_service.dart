@@ -25,7 +25,19 @@ class ApiException implements Exception {
 /// Provides static helper methods for GET, POST, PUT, and multipart uploads.
 /// All methods automatically prepend the backend base URL from [AppConstants].
 class ApiService {
-  static const Duration _defaultTimeout = Duration(seconds: 30);
+  static const Duration _defaultTimeout = Duration(seconds: 15);
+
+  // ─── Candidate Base URLs ──────────────────────────────────────────────────
+
+  static List<String> get _candidateUrls {
+    final urls = <String>[AppConstants.backendBaseUrl];
+    for (final fb in AppConstants.fallbackBackendUrls) {
+      if (!urls.contains(fb)) {
+        urls.add(fb);
+      }
+    }
+    return urls;
+  }
 
   // ─── Headers ──────────────────────────────────────────────────────────────
 
@@ -40,6 +52,74 @@ class ApiService {
     return headers;
   }
 
+  // ─── URL builder ──────────────────────────────────────────────────────────
+
+  static Uri _uriForBase(String base, String path) {
+    if (path.startsWith('http')) return Uri.parse(path);
+    final cleanBase = base.endsWith('/') ? base.substring(0, base.length - 1) : base;
+    final cleanPath = path.startsWith('/') ? path : '/$path';
+    return Uri.parse('$cleanBase$cleanPath');
+  }
+
+  // ─── Failover Executor ───────────────────────────────────────────────────
+
+  static Future<T> _executeWithFailover<T>(
+    String path,
+    Future<T> Function(Uri uri, Duration timeout) executeRequest, {
+    Duration? timeout,
+  }) async {
+    final candidates = _candidateUrls;
+    ApiException? lastApiException;
+    Object? lastError;
+    final effectiveTimeout = timeout ?? _defaultTimeout;
+
+    for (int i = 0; i < candidates.length; i++) {
+      final base = candidates[i];
+      final uri = _uriForBase(base, path);
+      try {
+        debugPrint('[ApiService] Attempting $uri (attempt ${i + 1}/${candidates.length})');
+        final result = await executeRequest(uri, effectiveTimeout);
+
+        // If this fallback succeeded and differs from current base, promote it
+        if (base != AppConstants.backendBaseUrl) {
+          debugPrint('[ApiService] Promoted working fallback to primary base URL: $base');
+          AppConstants.backendBaseUrl = base;
+        }
+
+        return result;
+      } on SocketException catch (e) {
+        debugPrint('[ApiService] Network error on $uri: $e');
+        lastError = e;
+      } on TimeoutException catch (e) {
+        debugPrint('[ApiService] Request timed out on $uri: $e');
+        lastError = e;
+      } on ApiException catch (e) {
+        // Only retry on server/gateway errors (502, 503, 504) or connection dropped
+        if (e.statusCode != null && (e.statusCode == 502 || e.statusCode == 503 || e.statusCode == 504)) {
+          debugPrint('[ApiService] Server error (${e.statusCode}) on $uri: ${e.message}');
+          lastApiException = e;
+        } else {
+          // Client error like 400, 401, 403, 409 - do NOT failover, rethrow immediately
+          rethrow;
+        }
+      } catch (e) {
+        debugPrint('[ApiService] Unexpected error on $uri: $e');
+        lastError = e;
+      }
+    }
+
+    if (lastApiException != null) {
+      throw lastApiException;
+    }
+    if (lastError is TimeoutException) {
+      throw ApiException('Request timed out. Please check your internet connection.');
+    }
+    if (lastError is SocketException) {
+      throw ApiException('Unable to connect to server. Please check your network connection.');
+    }
+    throw ApiException('Network error: ${lastError?.toString() ?? "Failed to connect"}');
+  }
+
   /// Downloads protected document bytes using Authorization: Bearer <token>.
   /// Access tokens are never appended to URLs or query parameters.
   static Future<Uint8List> downloadDocumentBytes(
@@ -47,40 +127,26 @@ class ApiService {
     required String token,
     Duration? timeout,
   }) async {
-    final uri = _uri('/documents/$documentId/download');
-    try {
-      final response = await http.get(
-        uri,
-        headers: _headers(token: token),
-      ).timeout(timeout ?? _defaultTimeout);
-
-      if (response.statusCode == 200) {
-        return response.bodyBytes;
-      } else if (response.statusCode == 401) {
-        throw ApiException('Authentication required', statusCode: 401);
-      } else if (response.statusCode == 403) {
-        throw ApiException('Forbidden document access', statusCode: 403);
-      } else if (response.statusCode == 404) {
-        throw ApiException('Document not found', statusCode: 404);
-      } else {
-        throw ApiException('Failed to download document: ${response.statusCode}', statusCode: response.statusCode);
-      }
-    } catch (e) {
-      if (e is ApiException) rethrow;
-      throw ApiException('Network error during document download: $e');
-    }
-  }
-
-  // ─── URL builder ──────────────────────────────────────────────────────────
-
-  static Uri _uri(String path) {
-    final base = AppConstants.backendBaseUrl;
-    // If the path already starts with http, use as-is
-    if (path.startsWith('http')) return Uri.parse(path);
-    // Ensure no double-slash between base and path
-    final cleanBase = base.endsWith('/') ? base.substring(0, base.length - 1) : base;
-    final cleanPath = path.startsWith('/') ? path : '/$path';
-    return Uri.parse('$cleanBase$cleanPath');
+    return _executeWithFailover(
+      '/documents/$documentId/download',
+      (uri, t) async {
+        final response = await http
+            .get(uri, headers: _headers(token: token))
+            .timeout(t);
+        if (response.statusCode == 200) {
+          return response.bodyBytes;
+        } else if (response.statusCode == 401) {
+          throw ApiException('Authentication required', statusCode: 401);
+        } else if (response.statusCode == 403) {
+          throw ApiException('Forbidden document access', statusCode: 403);
+        } else if (response.statusCode == 404) {
+          throw ApiException('Document not found', statusCode: 404);
+        } else {
+          throw ApiException('Failed to download document: ${response.statusCode}', statusCode: response.statusCode);
+        }
+      },
+      timeout: timeout,
+    );
   }
 
   // ─── GET ──────────────────────────────────────────────────────────────────
@@ -90,21 +156,16 @@ class ApiService {
     String? token,
     Duration? timeout,
   }) async {
-    try {
-      debugPrint('[ApiService.get] ${_uri(path)}');
-      final response = await http
-          .get(_uri(path), headers: _headers(token: token))
-          .timeout(timeout ?? _defaultTimeout);
-      return decodeResponseBody(response.body, response.statusCode);
-    } on SocketException {
-      throw ApiException('No internet connection');
-    } on TimeoutException {
-      throw ApiException('Request timed out');
-    } on ApiException {
-      rethrow;
-    } catch (e) {
-      throw ApiException('Network error: ${e.toString()}');
-    }
+    return _executeWithFailover(
+      path,
+      (uri, t) async {
+        final response = await http
+            .get(uri, headers: _headers(token: token))
+            .timeout(t);
+        return decodeResponseBody(response.body, response.statusCode);
+      },
+      timeout: timeout,
+    );
   }
 
   // ─── POST ─────────────────────────────────────────────────────────────────
@@ -115,25 +176,20 @@ class ApiService {
     String? token,
     Duration? timeout,
   }) async {
-    try {
-      debugPrint('[ApiService.post] ${_uri(path)}');
-      final response = await http
-          .post(
-            _uri(path),
-            headers: _headers(token: token),
-            body: body != null ? jsonEncode(body) : null,
-          )
-          .timeout(timeout ?? _defaultTimeout);
-      return decodeResponseBody(response.body, response.statusCode);
-    } on SocketException {
-      throw ApiException('No internet connection');
-    } on TimeoutException {
-      throw ApiException('Request timed out');
-    } on ApiException {
-      rethrow;
-    } catch (e) {
-      throw ApiException('Network error: ${e.toString()}');
-    }
+    return _executeWithFailover(
+      path,
+      (uri, t) async {
+        final response = await http
+            .post(
+              uri,
+              headers: _headers(token: token),
+              body: body != null ? jsonEncode(body) : null,
+            )
+            .timeout(t);
+        return decodeResponseBody(response.body, response.statusCode);
+      },
+      timeout: timeout,
+    );
   }
 
   // ─── PUT ──────────────────────────────────────────────────────────────────
@@ -144,25 +200,20 @@ class ApiService {
     String? token,
     Duration? timeout,
   }) async {
-    try {
-      debugPrint('[ApiService.put] ${_uri(path)}');
-      final response = await http
-          .put(
-            _uri(path),
-            headers: _headers(token: token),
-            body: body != null ? jsonEncode(body) : null,
-          )
-          .timeout(timeout ?? _defaultTimeout);
-      return decodeResponseBody(response.body, response.statusCode);
-    } on SocketException {
-      throw ApiException('No internet connection');
-    } on TimeoutException {
-      throw ApiException('Request timed out');
-    } on ApiException {
-      rethrow;
-    } catch (e) {
-      throw ApiException('Network error: ${e.toString()}');
-    }
+    return _executeWithFailover(
+      path,
+      (uri, t) async {
+        final response = await http
+            .put(
+              uri,
+              headers: _headers(token: token),
+              body: body != null ? jsonEncode(body) : null,
+            )
+            .timeout(t);
+        return decodeResponseBody(response.body, response.statusCode);
+      },
+      timeout: timeout,
+    );
   }
 
   // ─── Multipart Upload ─────────────────────────────────────────────────────
@@ -244,55 +295,44 @@ class ApiService {
     String? token,
     Duration? timeout,
   }) async {
-    try {
-      final uri = _uri(path);
-      debugPrint('[ApiService.multipartUpload] $method $uri');
+    return _executeWithFailover(
+      path,
+      (uri, t) async {
+        debugPrint('[ApiService.multipartUpload] $method $uri');
+        final request = http.MultipartRequest(method, uri);
 
-      final request = http.MultipartRequest(method, uri);
+        if (token != null && token.isNotEmpty) {
+          request.headers['Authorization'] = 'Bearer $token';
+        }
 
-      // Auth header
-      if (token != null && token.isNotEmpty) {
-        request.headers['Authorization'] = 'Bearer $token';
-      }
+        request.fields.addAll(fields);
 
-      // Text fields
-      request.fields.addAll(fields);
+        for (final entry in filePaths.entries) {
+          final fieldName = entry.key;
+          final value = entry.value;
 
-      // File fields
-      for (final entry in filePaths.entries) {
-        final fieldName = entry.key;
-        final value = entry.value;
-
-        if (value is List) {
-          for (final item in value) {
-            final mf = await createMultipartFile(fieldName, item);
+          if (value is List) {
+            for (final item in value) {
+              final mf = await createMultipartFile(fieldName, item);
+              if (mf != null) {
+                request.files.add(mf);
+              }
+            }
+          } else {
+            final mf = await createMultipartFile(fieldName, value);
             if (mf != null) {
               request.files.add(mf);
             }
           }
-        } else {
-          final mf = await createMultipartFile(fieldName, value);
-          if (mf != null) {
-            request.files.add(mf);
-          }
         }
-      }
 
-      final streamedResponse = await request.send().timeout(
-            timeout ?? const Duration(seconds: 60),
-          );
-      final responseBody = await streamedResponse.stream.bytesToString();
+        final streamedResponse = await request.send().timeout(t);
+        final responseBody = await streamedResponse.stream.bytesToString();
 
-      return decodeResponseBody(responseBody, streamedResponse.statusCode);
-    } on SocketException {
-      throw ApiException('No internet connection');
-    } on TimeoutException {
-      throw ApiException('Upload timed out');
-    } on ApiException {
-      rethrow;
-    } catch (e) {
-      throw ApiException('Upload error: ${e.toString()}');
-    }
+        return decodeResponseBody(responseBody, streamedResponse.statusCode);
+      },
+      timeout: timeout ?? const Duration(seconds: 60),
+    );
   }
 
   // ─── Response decoder ─────────────────────────────────────────────────────

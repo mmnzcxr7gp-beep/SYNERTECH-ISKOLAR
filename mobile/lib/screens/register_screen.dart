@@ -59,6 +59,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _birthdateController = TextEditingController();
   final _guardianController = TextEditingController();
   String? _profilePicturePath;
+  String? _receivedDevOtp;
 
   final List<String> _yearLevelOptions = [
     '1st Year',
@@ -269,7 +270,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
-      await OtpService.sendOtp(
+      final otpRes = await OtpService.sendOtp(
         email: _emailController.text.trim(),
         firstName: _firstNameController.text.trim(),
         middleName: _middleNameController.text.trim(),
@@ -281,6 +282,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
 
       setState(() {
+        _receivedDevOtp = otpRes.devOTP;
         _isLoading = false;
         _currentStep = 5; // Success / OTP Step
       });
@@ -1013,6 +1015,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   middleName: _middleNameController.text.trim(),
                   lastName: _lastNameController.text.trim(),
                   password: _passwordController.text.trim(),
+                  school: _schoolController.text.trim(),
+                  course: _courseController.text.trim(),
+                  yearLevel: _yearLevel,
+                  profilePicturePath: _profilePicturePath,
+                  privacyConsent: _privacyConsent,
+                  devOTP: _receivedDevOtp,
                 ),
               ),
             );

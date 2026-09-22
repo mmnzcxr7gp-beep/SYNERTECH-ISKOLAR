@@ -75,7 +75,7 @@ class OtpResponse {
       message: json['message'] as String? ?? '',
       email: json['email'] as String? ?? '',
       expiresIn: json['expiresIn'] as int? ?? 300,
-      devOTP: json['devOTP'] as String?,
+      devOTP: (json['devOTP'] ?? json['devOtp']) as String?,
     );
   }
 }

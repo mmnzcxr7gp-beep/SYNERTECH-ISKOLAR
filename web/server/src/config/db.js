@@ -977,7 +977,7 @@ const connectDb = async () => {
       serverSelectionTimeoutMS: 15000,
       retryWrites: true,
       retryReads: true,
-      autoSelectFamily: false,
+      autoSelectFamily: true,
     });
 
     client.on('open', () => {
@@ -1098,7 +1098,7 @@ const connectDb = async () => {
           const fallbackClient = new MongoClient(fallbackUri, {
             serverSelectionTimeoutMS: 3000,
             connectTimeoutMS: 3000,
-            autoSelectFamily: false,
+            autoSelectFamily: true,
           });
           await fallbackClient.connect();
           mongoClientInstance = fallbackClient;

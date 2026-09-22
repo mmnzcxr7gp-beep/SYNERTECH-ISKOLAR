@@ -13,7 +13,8 @@
     "build": "npm --prefix web/client install && npm --prefix web/client run build",
     "dev": "concurrently \"npm:server:dev\" \"npm:client\"",
     "test:server": "npm --prefix web/server test",
-    "test:mobile": "cd mobile && flutter test"
+    "test:mobile": "cd mobile && flutter test",
+    "check:mongo": "npm --prefix web/server run check:mongo"
   },
   "devDependencies": {
     "concurrently": "^8.0.1",

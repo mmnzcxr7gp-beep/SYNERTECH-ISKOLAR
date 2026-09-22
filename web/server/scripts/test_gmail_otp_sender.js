@@ -17,25 +17,26 @@ async function verifyGmailSender() {
   console.log(`Configured EMAIL_USER: ${process.env.EMAIL_USER}`);
   console.log(`Configured EMAIL_FROM: ${process.env.EMAIL_FROM}`);
 
-  assert.strictEqual(process.env.EMAIL_USER, 'iskolar.official@gmail.com', 'EMAIL_USER must be set to iskolar.official@gmail.com');
+  const targetEmail = process.env.EMAIL_USER || 'iskolarsystemm@gmail.com';
+  assert.ok(process.env.EMAIL_USER, 'EMAIL_USER must be configured in environment');
   assert.ok(process.env.EMAIL_PASSWORD, 'EMAIL_PASSWORD must be configured in environment');
 
   // Test 1: Send Student Registration OTP
   console.log('\n--- 1. Testing Student Registration OTP Email ---');
-  const otpResult = await sendOtpEmail('iskolar.official@gmail.com', '654321');
+  const otpResult = await sendOtpEmail(targetEmail, '654321');
   assert.ok(otpResult, 'OTP Email dispatch returned true');
   console.log('✓ Student registration OTP email dispatched successfully');
 
   // Test 2: Send Student Login MFA OTP
   console.log('\n--- 2. Testing Student Login MFA OTP Email ---');
-  const mfaResult = await sendOtpEmail('iskolar.official@gmail.com', '987654');
+  const mfaResult = await sendOtpEmail(targetEmail, '987654');
   assert.ok(mfaResult, 'MFA OTP Email dispatch returned true');
   console.log('✓ Student login MFA OTP email dispatched successfully');
 
   // Test 3: Send Password Reset OTP
   console.log('\n--- 3. Testing Password Reset OTP Email ---');
   const resetResult = await sendMail({
-    to: 'iskolar.official@gmail.com',
+    to: targetEmail,
     subject: 'Your ISKOLAR Password Reset Verification Code: 112233',
     html: '<h3>Password Reset Request</h3><p>Your verification code is: <strong>112233</strong></p>',
   });

@@ -439,6 +439,9 @@ export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLo
       }
 
       setMaskedEmail(body.email || regEmail)
+      if (body.devOtp || body.devOTP) {
+        setOtp(body.devOtp || body.devOTP)
+      }
       setRegStep(2)
       setMsg('Verification code sent to your organization email. Please enter it below.')
       setMsgType('success')
@@ -447,6 +450,39 @@ export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLo
       console.error('Register error:', error)
       setMsg('Network error. Please check if the backend server is running.')
       setMsgType('error')
+      setLoading(false)
+    }
+  }
+
+  // Handle Resend OTP for Provider Registration
+  async function handleResendProviderOtp() {
+    setMsg('')
+    setLoading(true)
+    try {
+      const res = await resilientFetch('/api/auth/resend-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Client-Platform': 'web',
+        },
+        body: JSON.stringify({ email: regEmail, purpose: 'registration' }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setMsg(body.message || 'Failed to resend verification code.')
+        setMsgType('error')
+        setLoading(false)
+        return
+      }
+      if (body.devOtp || body.devOTP) {
+        setOtp(body.devOtp || body.devOTP)
+      }
+      setMsg('A new verification code has been sent to your email.')
+      setMsgType('success')
+    } catch (e) {
+      setMsg('Network error while resending verification code.')
+      setMsgType('error')
+    } finally {
       setLoading(false)
     }
   }
@@ -1177,6 +1213,17 @@ export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLo
                   >
                     {loading ? 'Verifying OTP...' : 'Verify Email & Continue'}
                   </button>
+
+                  <div className="text-center pt-2">
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={handleResendProviderOtp}
+                      className="text-xs font-semibold text-[var(--primary)] hover:underline disabled:opacity-50"
+                    >
+                      Resend Verification Code
+                    </button>
+                  </div>
                 </form>
               ) : (
                 /* PENDING ADMINISTRATOR REVIEW NOTICE (STEP 3) */
