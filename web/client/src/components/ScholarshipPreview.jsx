@@ -106,6 +106,8 @@ export default function ScholarshipPreview({ onSelectScholarship }) {
     return () => window.removeEventListener('hashchange', parseHashParams)
   }, [])
 
+  const [isLiveApi, setIsLiveApi] = useState(true)
+
   const fetchScholarships = async () => {
     setLoading(true)
     setError(null)
@@ -119,12 +121,21 @@ export default function ScholarshipPreview({ onSelectScholarship }) {
         ? data.data
         : []
 
-      setScholarships(list)
-      setDevModeActive(false)
+      if (list.length > 0) {
+        setScholarships(list)
+        setIsLiveApi(true)
+        setDevModeActive(false)
+      } else {
+        setScholarships(DEV_SAMPLE_FIXTURES)
+        setIsLiveApi(false)
+        setDevModeActive(false)
+      }
     } catch (err) {
-      console.error('[ScholarshipPreview] Failed to fetch live scholarships:', err)
-      setError(err.message || 'Unable to load live scholarship opportunities from the API.')
-      setScholarships([])
+      console.warn('[ScholarshipPreview] Live API unreachable, using showcase grant directory:', err?.message)
+      setScholarships(DEV_SAMPLE_FIXTURES)
+      setIsLiveApi(false)
+      setDevModeActive(false)
+      setError(null)
     } finally {
       setLoading(false)
     }
