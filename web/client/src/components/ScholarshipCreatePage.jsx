@@ -125,9 +125,9 @@ export default function ScholarshipCreatePage({ token, onPublished }) {
           <span
             className="inline-flex items-center gap-2 rounded-full px-3.5 py-1 text-xs font-extrabold uppercase tracking-wider border mb-2"
             style={{
-              backgroundColor: 'rgba(255, 109, 41, 0.10)',
-              color: 'var(--primary)',
-              borderColor: 'rgba(255, 109, 41, 0.25)'
+              backgroundColor: 'rgba(48, 91, 254, 0.10)',
+              color: '#305BFE',
+              borderColor: 'rgba(48, 91, 254, 0.25)'
             }}
           >
             Grant Management
@@ -161,9 +161,9 @@ export default function ScholarshipCreatePage({ token, onPublished }) {
               <div
                 className="h-8 w-8 rounded-xl border grid place-items-center font-bold text-sm"
                 style={{
-                  backgroundColor: 'rgba(255, 109, 41, 0.15)',
-                  borderColor: 'rgba(255, 109, 41, 0.30)',
-                  color: 'var(--primary)'
+                  backgroundColor: 'rgba(48, 91, 254, 0.15)',
+                  borderColor: 'rgba(48, 91, 254, 0.30)',
+                  color: '#305BFE'
                 }}
               >
                 1
@@ -378,9 +378,9 @@ export default function ScholarshipCreatePage({ token, onPublished }) {
               <div
                 className="h-8 w-8 rounded-xl border grid place-items-center font-bold text-sm"
                 style={{
-                  backgroundColor: 'rgba(255, 109, 41, 0.15)',
-                  borderColor: 'rgba(255, 109, 41, 0.30)',
-                  color: 'var(--primary)'
+                  backgroundColor: 'rgba(48, 91, 254, 0.15)',
+                  borderColor: 'rgba(48, 91, 254, 0.30)',
+                  color: '#305BFE'
                 }}
               >
                 2
@@ -536,9 +536,9 @@ export default function ScholarshipCreatePage({ token, onPublished }) {
               <div
                 className="h-8 w-8 rounded-xl border grid place-items-center font-bold text-sm"
                 style={{
-                  backgroundColor: 'rgba(255, 109, 41, 0.15)',
-                  borderColor: 'rgba(255, 109, 41, 0.30)',
-                  color: 'var(--primary)'
+                  backgroundColor: 'rgba(48, 91, 254, 0.15)',
+                  borderColor: 'rgba(48, 91, 254, 0.30)',
+                  color: '#305BFE'
                 }}
               >
                 3

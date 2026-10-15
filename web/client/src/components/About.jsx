@@ -1,42 +1,15 @@
 import React from 'react'
-import { ShieldIcon, LockIcon, DocumentIcon, ChartIcon, CheckIcon } from './Icons'
-
-const trustPillars = [
-  {
-    icon: <LockIcon className="w-5 h-5 text-[#305BFE]" />,
-    title: 'Private Document Storage',
-    description: 'Uploaded applicant records are stored in private Cloudflare R2 cloud object storage with SHA-256 integrity hashing and strict bearer token ownership validation.',
-  },
-  {
-    icon: <CheckIcon className="w-5 h-5 text-emerald-600" />,
-    title: 'Student Confirmation of OCR Data',
-    description: 'Optical character recognition assists by reading document fields, but students review, edit, and confirm every extracted value before final submission.',
-  },
-  {
-    icon: <ShieldIcon className="w-5 h-5 text-sky-600" />,
-    title: 'Human Review Authority',
-    description: 'Automated rules assist pre-screening and eligibility calculations, but final approval, rejection, and award decisions are strictly human-controlled.',
-  },
-  {
-    icon: <ChartIcon className="w-5 h-5 text-indigo-600" />,
-    title: 'Role-Based Access Separation',
-    description: 'Strict client and platform isolation prevents horizontal privilege escalation. Students operate on Flutter mobile; sponsors manage reviews on the web portal.',
-  },
-  {
-    icon: <DocumentIcon className="w-5 h-5 text-[#305BFE]" />,
-    title: 'Application Audit History',
-    description: 'Every state transition, document resubmission request, and decision note is recorded in an immutable, timestamped audit log for academic compliance.',
-  },
-]
+import { ShieldIcon, LockIcon, DocumentIcon, CheckCircleIcon, ArrowRightIcon } from './Icons'
 
 export default function About() {
   return (
     <section id="safety" className="py-16 md:py-24 section-warm" aria-labelledby="safety-heading">
       <div className="max-w-7xl mx-auto px-4 md:px-8">
-        
-        {/* Section Header */}
-        <div className="max-w-3xl mb-14 space-y-3">
-          <div className="inline-flex items-center gap-2 rounded-full px-3.5 py-1 text-xs font-semibold border"
+
+        {/* Section Context Header */}
+        <div className="max-w-3xl mb-12 space-y-3">
+          <div
+            className="inline-flex items-center gap-2 rounded-full px-3.5 py-1 text-xs font-semibold border"
             style={{
               backgroundColor: 'var(--color-bg-elevated)',
               borderColor: 'var(--color-border)',
@@ -47,81 +20,113 @@ export default function About() {
             <span>Security & Data Governance</span>
           </div>
 
-          <h2 id="safety-heading" className="section-heading">
-            Privacy, trust, and human-in-the-loop review.
+          <h2 id="safety-heading" className="section-heading text-3xl sm:text-4xl font-black tracking-tight text-[var(--color-text-heading)]">
+            Privacy, Institutional Trust, and Human-in-the-Loop Review
           </h2>
 
-          <p className="body-text text-base md:text-lg">
-            ISKOLAR implements transparent data safeguards, student verification steps, and role-based permissions throughout the evaluation cycle.
+          <p className="body-text text-base md:text-lg leading-relaxed">
+            ISKOLAR enforces strict role boundaries, encrypted document storage, and human decision-making throughout the scholarship evaluation cycle.
           </p>
         </div>
 
-        {/* 2-Column Grid: Pillars Left, Architecture Card Right */}
-        <div className="grid gap-8 lg:grid-cols-[1.25fr_1fr] items-start">
-          
-          {/* Left Column: Trust Pillars List */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            {trustPillars.map((item, idx) => (
-              <div
-                key={item.title}
-                className={`modular-card p-5 sm:p-6 space-y-2.5 ${idx === 4 ? 'sm:col-span-2' : ''}`}
-                style={{ backgroundColor: 'var(--color-bg-elevated)' }}
-              >
-                <div className="flex items-center gap-2.5">
-                  <div
-                    className="h-8 w-8 rounded-lg flex items-center justify-center border"
-                    style={{
-                      backgroundColor: 'var(--color-bg-panel)',
-                      borderColor: 'var(--color-border)',
-                    }}
-                  >
-                    {item.icon}
-                  </div>
-                  <h3 className="card-heading text-base font-bold">
-                    {item.title}
-                  </h3>
-                </div>
+        {/* Editorial Layout: Narrative Dossier Left, Compliance Desk Card Right */}
+        <div className="grid gap-10 lg:grid-cols-[1.3fr_1fr] items-start">
 
-                <p className="body-text text-xs sm:text-sm leading-relaxed">
-                  {item.description}
-                </p>
+          {/* Narrative Dossier */}
+          <div className="space-y-6">
+            <div
+              className="card-modern p-6 sm:p-7 space-y-3"
+              style={{ backgroundColor: 'var(--color-bg-elevated)' }}
+            >
+              <div className="flex items-center gap-2.5 text-xs font-bold text-[#305BFE]">
+                <LockIcon className="w-4 h-4 shrink-0" />
+                <span>1. Private Document Storage with Pre-Signed Access</span>
               </div>
-            ))}
+              <h3 className="card-heading text-lg font-bold">
+                No Public Document Directories
+              </h3>
+              <p className="body-text text-xs sm:text-sm leading-relaxed">
+                Applicant transcripts, Certificates of Registration, and family income certificates are stored in private Cloudflare R2 object storage. Direct public file browsing is strictly prohibited. Download and inspection URLs are short-lived, pre-signed tokens granted only to authenticated reviewers with explicit scholarship authority.
+              </p>
+            </div>
+
+            <div
+              className="card-modern p-6 sm:p-7 space-y-3"
+              style={{ backgroundColor: 'var(--color-bg-elevated)' }}
+            >
+              <div className="flex items-center gap-2.5 text-xs font-bold text-emerald-600">
+                <CheckCircleIcon className="w-4 h-4 shrink-0" />
+                <span>2. Student Confirmation of OCR-Extracted Fields</span>
+              </div>
+              <h3 className="card-heading text-lg font-bold">
+                Transparent Machine Extraction
+              </h3>
+              <p className="body-text text-xs sm:text-sm leading-relaxed">
+                Optical character recognition (Tesseract OCR) assists by reading document fields to reduce manual typing errors. However, students review, verify, and confirm all extracted GWA and income numbers before final application submission. OCR output is never treated as authoritative truth without human validation.
+              </p>
+            </div>
+
+            <div
+              className="card-modern p-6 sm:p-7 space-y-3"
+              style={{ backgroundColor: 'var(--color-bg-elevated)' }}
+            >
+              <div className="flex items-center gap-2.5 text-xs font-bold text-sky-600">
+                <ShieldIcon className="w-4 h-4 shrink-0" />
+                <span>3. Human-Controlled Decision Authority</span>
+              </div>
+              <h3 className="card-heading text-lg font-bold">
+                Automated Rules Assist, Humans Decide
+              </h3>
+              <p className="body-text text-xs sm:text-sm leading-relaxed">
+                Eligibility algorithms provide sorting and pre-screening assistance to committee reviewers, but no applicant is approved, rejected, or disqualified by an automated script. Every final grant award requires explicit administrative signature and human decision-making.
+              </p>
+            </div>
           </div>
 
-          {/* Right Column: Verified Standard Card */}
+          {/* Compliance & Standards Desk Card */}
           <div
-            className="modular-card p-6 sm:p-8 space-y-5"
+            className="card-modern p-6 sm:p-8 space-y-5"
             style={{ backgroundColor: 'var(--color-bg-elevated)' }}
           >
-            <div className="flex items-center justify-between pb-4 border-b" style={{ borderColor: 'var(--color-border)' }}>
-              <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-heading)]">
-                Data Protection Protocol
-              </span>
-              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                Active Standards
+            <div className="pb-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--color-border)' }}>
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#305BFE] block">
+                  Legal & Technical Baseline
+                </span>
+                <h4 className="text-base font-bold text-[var(--color-text-heading)]">
+                  Data Privacy Act Compliance
+                </h4>
+              </div>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">
+                RA 10173
               </span>
             </div>
 
-            <div className="space-y-3.5 text-xs sm:text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+            <div className="space-y-4 text-xs body-text leading-relaxed">
               <div className="p-3.5 rounded-xl border space-y-1" style={{ backgroundColor: 'var(--color-bg-panel)', borderColor: 'var(--color-border)' }}>
-                <div className="font-bold text-[var(--color-text-heading)]">1. Pre-Registration Privacy Consent</div>
-                <p className="text-xs">Students and providers must explicitly accept data processing policies prior to registration.</p>
+                <span className="font-bold text-[var(--color-text-heading)] block">Explicit Consent Recording</span>
+                <p>Both student applicants and participating providers must give explicit consent to privacy policies prior to account creation.</p>
               </div>
 
               <div className="p-3.5 rounded-xl border space-y-1" style={{ backgroundColor: 'var(--color-bg-panel)', borderColor: 'var(--color-border)' }}>
-                <div className="font-bold text-[var(--color-text-heading)]">2. No Plaintext Document Storage</div>
-                <p className="text-xs">Direct public directory access is disabled. File retrieval requires authenticated API token validation.</p>
+                <span className="font-bold text-[var(--color-text-heading)] block">Role Separation & Isolation</span>
+                <p>Students operate exclusively on Flutter mobile; scholarship providers and administrators manage reviews on the web portal. Cross-client horizontal privilege escalation is prevented at the API middleware layer.</p>
               </div>
 
               <div className="p-3.5 rounded-xl border space-y-1" style={{ backgroundColor: 'var(--color-bg-panel)', borderColor: 'var(--color-border)' }}>
-                <div className="font-bold text-[var(--color-text-heading)]">3. Auditable Decision Authority</div>
-                <p className="text-xs">Automated scoring serves as a sorting aid; all final awarding decisions are signed by authorized reviewers.</p>
+                <span className="font-bold text-[var(--color-text-heading)] block">Immutable Audit Trails</span>
+                <p>Every review state transition, interview appointment, and decision update generates a permanent, timestamped audit entry recording actor ID and context.</p>
               </div>
             </div>
 
-            <div className="pt-2 text-xs font-mono" style={{ color: 'var(--color-text-muted)' }}>
-              <span>Compliance: Philippine Data Privacy Act (RA 10173) Architecture Baseline</span>
+            <div className="pt-2 border-t flex flex-col gap-2" style={{ borderColor: 'var(--color-border)' }}>
+              <a
+                href="#privacy"
+                className="btn-secondary text-xs font-bold py-2.5 px-4 text-center justify-center flex items-center gap-1.5"
+              >
+                <span>Read Full Privacy Policy</span>
+                <ArrowRightIcon className="w-3.5 h-3.5" />
+              </a>
             </div>
           </div>
 

@@ -168,9 +168,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                         ),
                                         const SizedBox(height: 6),
                                         Text(
-                                          notif['createdAt'] != null
-                                              ? DateTime.parse(notif['createdAt']).toLocal().toString().substring(0, 16)
-                                              : '',
+                                          () {
+                                            final raw = notif['createdAt']?.toString();
+                                            if (raw == null || raw.isEmpty) return '';
+                                            final dt = DateTime.tryParse(raw)?.toLocal().toString();
+                                            if (dt == null) return '';
+                                            return dt.length >= 16 ? dt.substring(0, 16) : dt;
+                                          }(),
                                           style: const TextStyle(color: Colors.white30, fontSize: 10),
                                         ),
                                       ],
@@ -197,8 +201,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final type = (notif['type'] as String? ?? 'general').toLowerCase();
     final title = notif['title'] as String? ?? 'Notification Details';
     final message = notif['message'] as String? ?? notif['body'] as String? ?? '';
-    final createdAt = notif['createdAt'] != null
-        ? DateTime.tryParse(notif['createdAt'].toString())?.toLocal().toString().substring(0, 16) ?? ''
+    final parsedCreated = notif['createdAt'] != null
+        ? DateTime.tryParse(notif['createdAt'].toString())?.toLocal().toString()
+        : null;
+    final createdAt = parsedCreated != null
+        ? (parsedCreated.length >= 16 ? parsedCreated.substring(0, 16) : parsedCreated)
         : '';
     final data = notif['data'] is Map ? notif['data'] as Map : {};
     final route = notif['route'] as String? ?? data['route'] as String?;

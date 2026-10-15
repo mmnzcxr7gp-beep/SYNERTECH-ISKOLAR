@@ -94,9 +94,19 @@ class ApiService {
         debugPrint('[ApiService] Request timed out on $uri: $e');
         lastError = e;
       } on ApiException catch (e) {
-        // Only retry on server/gateway errors (502, 503, 504) or connection dropped
-        if (e.statusCode != null && (e.statusCode == 502 || e.statusCode == 503 || e.statusCode == 504)) {
-          debugPrint('[ApiService] Server error (${e.statusCode}) on $uri: ${e.message}');
+        // Retry on server/gateway errors (502, 503, 504) or dead proxy 404s (Render no-server)
+        final isDeadServer = e.statusCode != null && (
+          e.statusCode == 502 ||
+          e.statusCode == 503 ||
+          e.statusCode == 504 ||
+          (e.statusCode == 404 && (
+            e.message.toLowerCase().contains('not found') ||
+            e.message.toLowerCase().contains('no-server') ||
+            e.message.toLowerCase().contains('cannot')
+          ))
+        );
+        if (isDeadServer) {
+          debugPrint('[ApiService] Server unreachable (${e.statusCode}) on $uri: ${e.message}, failing over');
           lastApiException = e;
         } else {
           // Client error like 400, 401, 403, 409 - do NOT failover, rethrow immediately

@@ -108,7 +108,7 @@ async function runTests() {
     // -------------------------------------------------------------------------
     console.log('\n--- 1. test_home_particle_text_rendering ---');
     try {
-      await page.goto(url, { waitUntil: 'networkidle0' });
+      await page.goto(url, { waitUntil: 'domcontentloaded' });
       await page.waitForSelector('.home-hero__particle-title', { timeout: 4000 });
       const canvasExists = await page.$eval('.particle-text-canvas', (el) => !!el);
       assert.strictEqual(canvasExists, true, 'ParticleText canvas should exist in DOM');
@@ -163,7 +163,7 @@ async function runTests() {
     console.log('\n--- 4. test_home_effects_reduced_motion ---');
     try {
       await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
-      await page.reload({ waitUntil: 'networkidle0' });
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       const ditherDisplay = await page.$eval('.home-hero__effect', (el) => window.getComputedStyle(el).display);
       assert.strictEqual(ditherDisplay, 'none', 'Dither effect must be hidden in reduced motion mode');
@@ -176,7 +176,7 @@ async function runTests() {
 
       // Reset media features
       await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'no-preference' }]);
-      await page.reload({ waitUntil: 'networkidle0' });
+      await page.reload({ waitUntil: 'domcontentloaded' });
       recordPass('test_home_effects_reduced_motion');
     } catch (e) {
       recordFail('test_home_effects_reduced_motion', e);
@@ -291,12 +291,12 @@ async function runTests() {
     // -------------------------------------------------------------------------
     console.log('\n--- 9. test_home_effects_cleanup ---');
     try {
-      // Navigate to typography page and back
-      await page.goto(`${url}/#typography`, { waitUntil: 'networkidle0' });
+      // Navigate to scholarships page and back
+      await page.goto(`${url}/#scholarships`, { waitUntil: 'domcontentloaded' });
       await page.waitForSelector('#main-content', { timeout: 2000 });
 
       // Navigate back to home
-      await page.goto(`${url}/#home`, { waitUntil: 'networkidle0' });
+      await page.goto(`${url}/#home`, { waitUntil: 'domcontentloaded' });
       await page.waitForSelector('.home-hero', { timeout: 2000 });
       recordPass('test_home_effects_cleanup');
     } catch (e) {

@@ -15,7 +15,7 @@ export default function Footer() {
         }
       })
       .catch(() => {
-        setSystemStatus('operational') // local dev default
+        setSystemStatus('unavailable')
       })
   }, [])
 
@@ -30,7 +30,7 @@ export default function Footer() {
           <div className="space-y-4">
             <IskolarLogo size="sm" />
             <p className="body-text text-sm max-w-sm">
-              SYNERTECH ISKOLAR 2.0 is an academic evaluation platform connecting Filipino students with verified scholarship sponsors through OCR-assisted validation and transparent review.
+              ISKOLAR is an academic scholarship desk connecting Filipino college students with verified scholarship providers through transparent applications, document-assisted verification, and structured evaluation.
             </p>
             
             {/* Live System Status Badge */}
@@ -41,8 +41,26 @@ export default function Footer() {
                 color: 'var(--color-text-secondary)'
               }}
             >
-              <span className={`h-2 w-2 rounded-full ${systemStatus === 'operational' ? 'bg-emerald-500' : 'bg-amber-500'} animate-pulse`}></span>
-              <span>System: {systemStatus === 'operational' ? 'All Systems Operational' : 'Checking Status'}</span>
+              <span className={`h-2 w-2 rounded-full ${
+                systemStatus === 'operational'
+                  ? 'bg-emerald-500 animate-pulse'
+                  : systemStatus === 'degraded'
+                  ? 'bg-amber-500 animate-pulse'
+                  : systemStatus === 'unavailable'
+                  ? 'bg-rose-500'
+                  : 'bg-sky-500 animate-pulse'
+              }`}></span>
+              <span>
+                System: {
+                  systemStatus === 'operational'
+                    ? 'All Systems Operational'
+                    : systemStatus === 'degraded'
+                    ? 'Performance Degraded'
+                    : systemStatus === 'unavailable'
+                    ? 'Server Offline'
+                    : 'Checking Status...'
+                }
+              </span>
             </div>
           </div>
 
@@ -87,14 +105,14 @@ export default function Footer() {
 
         </div>
 
-        {/* Bottom Copyright & Disclaimer Row */}
+        {/* Bottom Copyright & Attribution Row */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>
-          <div>
-            © 2026 SYNERTECH ISKOLAR. Capstone Academic Evaluation Platform. All rights reserved.
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+            <span>© 2026 ISKOLAR. All rights reserved.</span>
+            <span className="hidden sm:inline">•</span>
+            <span className="font-semibold text-[var(--color-text-heading)]">Created and developed by Sam Irian Villaluna · SYNERTECH</span>
           </div>
           <div className="flex flex-wrap gap-4">
-            <a href="#typography" className="hover:text-[#305BFE] transition font-semibold">Typography System</a>
-            <span>•</span>
             <a href="#privacy" className="hover:text-[#305BFE] transition">Privacy Policy</a>
             <span>•</span>
             <a href="#terms" className="hover:text-[#305BFE] transition">Terms of Use</a>

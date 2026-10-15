@@ -152,9 +152,9 @@ export default function DocumentVerificationPage({ token }) {
           <span
             className="inline-flex items-center gap-2 rounded-full px-3.5 py-1 text-xs font-extrabold uppercase tracking-wider border mb-2"
             style={{
-              backgroundColor: 'rgba(255, 109, 41, 0.10)',
-              color: 'var(--primary)',
-              borderColor: 'rgba(255, 109, 41, 0.25)'
+              backgroundColor: 'rgba(48, 91, 254, 0.10)',
+              color: '#305BFE',
+              borderColor: 'rgba(48, 91, 254, 0.25)'
             }}
           >
             Verification & Compliance
@@ -281,7 +281,7 @@ export default function DocumentVerificationPage({ token }) {
                         onClick={() => setCurrentPage(pageNum)}
                         className={`min-w-[32px] h-8 rounded-xl text-xs font-bold transition border cursor-pointer ${
                           currentPage === pageNum
-                            ? 'bg-gradient-to-r from-[#305BFE] to-[#4F96FF] text-white border-[#305BFE] shadow-sm'
+                            ? 'bg-[#305BFE] text-white border-[#305BFE] shadow-sm'
                             : 'hover:bg-[var(--color-surface-panel)]'
                         }`}
                         style={{
@@ -418,7 +418,7 @@ export default function DocumentVerificationPage({ token }) {
 
                     {ocrData.mismatches && ocrData.mismatches.length > 0 ? (
                       <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-700 dark:text-rose-300">
-                        <p className="font-bold text-[11px] mb-1">⚠️ Discrepancies Detected for Review:</p>
+                        <p className="font-bold text-[11px] mb-1">Discrepancies Detected for Review:</p>
                         {ocrData.mismatches.map((m, idx) => (
                           <p key={idx} className="text-[11px]">
                             • {m.field}: Profile states "{m.profile}", document states "{m.document}"
@@ -427,7 +427,7 @@ export default function DocumentVerificationPage({ token }) {
                       </div>
                     ) : (
                       <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300">
-                        ✓ Document credentials cross-checked and verified against student candidate profile.
+                        Document credentials cross-checked and verified against student candidate profile.
                       </div>
                     )}
                   </div>

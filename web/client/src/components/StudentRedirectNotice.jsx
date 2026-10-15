@@ -62,9 +62,17 @@ export default function StudentRedirectNotice({ user, onLogout }) {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <a
+            href="/downloads/iskolar-student.apk"
+            download="iskolar-student.apk"
+            className="btn-action w-full sm:w-auto text-center justify-center flex items-center gap-2"
+          >
+            <PhoneIcon className="w-4 h-4" />
+            <span>Download Android App</span>
+          </a>
           <button
             onClick={onLogout}
-            className="w-full sm:w-auto px-8 py-3 rounded-xl font-bold text-xs tracking-wider uppercase bg-rose-500/15 text-rose-400 border border-rose-500/30 hover:bg-rose-500/25 transition shadow-sm cursor-pointer"
+            className="btn-secondary w-full sm:w-auto text-center justify-center"
           >
             Sign Out
           </button>

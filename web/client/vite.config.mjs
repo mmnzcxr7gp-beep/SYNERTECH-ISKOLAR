@@ -68,7 +68,6 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          three: ['three'],
           sentry: ['@sentry/react'],
           vendor: ['react', 'react-dom', 'framer-motion', 'socket.io-client'],
         },

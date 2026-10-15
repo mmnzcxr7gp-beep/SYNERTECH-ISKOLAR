@@ -42,18 +42,18 @@ export default function IskolarLogo({ size = 'md', showText = true, className = 
           strokeLinecap="round"
           strokeLinejoin="round"
         >
-          <path d="M22 10v6M2 10l10-5 10 5-10 5z" fill="rgba(255, 109, 41, 0.2)" />
+          <path d="M22 10v6M2 10l10-5 10 5-10 5z" fill="rgba(48, 91, 254, 0.2)" />
           <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5" />
         </svg>
       </div>
 
       {showText && (
         <div className="flex flex-col">
-          <span className={`${textSize} font-black tracking-wider text-[var(--text-heading,#0D1E3B)]`}>
+          <span className={`${textSize} font-black tracking-tight text-[var(--color-text-heading,#172033)]`}>
             ISKOLAR
           </span>
-          <span className="text-[10px] font-bold tracking-widest text-[var(--text-muted,#6B7C96)] uppercase -mt-1">
-            Scholarship App
+          <span className="text-[10px] font-semibold tracking-wider text-[var(--color-text-secondary,#68758A)] uppercase -mt-0.5">
+            Scholarship Desk
           </span>
         </div>
       )}

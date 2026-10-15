@@ -1,143 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { API_BASE_URL } from '../config/api'
-
-// Mandatory Pre-Registration Privacy Policy Modal Component
-function PrivacyPolicyModal({ open, onCancel, onAgree }) {
-  const privacyRef = useRef(null)
-
-  useEffect(() => {
-    if (!open) return
-    const handleKey = (e) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation()
-        onCancel?.()
-      }
-    }
-    window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
-  }, [open, onCancel])
-
-  if (!open) return null
-
-  return (
-    <motion.div
-      className="fixed inset-0 z-50 grid place-items-center px-4 py-6 overflow-y-auto"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-    >
-      <div
-        className="fixed inset-0 bg-black/80 backdrop-blur-md"
-        onClick={onCancel}
-      />
-
-      <motion.div
-        ref={privacyRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="privacy-policy-title"
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 10 }}
-        className="relative z-10 w-full max-w-lg rounded-[2.5rem] p-6 md:p-8 shadow-2xl my-auto border border-slate-700/80 bg-[#161316] text-white flex flex-col max-h-[85vh]"
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-          <div>
-            <h3 id="privacy-policy-title" className="text-xl font-black text-white">Privacy Policy</h3>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>Please review and accept our Data Privacy terms before creating an account.</p>
-          </div>
-          <button
-            onClick={onCancel}
-            className="text-lg font-bold p-1 transition"
-            style={{ color: 'var(--color-text-muted)' }}
-            aria-label="Cancel and close privacy policy"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Scrollable Policy Body */}
-        <div
-          className="my-4 overflow-y-auto pr-2 space-y-4 text-xs leading-relaxed max-h-[45vh] p-4 rounded-2xl border"
-          style={{
-            backgroundColor: 'var(--color-surface-panel)',
-            borderColor: 'var(--color-border)',
-            color: 'var(--color-text-secondary)'
-          }}
-        >
-          <p className="font-bold text-sm" style={{ color: 'var(--color-text-heading)' }}>SYNERTECH ISKOLAR PRIVACY POLICY</p>
-          <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>Effective Date: August 2026</p>
-
-          <div className="space-y-2">
-            <h4 className="font-bold" style={{ color: 'var(--color-text-primary)' }}>1. Introduction & Compliance</h4>
-            <p>
-              SYNERTECH ISKOLAR ("we", "our", or "platform") is committed to safeguarding personal data in full compliance with the Data Privacy Act of 2012 (RA 10173). This policy governs the processing of personal data for users registering through our platform.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <h4 className="font-bold text-slate-200">2. Information We Collect</h4>
-            <p>
-              We collect organization names, legal registration details, authorized representative names, official email addresses, mobile numbers, business locations, and account access credentials required for scholarship provider verification.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <h4 className="font-bold text-slate-200">3. Purpose of Processing</h4>
-            <p>
-              Collected data is processed strictly to: (a) Verify organization authenticity; (b) Enable creation and management of scholarship opportunities; (c) Review student applications; and (d) Deliver essential account notifications and MFA security codes.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <h4 className="font-bold text-slate-200">4. Confidentiality & Third-Party Disclosure</h4>
-            <p>
-              Provider information is made visible strictly to authorized administrators for verification and to student applicants reviewing grant information. Data is never rented or sold to third parties.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <h4 className="font-bold text-slate-200">5. Security & Storage</h4>
-            <p>
-              All account information is transmitted over encrypted HTTPS connections and stored securely in protected database infrastructure. Passwords are hashed using bcrypt with salt rounds.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <h4 className="font-bold text-slate-200">6. Declaration of Consent</h4>
-            <p>
-              By selecting "I Agree and Create Account", you explicitly confirm that you are authorized to represent your organization and consent to the processing of data as described herein.
-            </p>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-end border-t border-slate-800">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="w-full sm:w-auto px-6 py-3 rounded-xl font-bold text-xs tracking-wider uppercase bg-slate-800 text-slate-300 hover:bg-slate-700 transition"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onAgree}
-            className="w-full sm:w-auto px-6 py-3 rounded-xl font-bold text-xs tracking-wider uppercase text-white shadow-lg transition hover:brightness-110"
-            style={{ background: 'var(--primary, #305BFE)' }}
-          >
-            I Agree and Create Account
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
-  )
-}
+import IskolarLogo from './IskolarLogo'
+import {
+  BuildingIcon,
+  UsersIcon,
+  LockIcon,
+  ShieldIcon,
+  CheckCircleIcon,
+  AlertTriangleIcon,
+  ClockIcon,
+  ArrowRightIcon,
+  CheckIcon
+} from './Icons'
 
 export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLogin }) {
-  // Focus containment & accessibility refs (SEC-09)
+  // Focus containment & accessibility refs
   const modalRef = useRef(null)
   const previousFocusRef = useRef(null)
 
@@ -195,8 +73,8 @@ export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLo
 
   // Mode: 'login' | 'register'
   const [mode, setMode] = useState('login')
-  
-  // Selected Role for Login: 'provider' | 'admin' (Default: 'provider')
+
+  // Selected Role for Login: 'provider' | 'admin'
   const [selectedRole, setSelectedRole] = useState('provider')
 
   // Sign In Fields
@@ -204,44 +82,51 @@ export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLo
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
 
-  // Provider Registration Fields (Step 1)
+  // Multi-Step Registration Flow (Steps 1 through 6)
+  // 1. Organization
+  // 2. Representative and contact details
+  // 3. Account security
+  // 4. Consent and review
+  // 5. Email verification
+  // 6. Approval status
+  const [regSubStep, setRegSubStep] = useState(1)
+
+  // Step 1: Organization
   const [orgName, setOrgName] = useState('')
   const [orgType, setOrgType] = useState('Foundation')
   const [orgTypeOther, setOrgTypeOther] = useState('')
   const [orgRegistrationNumber, setOrgRegistrationNumber] = useState('')
   const [website, setWebsite] = useState('')
-
-  // Address Fields
   const [addressLine, setAddressLine] = useState('')
   const [city, setCity] = useState('')
   const [province, setProvince] = useState('')
   const [postalCode, setPostalCode] = useState('')
   const [country, setCountry] = useState('Philippines')
 
-  // Representative Fields
+  // Step 2: Representative & Contacts
   const [representativeName, setRepresentativeName] = useState('')
   const [representativePosition, setRepresentativePosition] = useState('')
   const [regEmail, setRegEmail] = useState('')
   const [mobileNumber, setMobileNumber] = useState('')
   const [officePhone, setOfficePhone] = useState('')
 
-  // Security & Consents
+  // Step 3: Account Security
   const [regPassword, setRegPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showRegPassword, setShowRegPassword] = useState(false)
+
+  // Step 4: Consent & Review
+  const [privacyPolicyAccepted, setPrivacyPolicyAccepted] = useState(true)
   const [termsAccepted, setTermsAccepted] = useState(true)
   const [authorizationDeclared, setAuthorizationDeclared] = useState(true)
 
-  // Pre-Registration Privacy Policy Popup State
-  const [showPrivacyPopup, setShowPrivacyPopup] = useState(false)
-
-  // Step state for Registration flow: 1 = Form, 2 = Email OTP, 3 = Pending Approval Notice
-  const [regStep, setRegStep] = useState(1)
+  // Step 5: Email Verification
   const [maskedEmail, setMaskedEmail] = useState('')
-
-  // MFA & OTP state
-  const [mfaToken, setMfaToken] = useState(null)
   const [otp, setOtp] = useState('')
+
+  // MFA state for Sign In
+  const [mfaToken, setMfaToken] = useState(null)
+  const [mfaOtp, setMfaOtp] = useState('')
 
   // UI status
   const [msg, setMsg] = useState('')
@@ -252,12 +137,11 @@ export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLo
 
   const baseUrl = API_BASE_URL
 
-  // Resilient multi-target request dispatcher: tries configured baseUrl, same-origin relative proxy, and direct Render backend
   const resilientFetch = async (endpoint, options = {}) => {
     let lastError = null
     const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
 
-    // 1. Try configured baseUrl
+    // 1. Configured baseUrl
     try {
       const url = baseUrl ? `${baseUrl}${cleanEndpoint}` : cleanEndpoint
       const res = await fetch(url, options)
@@ -266,7 +150,7 @@ export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLo
       lastError = err
     }
 
-    // 2. If baseUrl is not empty, try same-origin relative path (handled by Vercel proxy rewrites)
+    // 2. Same-origin relative path
     if (baseUrl !== '') {
       try {
         const res = await fetch(cleanEndpoint, options)
@@ -290,7 +174,7 @@ export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLo
   }
 
   const getPasswordStrength = (pwd) => {
-    if (!pwd) return { score: 0, label: 'None', color: 'bg-slate-700' }
+    if (!pwd) return { score: 0, label: 'None', color: 'bg-slate-300 dark:bg-slate-700' }
     let score = 0
     if (pwd.length >= 12) score += 2
     else if (pwd.length >= 8) score += 1
@@ -300,12 +184,14 @@ export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLo
 
     if (score >= 5) return { score: 100, label: 'Strong Passphrase', color: 'bg-emerald-500' }
     if (score >= 3) return { score: 65, label: 'Moderate', color: 'bg-amber-500' }
-    return { score: 30, label: 'Weak (min 12 chars recommended)', color: 'bg-rose-500' }
+    return { score: 30, label: 'Weak (min 12 chars required)', color: 'bg-rose-500' }
   }
 
   const strength = getPasswordStrength(regPassword)
 
-  // Handle Log In submission
+  // -------------------------------------------------------------
+  // Sign In Flow
+  // -------------------------------------------------------------
   async function handleLoginSubmit(e) {
     e.preventDefault()
     setMsg('')
@@ -346,7 +232,7 @@ export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLo
       if (body.requiresMfa) {
         setMfaToken(body.mfaToken)
         if (body.devOtp) {
-          setOtp(body.devOtp)
+          setMfaOtp(body.devOtp)
         }
         setMsg(body.message || 'Please enter the 6-digit verification code sent to your email.')
         setMsgType('success')
@@ -363,181 +249,13 @@ export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLo
     }
   }
 
-  // Step 1: Validate registration form and open Mandatory Privacy Policy Popup
-  function handleRegisterFormSubmit(e) {
-    e.preventDefault()
-    setMsg('')
-
-    if (!orgName || !regEmail || !regPassword || !mobileNumber) {
-      setMsg('Please fill in all required organization and representative fields.')
-      setMsgType('error')
-      return
-    }
-
-    if (regPassword.length < 12) {
-      setMsg('Password must be at least 12 characters long.')
-      setMsgType('error')
-      return
-    }
-
-    if (regPassword !== confirmPassword) {
-      setMsg('Password and Confirm Password do not match.')
-      setMsgType('error')
-      return
-    }
-
-    if (!termsAccepted || !authorizationDeclared) {
-      setMsg('You must accept the Terms of Service and Authorization declaration.')
-      setMsgType('error')
-      return
-    }
-
-    // Form is valid -> Open Mandatory Privacy Policy Popup before API call
-    setShowPrivacyPopup(true)
-  }
-
-  // Step 2: Execute actual API call after user selects "I Agree and Create Account" in Privacy Popup
-  async function executeProviderRegistration() {
-    setShowPrivacyPopup(false)
-    setLoading(true)
-
-    const effectiveOrgType = orgType === 'Other' ? (orgTypeOther || 'Other') : orgType
-
-    try {
-      const res = await resilientFetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Client-Platform': 'web',
-        },
-        body: JSON.stringify({
-          name: orgName,
-          email: regEmail,
-          password: regPassword,
-          role: 'provider',
-          orgType: effectiveOrgType,
-          orgRegistrationNumber,
-          website,
-          businessAddress: { addressLine, city, province, postalCode, country },
-          representativeName,
-          representativePosition,
-          mobileNumber,
-          officePhone,
-          privacyPolicyAccepted: true,
-          termsAccepted: true,
-          authorizationDeclared: true,
-        }),
-      })
-
-      const body = await res.json().catch(() => ({}))
-
-      if (!res.ok) {
-        setMsg(body.message || body.errors?.[0]?.msg || 'Provider registration failed.')
-        setMsgType('error')
-        setLoading(false)
-        return
-      }
-
-      setMaskedEmail(body.email || regEmail)
-      if (body.devOtp || body.devOTP) {
-        setOtp(body.devOtp || body.devOTP)
-      }
-      setRegStep(2)
-      setMsg('Verification code sent to your organization email. Please enter it below.')
-      setMsgType('success')
-      setLoading(false)
-    } catch (error) {
-      console.error('Register error:', error)
-      setMsg('Network error. Please check if the backend server is running.')
-      setMsgType('error')
-      setLoading(false)
-    }
-  }
-
-  // Handle Resend OTP for Provider Registration
-  async function handleResendProviderOtp() {
-    setMsg('')
-    setLoading(true)
-    try {
-      const res = await resilientFetch('/api/auth/resend-otp', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Client-Platform': 'web',
-        },
-        body: JSON.stringify({ email: regEmail, purpose: 'registration' }),
-      })
-      const body = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        setMsg(body.message || 'Failed to resend verification code.')
-        setMsgType('error')
-        setLoading(false)
-        return
-      }
-      if (body.devOtp || body.devOTP) {
-        setOtp(body.devOtp || body.devOTP)
-      }
-      setMsg('A new verification code has been sent to your email.')
-      setMsgType('success')
-    } catch (e) {
-      setMsg('Network error while resending verification code.')
-      setMsgType('error')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Handle Provider Email OTP Verification
-  async function handleVerifyProviderOtp(e) {
-    e.preventDefault()
-    setMsg('')
-    setLoading(true)
-
-    if (!otp) {
-      setMsg('Please enter the 6-digit verification code.')
-      setMsgType('error')
-      setLoading(false)
-      return
-    }
-
-    try {
-      const res = await resilientFetch('/api/auth/verify-email-otp', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Client-Platform': 'web',
-        },
-        body: JSON.stringify({ email: regEmail, otp }),
-      })
-
-      const body = await res.json().catch(() => ({}))
-
-      if (!res.ok) {
-        setMsg(body.message || 'OTP verification failed.')
-        setMsgType('error')
-        setLoading(false)
-        return
-      }
-
-      setRegStep(3)
-      setMsg('Email verified successfully! Your provider application is now pending administrator review.')
-      setMsgType('success')
-      setLoading(false)
-    } catch (error) {
-      console.error('OTP error:', error)
-      setMsg('Network error during OTP verification.')
-      setMsgType('error')
-      setLoading(false)
-    }
-  }
-
   // Handle MFA OTP Verification (for Sign In)
-  async function handleVerifyOtp(e) {
+  async function handleVerifyMfaOtp(e) {
     e.preventDefault()
     setMsg('')
     setLoading(true)
 
-    if (!otp) {
+    if (!mfaOtp) {
       setMsg('Please enter the verification code.')
       setMsgType('error')
       setLoading(false)
@@ -551,7 +269,7 @@ export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLo
           'Content-Type': 'application/json',
           'X-Client-Platform': 'web',
         },
-        body: JSON.stringify({ mfaToken, otp }),
+        body: JSON.stringify({ mfaToken, otp: mfaOtp }),
       })
 
       const body = await res.json().catch(() => ({}))
@@ -591,7 +309,7 @@ export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLo
         setLoading(false)
         return
       }
-      setOtp('')
+      setMfaOtp('')
       setMsg('A new verification code has been sent to your email.')
       setMsgType('success')
     } catch (e) {
@@ -625,647 +343,989 @@ export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLo
     onClose()
   }
 
+  // -------------------------------------------------------------
+  // Provider Registration Multi-Step Navigation & Submission
+  // -------------------------------------------------------------
+  const validateStep1 = () => {
+    if (!orgName.trim()) {
+      setMsg('Please enter your legal organization name.')
+      setMsgType('error')
+      return false
+    }
+    if (!addressLine.trim() || !city.trim() || !province.trim()) {
+      setMsg('Please provide a complete organization address (street, city, province).')
+      setMsgType('error')
+      return false
+    }
+    setMsg('')
+    return true
+  }
+
+  const validateStep2 = () => {
+    if (!representativeName.trim() || !representativePosition.trim()) {
+      setMsg('Please enter the authorized representative name and title.')
+      setMsgType('error')
+      return false
+    }
+    if (!regEmail.trim() || !regEmail.includes('@')) {
+      setMsg('Please enter a valid official organization email.')
+      setMsgType('error')
+      return false
+    }
+    if (!mobileNumber.trim()) {
+      setMsg('Please enter a representative contact mobile number.')
+      setMsgType('error')
+      return false
+    }
+    setMsg('')
+    return true
+  }
+
+  const validateStep3 = () => {
+    if (regPassword.length < 12) {
+      setMsg('Password must be at least 12 characters long.')
+      setMsgType('error')
+      return false
+    }
+    if (regPassword !== confirmPassword) {
+      setMsg('Password and confirmation do not match.')
+      setMsgType('error')
+      return false
+    }
+    setMsg('')
+    return true
+  }
+
+  // Step 4: Submission
+  async function submitProviderRegistration() {
+    if (!privacyPolicyAccepted || !termsAccepted || !authorizationDeclared) {
+      setMsg('Please accept the required data privacy and authorization declarations.')
+      setMsgType('error')
+      return
+    }
+
+    setLoading(true)
+    setMsg('')
+    const effectiveOrgType = orgType === 'Other' ? (orgTypeOther || 'Other') : orgType
+
+    try {
+      const res = await resilientFetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Client-Platform': 'web',
+        },
+        body: JSON.stringify({
+          name: orgName,
+          email: regEmail,
+          password: regPassword,
+          role: 'provider',
+          orgType: effectiveOrgType,
+          orgRegistrationNumber,
+          website,
+          businessAddress: { addressLine, city, province, postalCode, country },
+          representativeName,
+          representativePosition,
+          mobileNumber,
+          officePhone,
+          privacyPolicyAccepted: true,
+          termsAccepted: true,
+          authorizationDeclared: true,
+        }),
+      })
+
+      const body = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        setMsg(body.message || body.errors?.[0]?.msg || 'Registration failed.')
+        setMsgType('error')
+        setLoading(false)
+        return
+      }
+
+      setMaskedEmail(body.email || regEmail)
+      if (body.devOtp || body.devOTP) {
+        setOtp(body.devOtp || body.devOTP)
+      }
+      setRegSubStep(5)
+      setMsg('Verification code sent to your official email. Please enter it below.')
+      setMsgType('success')
+    } catch (error) {
+      console.error('Registration error:', error)
+      setMsg('Network error. Please check if the backend server is reachable.')
+      setMsgType('error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Step 5: OTP verification
+  async function handleVerifyRegistrationOtp(e) {
+    e.preventDefault()
+    setMsg('')
+    setLoading(true)
+
+    if (!otp) {
+      setMsg('Please enter the 6-digit verification code.')
+      setMsgType('error')
+      setLoading(false)
+      return
+    }
+
+    try {
+      const res = await resilientFetch('/api/auth/verify-email-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Client-Platform': 'web',
+        },
+        body: JSON.stringify({ email: regEmail, otp }),
+      })
+
+      const body = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        setMsg(body.message || 'OTP verification failed.')
+        setMsgType('error')
+        setLoading(false)
+        return
+      }
+
+      setRegSubStep(6)
+      setMsg('Email verified successfully! Provider application is under review.')
+      setMsgType('success')
+    } catch (error) {
+      console.error('OTP error:', error)
+      setMsg('Network error during OTP verification.')
+      setMsgType('error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleResendRegistrationOtp() {
+    setMsg('')
+    setLoading(true)
+    try {
+      const res = await resilientFetch('/api/auth/resend-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Client-Platform': 'web',
+        },
+        body: JSON.stringify({ email: regEmail, purpose: 'registration' }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setMsg(body.message || 'Failed to resend code.')
+        setMsgType('error')
+        setLoading(false)
+        return
+      }
+      if (body.devOtp || body.devOTP) {
+        setOtp(body.devOtp || body.devOTP)
+      }
+      setMsg('A fresh verification code has been dispatched to your email.')
+      setMsgType('success')
+    } catch (e) {
+      setMsg('Network error while requesting verification code.')
+      setMsgType('error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const stepsList = [
+    { num: 1, label: 'Organization' },
+    { num: 2, label: 'Representative' },
+    { num: 3, label: 'Security' },
+    { num: 4, label: 'Review' },
+    { num: 5, label: 'Verification' },
+    { num: 6, label: 'Status' },
+  ]
+
   return (
-    <>
+    <motion.div
+      className="fixed inset-0 z-50 grid place-items-center px-4 py-6 overflow-y-auto"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      {/* Backdrop */}
       <motion.div
-        className="fixed inset-0 z-40 grid place-items-center px-4 py-6 overflow-y-auto"
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
+      />
+
+      {/* Centered Modal Container */}
+      <motion.div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="login-modal-title"
+        tabIndex={-1}
+        initial={{ opacity: 0, scale: 0.96, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 8 }}
+        transition={{ duration: 0.2 }}
+        className="relative z-10 w-full max-w-xl rounded-2xl p-6 sm:p-8 shadow-2xl my-auto border max-h-[90vh] overflow-y-auto"
+        style={{
+          backgroundColor: 'var(--color-bg-elevated)',
+          borderColor: 'var(--border)',
+          color: 'var(--text-primary)',
+        }}
       >
-        <motion.div
-          className="fixed inset-0"
-          style={{ background: 'var(--bg-overlay)', backdropFilter: 'blur(8px)' }}
+        {/* Close Button */}
+        <button
+          aria-label="Close modal"
+          className="absolute right-5 top-5 p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white transition cursor-pointer text-sm font-bold"
           onClick={onClose}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-        />
-
-        <motion.div
-          ref={modalRef}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="login-modal-title"
-          tabIndex={-1}
-          initial={{ opacity: 0, scale: 0.92, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 10 }}
-          transition={{ duration: 0.2 }}
-          className="relative z-10 w-full max-w-xl rounded-[2.5rem] p-6 md:p-8 shadow-2xl my-auto border max-h-[90vh] overflow-y-auto"
-          style={{
-            background: 'var(--bg-modal, #211A18)',
-            borderColor: 'var(--border, rgba(255,255,255,0.1))',
-            color: 'var(--text-primary, #ffffff)',
-          }}
         >
-          {/* Close Button */}
-          <button
-            aria-label="Close modal"
-            className="absolute right-6 top-6 text-slate-400 transition hover:text-white text-lg font-bold"
-            onClick={onClose}
+          ✕
+        </button>
+
+        {/* Modal Brand Header */}
+        <div className="mb-5 flex items-center gap-3">
+          <IskolarLogo size="sm" />
+          <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#305BFE] border px-2 py-0.5 rounded-full" style={{ borderColor: 'var(--border)' }}>
+            Authentication Desk
+          </span>
+        </div>
+
+        {/* Mode Selector Tabs (Sign In vs Register Provider) */}
+        {!mfaToken && regSubStep <= 4 && (
+          <div
+            className="flex p-1 rounded-xl mb-6 border"
+            style={{
+              backgroundColor: 'var(--color-surface-panel)',
+              borderColor: 'var(--border)'
+            }}
           >
-            ✕
-          </button>
-
-          {/* Top Mode Tabs: Sign In vs Register Provider */}
-          {!mfaToken && regStep === 1 && (
-            <div
-              className="flex p-1 rounded-2xl mb-6 border"
-              style={{
-                backgroundColor: 'var(--color-surface-panel)',
-                borderColor: 'var(--color-border)'
-              }}
+            <button
+              type="button"
+              onClick={() => { setMode('login'); setMsg(''); }}
+              className={`flex-1 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
+                mode === 'login'
+                  ? 'bg-[#305BFE] text-white shadow-sm'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-heading)]'
+              }`}
             >
-              <button
-                type="button"
-                onClick={() => { setMode('login'); setMsg(''); }}
-                className={`flex-1 py-2.5 rounded-xl text-xs font-extrabold transition ${
-                  mode === 'login'
-                    ? 'bg-[var(--primary)] text-white shadow-md'
-                    : 'hover:text-white'
-                }`}
-                style={{
-                  color: mode === 'login' ? '#ffffff' : 'var(--color-text-muted)'
-                }}
-              >
-                Sign In
-              </button>
-              <button
-                type="button"
-                onClick={() => { setMode('register'); setMsg(''); }}
-                className={`flex-1 py-2.5 rounded-xl text-xs font-extrabold transition ${
-                  mode === 'register'
-                    ? 'bg-[var(--primary)] text-white shadow-md'
-                    : 'hover:text-white'
-                }`}
-                style={{
-                  color: mode === 'register' ? '#ffffff' : 'var(--color-text-muted)'
-                }}
-              >
-                Register Provider
-              </button>
-            </div>
-          )}
+              Sign In
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMode('register'); setMsg(''); }}
+              className={`flex-1 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
+                mode === 'register'
+                  ? 'bg-[#305BFE] text-white shadow-sm'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-heading)]'
+              }`}
+            >
+              Register Provider
+            </button>
+          </div>
+        )}
 
+        {/* ----------------------------------------------------------- */}
+        {/* MODE: SIGN IN */}
+        {/* ----------------------------------------------------------- */}
+        {mode === 'login' && !mfaToken && (
           <div className="space-y-4">
             <div>
-              <h3 id="login-modal-title" className="text-2xl font-black tracking-tight" style={{ color: 'var(--text-heading, #ffffff)' }}>
-                {mfaToken
-                  ? 'MFA Verification'
-                  : regStep === 2
-                  ? 'Verify Email Address'
-                  : regStep === 3
-                  ? 'Application Under Review'
-                  : mode === 'login'
-                  ? 'Sign in to the ISKOLAR Management Portal'
-                  : 'Register as a Scholarship Provider'}
-              </h3>
-              <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary, #D6D0CD)' }}>
-                {mfaToken
-                  ? 'Enter the 6-digit verification code sent to your registered email.'
-                  : regStep === 2
-                  ? `Enter the verification code sent to ${maskedEmail || 'your email'}.`
-                  : regStep === 3
-                  ? 'Your organization registration has been submitted for administrator verification.'
-                  : mode === 'login'
-                  ? 'Access the provider and administrator workspace.'
-                  : 'Create an organization account to offer and manage scholarship programs.'}
+              <h2 id="login-modal-title" className="text-xl sm:text-2xl font-black tracking-tight" style={{ color: 'var(--text-heading)' }}>
+                Sign In to Workspace
+              </h2>
+              <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                Access the verified scholarship management desk and administrative tools.
               </p>
             </div>
 
-            {/* Account Type Selector for Sign In */}
-            {!mfaToken && mode === 'login' && regStep === 1 && (
-              <div>
-                <label className="block text-xs font-semibold mb-2" style={{ color: 'var(--text-secondary, #D6D0CD)' }}>
-                  Select Workspace Role:
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedRole('provider')}
-                    className={`p-3 rounded-xl border text-center transition flex flex-col items-center justify-center gap-1 ${
-                      selectedRole === 'provider'
-                        ? 'border-[var(--primary)] bg-[var(--primary)]/10 text-white font-bold'
-                        : 'hover:border-[var(--primary)]/50'
-                    }`}
-                    style={{
-                      backgroundColor: selectedRole === 'provider' ? 'rgba(255, 109, 41, 0.10)' : 'var(--color-surface-panel)',
-                      borderColor: selectedRole === 'provider' ? 'var(--primary)' : 'var(--color-border)',
-                      color: selectedRole === 'provider' ? '#ffffff' : 'var(--color-text-secondary)'
-                    }}
-                  >
-                    <span className="text-[var(--primary)] text-xs font-black">◆</span>
-                    <span className="text-xs font-bold">Provider</span>
-                  </button>
+            {/* Role Selection */}
+            <div>
+              <label className="block text-xs font-bold mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                Select Authorized Role:
+              </label>
+              <div className="grid grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setSelectedRole('provider')}
+                  className={`p-3 rounded-xl border text-center transition flex items-center justify-center gap-2 cursor-pointer ${
+                    selectedRole === 'provider'
+                      ? 'border-[#305BFE] bg-[#305BFE]/10 font-bold text-[#305BFE]'
+                      : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-[#305BFE]/50'
+                  }`}
+                  style={{ backgroundColor: selectedRole === 'provider' ? 'rgba(48, 91, 254, 0.08)' : 'var(--color-surface-panel)' }}
+                >
+                  <BuildingIcon className="w-4 h-4 text-[#305BFE]" />
+                  <span className="text-xs">Scholarship Provider</span>
+                </button>
 
+                <button
+                  type="button"
+                  onClick={() => setSelectedRole('admin')}
+                  className={`p-3 rounded-xl border text-center transition flex items-center justify-center gap-2 cursor-pointer ${
+                    selectedRole === 'admin'
+                      ? 'border-[#305BFE] bg-[#305BFE]/10 font-bold text-[#305BFE]'
+                      : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-[#305BFE]/50'
+                  }`}
+                  style={{ backgroundColor: selectedRole === 'admin' ? 'rgba(48, 91, 254, 0.08)' : 'var(--color-surface-panel)' }}
+                >
+                  <ShieldIcon className="w-4 h-4 text-amber-500" />
+                  <span className="text-xs">Administrator</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Sign In Form */}
+            <form onSubmit={handleLoginSubmit} className="space-y-3.5 pt-1">
+              <div>
+                <label className="block text-xs font-bold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                  Work Email Address
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder={selectedRole === 'admin' ? 'admin@iskolar.ph' : 'provider@organization.ph'}
+                  className="w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#305BFE]"
+                  style={{
+                    backgroundColor: 'var(--bg-input, var(--color-surface-panel))',
+                    borderColor: 'var(--border)',
+                    color: 'var(--text-primary)',
+                  }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••••••"
+                    className="w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#305BFE] pr-12"
+                    style={{
+                      backgroundColor: 'var(--bg-input, var(--color-surface-panel))',
+                      borderColor: 'var(--border)',
+                      color: 'var(--text-primary)',
+                    }}
+                  />
                   <button
                     type="button"
-                    onClick={() => setSelectedRole('admin')}
-                    className={`p-3 rounded-xl border text-center transition flex flex-col items-center justify-center gap-1 ${
-                      selectedRole === 'admin'
-                        ? 'border-[var(--primary)] bg-[var(--primary)]/10 text-white font-bold'
-                        : 'hover:border-[var(--primary)]/50'
-                    }`}
-                    style={{
-                      backgroundColor: selectedRole === 'admin' ? 'rgba(255, 109, 41, 0.10)' : 'var(--color-surface-panel)',
-                      borderColor: selectedRole === 'admin' ? 'var(--primary)' : 'var(--color-border)',
-                      color: selectedRole === 'admin' ? '#ffffff' : 'var(--color-text-secondary)'
-                    }}
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    className="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer px-1 py-0.5"
                   >
-                    <span className="text-amber-400 text-xs font-black">◆</span>
-                    <span className="text-xs font-bold">Administrator</span>
+                    {showPassword ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+              </div>
+
+              {msg && (
+                <div className={`p-3 rounded-xl text-xs font-semibold ${msgType === 'error' ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20' : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'}`}>
+                  {msg}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 rounded-xl font-bold text-xs uppercase tracking-wider text-white bg-[#305BFE] hover:bg-[#2748cb] transition cursor-pointer disabled:opacity-50 shadow-sm"
+              >
+                {loading ? 'Authenticating...' : selectedRole === 'admin' ? 'Access Administrator Console' : 'Access Provider Workspace'}
+              </button>
+            </form>
+
+            <div className="pt-2 text-center text-[11px]" style={{ color: 'var(--text-muted)' }}>
+              Are you a student applicant? Applications are managed through the mobile application.
+            </div>
+          </div>
+        )}
+
+        {/* ----------------------------------------------------------- */}
+        {/* MFA CODE SCREEN (SIGN IN) */}
+        {/* ----------------------------------------------------------- */}
+        {mfaToken && (
+          <form onSubmit={handleVerifyMfaOtp} className="space-y-4">
+            <div className="text-center space-y-1">
+              <div className="w-10 h-10 rounded-full bg-[#305BFE]/10 text-[#305BFE] mx-auto flex items-center justify-center">
+                <LockIcon className="w-5 h-5" />
+              </div>
+              <h2 className="text-xl font-black" style={{ color: 'var(--text-heading)' }}>
+                Two-Factor Verification
+              </h2>
+              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                Enter the 6-digit security code sent to {email}.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold mb-1 text-center" style={{ color: 'var(--text-secondary)' }}>
+                Security Code
+              </label>
+              <input
+                type="text"
+                maxLength={6}
+                required
+                value={mfaOtp}
+                onChange={(e) => setMfaOtp(e.target.value)}
+                placeholder="••••••"
+                className="w-full px-3.5 py-3 rounded-xl border text-center tracking-[0.4em] font-mono text-xl focus:outline-none focus:ring-2 focus:ring-[#305BFE]"
+                style={{
+                  backgroundColor: 'var(--bg-input, var(--color-surface-panel))',
+                  borderColor: 'var(--border)',
+                  color: 'var(--text-primary)',
+                }}
+              />
+            </div>
+
+            {msg && (
+              <div className={`p-3 rounded-xl text-xs font-semibold ${msgType === 'error' ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20' : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'}`}>
+                {msg}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 rounded-xl font-bold text-xs uppercase tracking-wider text-white bg-[#305BFE] hover:bg-[#2748cb] transition cursor-pointer disabled:opacity-50"
+            >
+              {loading ? 'Verifying Code...' : 'Confirm Identity & Enter Desk'}
+            </button>
+
+            <div className="flex items-center justify-between text-xs pt-1">
+              <button
+                type="button"
+                onClick={() => { setMfaToken(null); setMfaOtp(''); setMsg(''); }}
+                className="text-[var(--text-secondary)] hover:underline cursor-pointer"
+              >
+                ← Back to Login
+              </button>
+              <button
+                type="button"
+                disabled={loading}
+                onClick={handleResendMfaOtp}
+                className="text-[#305BFE] font-bold hover:underline cursor-pointer"
+              >
+                Resend Code
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* ----------------------------------------------------------- */}
+        {/* MODE: REGISTER PROVIDER (6-STEP FLOW) */}
+        {/* ----------------------------------------------------------- */}
+        {mode === 'register' && !mfaToken && (
+          <div className="space-y-4">
+            {/* Step Progress Tracker */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-[11px] font-bold" style={{ color: 'var(--text-muted)' }}>
+                <span>Step {regSubStep} of 6</span>
+                <span className="text-[#305BFE]">{stepsList[regSubStep - 1]?.label}</span>
+              </div>
+              <div className="grid grid-cols-6 gap-1 h-1.5 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                {stepsList.map((s) => (
+                  <div
+                    key={s.num}
+                    className={`h-full transition-colors ${
+                      s.num <= regSubStep ? 'bg-[#305BFE]' : 'bg-transparent'
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* STEP 1: ORGANIZATION DETAILS */}
+            {regSubStep === 1 && (
+              <div className="space-y-3.5 animate-fadeIn">
+                <div>
+                  <h2 className="text-lg font-black" style={{ color: 'var(--text-heading)' }}>
+                    1. Organization Identity
+                  </h2>
+                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    Legal registered institution sponsoring or administering scholarships.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                    Legal Organization Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={orgName}
+                    onChange={(e) => setOrgName(e.target.value)}
+                    placeholder="e.g., SYNERTECH Foundation Inc."
+                    className="w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm"
+                    style={{ backgroundColor: 'var(--bg-input, var(--color-surface-panel))', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                      Organization Type *
+                    </label>
+                    <select
+                      value={orgType}
+                      onChange={(e) => setOrgType(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl border text-xs"
+                      style={{ backgroundColor: 'var(--bg-input, var(--color-surface-panel))', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                    >
+                      <option value="Government Agency">Government Agency</option>
+                      <option value="Educational Institution">Educational Institution</option>
+                      <option value="Foundation">Foundation</option>
+                      <option value="Nonprofit Organization">Nonprofit Organization</option>
+                      <option value="Private Company">Private Company</option>
+                      <option value="Cooperative">Cooperative</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                      Registration / SEC / DTI No.
+                    </label>
+                    <input
+                      type="text"
+                      value={orgRegistrationNumber}
+                      onChange={(e) => setOrgRegistrationNumber(e.target.value)}
+                      placeholder="SEC / DTI / BIR Number"
+                      className="w-full px-3.5 py-2.5 rounded-xl border text-xs"
+                      style={{ backgroundColor: 'var(--bg-input, var(--color-surface-panel))', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                    />
+                  </div>
+                </div>
+
+                {orgType === 'Other' && (
+                  <div>
+                    <label className="block text-xs font-bold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                      Specify Organization Type *
+                    </label>
+                    <input
+                      type="text"
+                      value={orgTypeOther}
+                      onChange={(e) => setOrgTypeOther(e.target.value)}
+                      placeholder="e.g., International Development Agency"
+                      className="w-full px-3.5 py-2.5 rounded-xl border text-xs"
+                      style={{ backgroundColor: 'var(--bg-input, var(--color-surface-panel))', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-bold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                    Official Website (Optional)
+                  </label>
+                  <input
+                    type="url"
+                    value={website}
+                    onChange={(e) => setWebsite(e.target.value)}
+                    placeholder="https://organization.org"
+                    className="w-full px-3.5 py-2.5 rounded-xl border text-xs"
+                    style={{ backgroundColor: 'var(--bg-input, var(--color-surface-panel))', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                  />
+                </div>
+
+                <div className="space-y-2 pt-1">
+                  <label className="block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+                    Physical Business Address *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={addressLine}
+                    onChange={(e) => setAddressLine(e.target.value)}
+                    placeholder="Street Address / Building Suite"
+                    className="w-full px-3.5 py-2 rounded-xl border text-xs"
+                    style={{ backgroundColor: 'var(--bg-input, var(--color-surface-panel))', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      required
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      placeholder="City / Municipality *"
+                      className="px-3 py-2 rounded-xl border text-xs"
+                      style={{ backgroundColor: 'var(--bg-input, var(--color-surface-panel))', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                    />
+                    <input
+                      type="text"
+                      required
+                      value={province}
+                      onChange={(e) => setProvince(e.target.value)}
+                      placeholder="Province / Region *"
+                      className="px-3 py-2 rounded-xl border text-xs"
+                      style={{ backgroundColor: 'var(--bg-input, var(--color-surface-panel))', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                    />
+                  </div>
+                </div>
+
+                {msg && (
+                  <div className="p-3 rounded-xl text-xs font-semibold bg-rose-500/10 text-rose-500 border border-rose-500/20">
+                    {msg}
+                  </div>
+                )}
+
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (validateStep1()) setRegSubStep(2)
+                    }}
+                    className="w-full py-3 rounded-xl font-bold text-xs uppercase tracking-wider text-white bg-[#305BFE] hover:bg-[#2748cb] transition cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <span>Proceed: Representative Details</span>
+                    <ArrowRightIcon className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
             )}
 
-            {/* Form Content */}
-            {!mfaToken ? (
-              mode === 'login' ? (
-                /* LOG IN FORM */
-                <form onSubmit={handleLoginSubmit} className="space-y-3 pt-2">
+            {/* STEP 2: REPRESENTATIVE & CONTACT DETAILS */}
+            {regSubStep === 2 && (
+              <div className="space-y-3.5 animate-fadeIn">
+                <div>
+                  <h2 className="text-lg font-black" style={{ color: 'var(--text-heading)' }}>
+                    2. Authorized Representative
+                  </h2>
+                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    Contact point authorized to act on behalf of the sponsoring entity.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
-                      Email Address
+                    <label className="block text-xs font-bold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                      Representative Full Name *
                     </label>
                     <input
-                      type="email"
+                      type="text"
                       required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder={selectedRole === 'admin' ? 'admin@iskolar.ph' : 'provider@organization.ph'}
-                      className="w-full px-3.5 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
-                      style={{
-                        background: 'var(--bg-input)',
-                        borderColor: 'var(--border)',
-                        color: 'var(--text-primary)',
-                      }}
+                      value={representativeName}
+                      onChange={(e) => setRepresentativeName(e.target.value)}
+                      placeholder="e.g., Maria Santos"
+                      className="w-full px-3.5 py-2.5 rounded-xl border text-xs"
+                      style={{ backgroundColor: 'var(--bg-input, var(--color-surface-panel))', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
-                      Password
+                    <label className="block text-xs font-bold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                      Official Designation / Title *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={representativePosition}
+                      onChange={(e) => setRepresentativePosition(e.target.value)}
+                      placeholder="e.g., Grants Director"
+                      className="w-full px-3.5 py-2.5 rounded-xl border text-xs"
+                      style={{ backgroundColor: 'var(--bg-input, var(--color-surface-panel))', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                    Official Organization Email *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={regEmail}
+                    onChange={(e) => setRegEmail(e.target.value)}
+                    placeholder="provider@organization.ph"
+                    className="w-full px-3.5 py-2.5 rounded-xl border text-xs"
+                    style={{ backgroundColor: 'var(--bg-input, var(--color-surface-panel))', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                  />
+                  <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
+                    Verification codes and administrative accreditation updates will be sent to this inbox.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                      Mobile Phone Number *
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      value={mobileNumber}
+                      onChange={(e) => setMobileNumber(e.target.value)}
+                      placeholder="+63 917 123 4567"
+                      className="w-full px-3.5 py-2.5 rounded-xl border text-xs"
+                      style={{ backgroundColor: 'var(--bg-input, var(--color-surface-panel))', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                      Office Telephone (Optional)
+                    </label>
+                    <input
+                      type="tel"
+                      value={officePhone}
+                      onChange={(e) => setOfficePhone(e.target.value)}
+                      placeholder="(02) 8123 4567"
+                      className="w-full px-3.5 py-2.5 rounded-xl border text-xs"
+                      style={{ backgroundColor: 'var(--bg-input, var(--color-surface-panel))', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                    />
+                  </div>
+                </div>
+
+                {msg && (
+                  <div className="p-3 rounded-xl text-xs font-semibold bg-rose-500/10 text-rose-500 border border-rose-500/20">
+                    {msg}
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => { setMsg(''); setRegSubStep(1); }}
+                    className="btn-secondary px-4 py-2.5 text-xs font-bold cursor-pointer"
+                  >
+                    ← Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (validateStep2()) setRegSubStep(3)
+                    }}
+                    className="flex-1 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider text-white bg-[#305BFE] hover:bg-[#2748cb] transition cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <span>Proceed: Account Security</span>
+                    <ArrowRightIcon className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 3: ACCOUNT SECURITY */}
+            {regSubStep === 3 && (
+              <div className="space-y-3.5 animate-fadeIn">
+                <div>
+                  <h2 className="text-lg font-black" style={{ color: 'var(--text-heading)' }}>
+                    3. Account Security Credentials
+                  </h2>
+                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    Establish access credentials for the provider workspace.
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                      Passphrase (Minimum 12 Characters) *
                     </label>
                     <div className="relative">
                       <input
-                        type={showPassword ? 'text' : 'password'}
+                        type={showRegPassword ? 'text' : 'password'}
                         required
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="w-full px-3.5 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)] pr-10"
-                        style={{
-                          background: 'var(--bg-input)',
-                          borderColor: 'var(--border)',
-                          color: 'var(--text-primary)',
-                        }}
+                        minLength={12}
+                        value={regPassword}
+                        onChange={(e) => setRegPassword(e.target.value)}
+                        placeholder="••••••••••••"
+                        className="w-full px-3.5 py-2.5 rounded-xl border text-xs pr-12"
+                        style={{ backgroundColor: 'var(--bg-input, var(--color-surface-panel))', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
                       />
                       <button
                         type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        aria-label={showPassword ? 'Hide password' : 'Show password'}
-                        aria-pressed={showPassword}
-                        className="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-white cursor-pointer px-1 py-0.5 rounded"
+                        onClick={() => setShowRegPassword(!showRegPassword)}
+                        className="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer px-1 py-0.5"
                       >
-                        {showPassword ? 'Hide' : 'Show'}
+                        {showRegPassword ? 'Hide' : 'Show'}
                       </button>
                     </div>
                   </div>
 
-                  {msg && (
-                    <div className={`p-3 rounded-xl text-xs font-semibold ${msgType === 'error' ? 'bg-rose-500/10 text-rose-300 border border-rose-500/20' : 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20'}`}>
-                      {msg}
-                    </div>
-                  )}
-
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full py-3 rounded-xl font-bold text-xs tracking-wider uppercase text-white shadow-lg transition hover:brightness-110 disabled:opacity-50"
-                    style={{ background: 'var(--primary)' }}
-                  >
-                    {loading ? 'Authenticating...' : selectedRole === 'admin' ? 'Sign in as Administrator' : 'Sign in as Provider'}
-                  </button>
-                </form>
-              ) : regStep === 1 ? (
-                /* STRUCTURED PROVIDER REGISTRATION FORM (STEP 1) */
-                <form onSubmit={handleRegisterFormSubmit} className="space-y-4 pt-1">
-                  {/* Section 1: Organization Details */}
-                  <div
-                    className="space-y-3 p-4 rounded-2xl border"
-                    style={{
-                      backgroundColor: 'var(--color-surface-panel)',
-                      borderColor: 'var(--color-border)'
-                    }}
-                  >
-                    <h4 className="text-xs font-extrabold uppercase tracking-wider text-[var(--primary)]">1. Organization Details</h4>
-
-                    <div>
-                      <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
-                        Legal Organization Name *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={orgName}
-                        onChange={(e) => setOrgName(e.target.value)}
-                        placeholder="e.g., Synertech Foundation Inc."
-                        className="w-full px-3.5 py-2.5 rounded-xl border text-sm"
-                        style={{ background: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
-                          Organization Type *
-                        </label>
-                        <select
-                          value={orgType}
-                          onChange={(e) => setOrgType(e.target.value)}
-                          className="w-full px-3.5 py-2.5 rounded-xl border text-sm"
-                          style={{ background: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
-                        >
-                          <option value="Government Agency">Government Agency</option>
-                          <option value="Educational Institution">Educational Institution</option>
-                          <option value="Foundation">Foundation</option>
-                          <option value="Nonprofit Organization">Nonprofit Organization</option>
-                          <option value="Private Company">Private Company</option>
-                          <option value="Cooperative">Cooperative</option>
-                          <option value="Other">Other</option>
-                        </select>
-                      </div>
-
-                      {orgType === 'Other' && (
-                        <div>
-                          <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
-                            Specify Organization Type *
-                          </label>
-                          <input
-                            type="text"
-                            required
-                            value={orgTypeOther}
-                            onChange={(e) => setOrgTypeOther(e.target.value)}
-                            placeholder="e.g., International Trust Fund"
-                            className="w-full px-3.5 py-2.5 rounded-xl border text-sm"
-                            style={{ background: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
-                          />
-                        </div>
-                      )}
-
-                      <div>
-                        <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
-                          Company / Registration Number
-                        </label>
-                        <input
-                          type="text"
-                          value={orgRegistrationNumber}
-                          onChange={(e) => setOrgRegistrationNumber(e.target.value)}
-                          placeholder="SEC / DTI / BIR No."
-                          className="w-full px-3.5 py-2.5 rounded-xl border text-sm"
-                          style={{ background: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Business Address */}
-                    <div className="space-y-2 pt-1">
-                      <label className="block text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
-                        Complete Business Address *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={addressLine}
-                        onChange={(e) => setAddressLine(e.target.value)}
-                        placeholder="Street Address / Building"
-                        className="w-full px-3.5 py-2.5 rounded-xl border text-sm mb-2"
-                        style={{ background: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
-                      />
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                        <input
-                          type="text"
-                          required
-                          value={city}
-                          onChange={(e) => setCity(e.target.value)}
-                          placeholder="City / Muni"
-                          className="px-3 py-2 rounded-xl border text-xs"
-                          style={{ background: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
-                        />
-                        <input
-                          type="text"
-                          required
-                          value={province}
-                          onChange={(e) => setProvince(e.target.value)}
-                          placeholder="Province / Region"
-                          className="px-3 py-2 rounded-xl border text-xs"
-                          style={{ background: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
-                        />
-                        <input
-                          type="text"
-                          value={postalCode}
-                          onChange={(e) => setPostalCode(e.target.value)}
-                          placeholder="Postal Code"
-                          className="px-3 py-2 rounded-xl border text-xs"
-                          style={{ background: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
-                        />
-                        <input
-                          type="text"
-                          value={country}
-                          onChange={(e) => setCountry(e.target.value)}
-                          placeholder="Country"
-                          className="px-3 py-2 rounded-xl border text-xs"
-                          style={{ background: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Section 2: Authorized Representative */}
-                  <div
-                    className="space-y-3 p-4 rounded-2xl border"
-                    style={{
-                      backgroundColor: 'var(--color-surface-panel)',
-                      borderColor: 'var(--color-border)'
-                    }}
-                  >
-                    <h4 className="text-xs font-extrabold uppercase tracking-wider text-[var(--primary)]">2. Authorized Representative</h4>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
-                          Full Name *
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={representativeName}
-                          onChange={(e) => setRepresentativeName(e.target.value)}
-                          placeholder="e.g., Maria Santos"
-                          className="w-full px-3.5 py-2.5 rounded-xl border text-sm"
-                          style={{ background: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
-                          Position / Designation *
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={representativePosition}
-                          onChange={(e) => setRepresentativePosition(e.target.value)}
-                          placeholder="e.g., Scholarship Director"
-                          className="w-full px-3.5 py-2.5 rounded-xl border text-sm"
-                          style={{ background: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
-                          Organization Email *
-                        </label>
-                        <input
-                          type="email"
-                          required
-                          value={regEmail}
-                          onChange={(e) => setRegEmail(e.target.value)}
-                          placeholder="provider@organization.ph"
-                          className="w-full px-3.5 py-2.5 rounded-xl border text-sm"
-                          style={{ background: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
-                          Mobile Phone Number *
-                        </label>
-                        <input
-                          type="tel"
-                          required
-                          value={mobileNumber}
-                          onChange={(e) => setMobileNumber(e.target.value)}
-                          placeholder="+63 917 123 4567"
-                          className="w-full px-3.5 py-2.5 rounded-xl border text-sm"
-                          style={{ background: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Section 3: Password & Security */}
-                  <div
-                    className="space-y-3 p-4 rounded-2xl border"
-                    style={{
-                      backgroundColor: 'var(--color-surface-panel)',
-                      borderColor: 'var(--color-border)'
-                    }}
-                  >
-                    <h4 className="text-xs font-extrabold uppercase tracking-wider text-[var(--primary)]">3. Account Password</h4>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
-                          Password (Min 12 Chars) *
-                        </label>
-                        <div className="relative">
-                          <input
-                            type={showRegPassword ? 'text' : 'password'}
-                            required
-                            minLength={12}
-                            value={regPassword}
-                            onChange={(e) => setRegPassword(e.target.value)}
-                            placeholder="••••••••••••"
-                            className="w-full px-3.5 py-2.5 rounded-xl border text-sm pr-10"
-                            style={{ background: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowRegPassword(!showRegPassword)}
-                            aria-label={showRegPassword ? 'Hide password' : 'Show password'}
-                            aria-pressed={showRegPassword}
-                            className="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-white cursor-pointer px-1 py-0.5 rounded"
-                          >
-                            {showRegPassword ? 'Hide' : 'Show'}
-                          </button>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
-                          Confirm Password *
-                        </label>
-                        <input
-                          type="password"
-                          required
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          placeholder="••••••••••••"
-                          className="w-full px-3.5 py-2.5 rounded-xl border text-sm"
-                          style={{ background: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Password Strength Indicator */}
-                    {regPassword && (
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-[11px] font-semibold text-slate-300">
-                          <span>Password Strength: {strength.label}</span>
-                        </div>
-                        <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
-                          <div className={`h-full ${strength.color} transition-all duration-300`} style={{ width: `${strength.score}%` }} />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Declarations */}
-                    <div className="space-y-2 pt-2 text-[11px]">
-                      <div className="flex items-start gap-2">
-                        <input
-                          type="checkbox"
-                          id="authDeclare"
-                          checked={authorizationDeclared}
-                          onChange={(e) => setAuthorizationDeclared(e.target.checked)}
-                          className="mt-0.5 h-4 w-4 rounded accent-[var(--primary)]"
-                        />
-                        <label htmlFor="authDeclare" className="leading-tight text-slate-300">
-                          I confirm that I am authorized to create and manage this organization's ISKOLAR provider account.
-                        </label>
-                      </div>
-
-                      <div className="flex items-start gap-2">
-                        <input
-                          type="checkbox"
-                          id="termsCheck"
-                          checked={termsAccepted}
-                          onChange={(e) => setTermsAccepted(e.target.checked)}
-                          className="mt-0.5 h-4 w-4 rounded accent-[var(--primary)]"
-                        />
-                        <label htmlFor="termsCheck" className="leading-tight text-slate-300">
-                          I accept the Terms of Service for scholarship providers.
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-
-                  {msg && (
-                    <div className={`p-3 rounded-xl text-xs font-semibold ${msgType === 'error' ? 'bg-rose-500/10 text-rose-300 border border-rose-500/20' : 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20'}`}>
-                      {msg}
-                    </div>
-                  )}
-
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full py-3.5 rounded-xl font-bold text-xs tracking-wider uppercase text-white shadow-lg transition hover:brightness-110 disabled:opacity-50"
-                    style={{ background: 'var(--primary)' }}
-                  >
-                    Create Provider Account
-                  </button>
-                </form>
-              ) : regStep === 2 ? (
-                /* OTP VERIFICATION FORM (STEP 2) */
-                <form onSubmit={handleVerifyProviderOtp} className="space-y-4 pt-2">
-                  <div
-                    className="p-4 rounded-2xl border text-center space-y-1"
-                    style={{
-                      backgroundColor: 'var(--color-surface-panel)',
-                      borderColor: 'var(--color-border)'
-                    }}
-                  >
-                    <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Verification Code Sent To</span>
-                    <div className="font-mono font-bold text-sm text-[var(--primary)]">{maskedEmail}</div>
-                  </div>
-
                   <div>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
-                      Enter 6-Digit Email OTP *
+                    <label className="block text-xs font-bold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                      Confirm Passphrase *
                     </label>
                     <input
-                      type="text"
-                      maxLength={6}
+                      type="password"
                       required
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value)}
-                      placeholder="••••••"
-                      className="w-full px-3.5 py-3 rounded-xl border text-center tracking-[0.4em] font-mono text-xl focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
-                      style={{ background: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="••••••••••••"
+                      className="w-full px-3.5 py-2.5 rounded-xl border text-xs"
+                      style={{ backgroundColor: 'var(--bg-input, var(--color-surface-panel))', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
                     />
                   </div>
 
-                  {msg && (
-                    <div className={`p-3 rounded-xl text-xs font-semibold ${msgType === 'error' ? 'bg-rose-500/10 text-rose-300 border border-rose-500/20' : 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20'}`}>
-                      {msg}
+                  {/* Password Strength Indicator */}
+                  {regPassword && (
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>
+                        <span>Passphrase Strength:</span>
+                        <span>{strength.label}</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                        <div className={`h-full ${strength.color} transition-all duration-300`} style={{ width: `${strength.score}%` }} />
+                      </div>
                     </div>
                   )}
+                </div>
 
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full py-3.5 rounded-xl font-bold text-xs tracking-wider uppercase text-white shadow-lg transition hover:brightness-110 disabled:opacity-50"
-                    style={{ background: 'var(--primary)' }}
-                  >
-                    {loading ? 'Verifying OTP...' : 'Verify Email & Continue'}
-                  </button>
-
-                  <div className="text-center pt-2">
-                    <button
-                      type="button"
-                      disabled={loading}
-                      onClick={handleResendProviderOtp}
-                      className="text-xs font-semibold text-[var(--primary)] hover:underline disabled:opacity-50"
-                    >
-                      Resend Verification Code
-                    </button>
+                {msg && (
+                  <div className="p-3 rounded-xl text-xs font-semibold bg-rose-500/10 text-rose-500 border border-rose-500/20">
+                    {msg}
                   </div>
-                </form>
-              ) : (
-                /* PENDING ADMINISTRATOR REVIEW NOTICE (STEP 3) */
-                <div className="space-y-5 pt-2 text-center">
-                  <div className="p-6 rounded-3xl bg-amber-500/10 border border-amber-500/30 text-amber-300 space-y-2">
-                    <div className="text-2xl">⏳</div>
-                    <h4 className="font-bold text-base text-white">Verification Complete — Pending Administrator Approval</h4>
-                    <p className="text-xs text-slate-300 leading-relaxed">
-                      Your organization email has been verified. To protect scholarship integrity, new provider accounts require verification by an ISKOLAR Administrator before workspace access is granted.
-                    </p>
-                  </div>
+                )}
 
-                  <div
-                    className="p-4 rounded-2xl border text-left space-y-2 text-xs"
-                    style={{
-                      backgroundColor: 'var(--color-surface-panel)',
-                      borderColor: 'var(--color-border)',
-                      color: 'var(--color-text-secondary)'
-                    }}
-                  >
-                    <div className="font-bold mb-1" style={{ color: 'var(--color-text-heading)' }}>What happens next?</div>
-                    <div>1. An administrator will review your organization details and registration number.</div>
-                    <div>2. You will receive an email notification once your provider account is approved.</div>
-                    <div>3. Once approved, you can log in to create and manage scholarship grants.</div>
-                  </div>
-
+                <div className="flex items-center gap-3 pt-2">
                   <button
                     type="button"
-                    onClick={onClose}
-                    className="w-full py-3.5 rounded-xl font-bold text-xs tracking-wider uppercase bg-slate-800 text-slate-200 hover:bg-slate-700 transition"
+                    onClick={() => { setMsg(''); setRegSubStep(2); }}
+                    className="btn-secondary px-4 py-2.5 text-xs font-bold cursor-pointer"
                   >
-                    Got It — Close Window
+                    ← Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (validateStep3()) setRegSubStep(4)
+                    }}
+                    className="flex-1 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider text-white bg-[#305BFE] hover:bg-[#2748cb] transition cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <span>Proceed: Consent & Review</span>
+                    <ArrowRightIcon className="w-3.5 h-3.5" />
                   </button>
                 </div>
-              )
-            ) : (
-              /* MFA OTP FORM FOR SIGN IN */
-              <form onSubmit={handleVerifyOtp} className="space-y-4 pt-2">
+              </div>
+            )}
+
+            {/* STEP 4: CONSENT & REVIEW */}
+            {regSubStep === 4 && (
+              <div className="space-y-3.5 animate-fadeIn">
                 <div>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
-                    6-Digit Verification Code
+                  <h2 className="text-lg font-black" style={{ color: 'var(--text-heading)' }}>
+                    4. Consent & Dossier Review
+                  </h2>
+                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    Confirm your registration credentials and accept privacy obligations.
+                  </p>
+                </div>
+
+                {/* Dossier Summary Box */}
+                <div
+                  className="p-3.5 rounded-xl border text-xs space-y-2"
+                  style={{ backgroundColor: 'var(--color-surface-panel)', borderColor: 'var(--border)' }}
+                >
+                  <div className="flex justify-between">
+                    <span style={{ color: 'var(--text-muted)' }}>Organization:</span>
+                    <span className="font-bold" style={{ color: 'var(--text-heading)' }}>{orgName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span style={{ color: 'var(--text-muted)' }}>Classification:</span>
+                    <span className="font-medium">{orgType === 'Other' ? orgTypeOther : orgType}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span style={{ color: 'var(--text-muted)' }}>Authorized Representative:</span>
+                    <span className="font-medium">{representativeName} ({representativePosition})</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span style={{ color: 'var(--text-muted)' }}>Official Email:</span>
+                    <span className="font-medium text-[#305BFE]">{regEmail}</span>
+                  </div>
+                </div>
+
+                {/* Statutory Declarations */}
+                <div className="space-y-2.5 text-xs pt-1">
+                  <label className="flex items-start gap-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={authorizationDeclared}
+                      onChange={(e) => setAuthorizationDeclared(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded accent-[#305BFE]"
+                    />
+                    <span style={{ color: 'var(--text-secondary)' }}>
+                      I declare that I am legally authorized to register and manage scholarship grants for this organization.
+                    </span>
                   </label>
+
+                  <label className="flex items-start gap-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={privacyPolicyAccepted}
+                      onChange={(e) => setPrivacyPolicyAccepted(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded accent-[#305BFE]"
+                    />
+                    <span style={{ color: 'var(--text-secondary)' }}>
+                      I agree to the ISKOLAR Data Privacy terms under Republic Act No. 10173 and consent to institutional accreditation checks.
+                    </span>
+                  </label>
+
+                  <label className="flex items-start gap-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={termsAccepted}
+                      onChange={(e) => setTermsAccepted(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded accent-[#305BFE]"
+                    />
+                    <span style={{ color: 'var(--text-secondary)' }}>
+                      I accept the Provider Code of Governance and scholarship management regulations.
+                    </span>
+                  </label>
+                </div>
+
+                {msg && (
+                  <div className={`p-3 rounded-xl text-xs font-semibold ${msgType === 'error' ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20' : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'}`}>
+                    {msg}
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => { setMsg(''); setRegSubStep(3); }}
+                    className="btn-secondary px-4 py-2.5 text-xs font-bold cursor-pointer"
+                  >
+                    ← Back
+                  </button>
+                  <button
+                    type="button"
+                    disabled={loading || !privacyPolicyAccepted || !termsAccepted || !authorizationDeclared}
+                    onClick={submitProviderRegistration}
+                    className="flex-1 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider text-white bg-[#305BFE] hover:bg-[#2748cb] transition cursor-pointer disabled:opacity-50"
+                  >
+                    {loading ? 'Submitting Application...' : 'Submit Application & Send Code'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 5: EMAIL OTP VERIFICATION */}
+            {regSubStep === 5 && (
+              <form onSubmit={handleVerifyRegistrationOtp} className="space-y-4 animate-fadeIn">
+                <div className="text-center space-y-1">
+                  <div className="w-10 h-10 rounded-full bg-[#305BFE]/10 text-[#305BFE] mx-auto flex items-center justify-center">
+                    <ShieldIcon className="w-5 h-5" />
+                  </div>
+                  <h2 className="text-lg font-black" style={{ color: 'var(--text-heading)' }}>
+                    5. Verify Official Email
+                  </h2>
+                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    Enter the 6-digit confirmation code dispatched to: <br />
+                    <span className="font-bold text-[#305BFE]">{maskedEmail || regEmail}</span>
+                  </p>
+                </div>
+
+                <div>
                   <input
                     type="text"
                     maxLength={6}
@@ -1273,9 +1333,9 @@ export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLo
                     value={otp}
                     onChange={(e) => setOtp(e.target.value)}
                     placeholder="••••••"
-                    className="w-full px-3.5 py-2.5 rounded-xl border text-center tracking-[0.4em] font-mono text-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+                    className="w-full px-3.5 py-3 rounded-xl border text-center tracking-[0.4em] font-mono text-xl focus:outline-none focus:ring-2 focus:ring-[#305BFE]"
                     style={{
-                      background: 'var(--bg-input)',
+                      backgroundColor: 'var(--bg-input, var(--color-surface-panel))',
                       borderColor: 'var(--border)',
                       color: 'var(--text-primary)',
                     }}
@@ -1283,7 +1343,7 @@ export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLo
                 </div>
 
                 {msg && (
-                  <div className={`p-3 rounded-xl text-xs font-semibold ${msgType === 'error' ? 'bg-rose-500/10 text-rose-300 border border-rose-500/20' : 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20'}`}>
+                  <div className={`p-3 rounded-xl text-xs font-semibold ${msgType === 'error' ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20' : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'}`}>
                     {msg}
                   </div>
                 )}
@@ -1291,38 +1351,106 @@ export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLo
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-3 rounded-xl font-bold text-xs tracking-wider uppercase text-white shadow-lg transition hover:brightness-110 disabled:opacity-50"
-                  style={{ background: 'var(--primary)' }}
+                  className="w-full py-3 rounded-xl font-bold text-xs uppercase tracking-wider text-white bg-[#305BFE] hover:bg-[#2748cb] transition cursor-pointer disabled:opacity-50"
                 >
-                  {loading ? 'Verifying Code...' : 'Verify & Access Workspace'}
+                  {loading ? 'Verifying OTP...' : 'Verify Email Address'}
                 </button>
 
-                <div className="text-center pt-2">
+                <div className="text-center pt-1">
                   <button
                     type="button"
                     disabled={loading}
-                    onClick={handleResendMfaOtp}
-                    className="text-xs font-semibold text-[var(--primary)] hover:underline disabled:opacity-50 transition"
+                    onClick={handleResendRegistrationOtp}
+                    className="text-xs font-bold text-[#305BFE] hover:underline cursor-pointer disabled:opacity-50"
                   >
                     Resend Verification Code
                   </button>
                 </div>
               </form>
             )}
-          </div>
-        </motion.div>
-      </motion.div>
 
-      {/* Mandatory Pre-Registration Privacy Policy Popup */}
-      <AnimatePresence>
-        {showPrivacyPopup && (
-          <PrivacyPolicyModal
-            open={showPrivacyPopup}
-            onCancel={() => setShowPrivacyPopup(false)}
-            onAgree={executeProviderRegistration}
-          />
+            {/* STEP 6: APPROVAL STATUS (PENDING ACCREDITATION REVIEW) */}
+            {regSubStep === 6 && (
+              <div className="space-y-4 animate-fadeIn text-center">
+                <div className="p-6 rounded-2xl border space-y-3" style={{ backgroundColor: 'rgba(245, 158, 11, 0.08)', borderColor: 'rgba(245, 158, 11, 0.35)' }}>
+                  <div className="w-12 h-12 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 mx-auto flex items-center justify-center">
+                    <ClockIcon className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/25 mb-1.5">
+                      Accreditation Pending
+                    </span>
+                    <h2 className="text-lg font-black text-amber-700 dark:text-amber-300">
+                      Application Received — Awaiting Review
+                    </h2>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
+                      Your organization email has been successfully verified. To ensure scholarship credibility, all provider accounts undergo identity and documentation review by an ISKOLAR administrator before granting grant-publishing access.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Submitted Organization Dossier */}
+                <div
+                  className="p-4 rounded-xl border text-left space-y-2 text-xs"
+                  style={{ backgroundColor: 'var(--color-surface-panel)', borderColor: 'var(--border)' }}
+                >
+                  <div className="font-bold text-[11px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                    Submitted Organization Record
+                  </div>
+                  <div className="flex justify-between">
+                    <span style={{ color: 'var(--text-secondary)' }}>Organization:</span>
+                    <span className="font-bold" style={{ color: 'var(--text-heading)' }}>{orgName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span style={{ color: 'var(--text-secondary)' }}>Representative:</span>
+                    <span className="font-medium">{representativeName} ({representativePosition})</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span style={{ color: 'var(--text-secondary)' }}>Verified Email:</span>
+                    <span className="font-mono text-[#305BFE]">{regEmail}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span style={{ color: 'var(--text-secondary)' }}>Status:</span>
+                    <span className="font-bold text-amber-600 dark:text-amber-400">Under Administrative Review</span>
+                  </div>
+                </div>
+
+                {/* What Happens Next */}
+                <div
+                  className="p-4 rounded-xl border text-left space-y-1.5 text-xs"
+                  style={{ backgroundColor: 'var(--color-surface-panel)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+                >
+                  <div className="font-bold mb-1" style={{ color: 'var(--text-heading)' }}>Accreditation Steps:</div>
+                  <div>1. An administrator verifies your organization registration and tax identifier.</div>
+                  <div>2. You will receive an official approval email once verification concludes.</div>
+                  <div>3. Upon approval, sign in to post and manage scholarship programs.</div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('login');
+                      setRegSubStep(1);
+                      setMsg('');
+                    }}
+                    className="btn-secondary flex-1 py-2.5 text-xs font-bold cursor-pointer"
+                  >
+                    Return to Sign In
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="btn-primary flex-1 py-2.5 text-xs font-bold cursor-pointer"
+                  >
+                    Acknowledge & Close Desk
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
-      </AnimatePresence>
-    </>
+      </motion.div>
+    </motion.div>
   )
 }

@@ -17,7 +17,8 @@ const LoginModal = lazy(() => import('./components/LoginModal'))
 const ProviderDashboard = lazy(() => import('./components/ProviderDashboard'))
 const ProviderGuide = lazy(() => import('./components/ProviderGuide'))
 const StudentRedirectNotice = lazy(() => import('./components/StudentRedirectNotice'))
-const TypographyDocPage = lazy(() => import('./components/TypographyDocPage'))
+const PrivacyPolicyPage = lazy(() => import('./components/PrivacyPolicyPage'))
+const NotFoundPage = lazy(() => import('./components/NotFoundPage'))
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center p-12 min-h-[400px]">
@@ -79,16 +80,7 @@ function AppContent() {
 
   // Dynamic View Renderer based on User Role and Hash Route
   const renderMainContent = () => {
-    // ── Dev / Utility Pages ────────────────────────────────────────────
-    if (activeSection === 'typography') {
-      return (
-        <main id="main-content" tabIndex={-1} className="animate-fadeIn outline-none py-4">
-          <Suspense fallback={<LoadingFallback />}>
-            <TypographyDocPage />
-          </Suspense>
-        </main>
-      )
-    }
+
 
     // ── Unauthenticated (Public) Routes ────────────────────────────────
     if (!currentUser) {
@@ -226,13 +218,66 @@ function AppContent() {
         )
       }
 
+      // ── Privacy Policy Page ─────────────────────────────────────────
+      if (activeSection === 'privacy' || activeSection === 'privacy-policy') {
+        return (
+          <PageWrapper
+            title="Privacy Policy"
+            subtitle="Philippine Data Privacy Act of 2012 (RA 10173) Governance & Protections"
+            badge="Compliance"
+            accentColor="#10B981"
+          >
+            <div className="max-w-4xl mx-auto px-4 md:px-8 py-8">
+              <Suspense fallback={<LoadingFallback />}>
+                <PrivacyPolicyPage />
+              </Suspense>
+            </div>
+          </PageWrapper>
+        )
+      }
+
       // ── Home / Default Landing (short, focused) ────────────────────
+      if (activeSection === 'home' || activeSection === '') {
+        return (
+          <main id="main-content" tabIndex={-1} className="animate-fadeIn outline-none">
+            <Hero onLogin={openLogin} />
+            <ProcessStrip />
+            <FinalCTA onLogin={openLogin} />
+          </main>
+        )
+      }
+
+      // ── Protected Provider/Admin Gate when not authenticated ──────
+      if (activeSection.startsWith('providers') || activeSection.startsWith('admin')) {
+        return (
+          <PageWrapper
+            title="Authorized Portal Sign In Required"
+            subtitle="The requested section is reserved for verified Scholarship Providers and Administrators."
+            badge="Authentication Guard"
+            accentColor="#305BFE"
+          >
+            <div className="max-w-md mx-auto py-16 px-4 text-center space-y-6">
+              <p className="body-text text-sm">
+                Please authenticate using your verified organization credentials to access this dashboard.
+              </p>
+              <div className="flex flex-col sm:flex-row justify-center gap-3">
+                <button type="button" onClick={openLogin} className="btn-action text-sm justify-center">
+                  Sign In to Portal →
+                </button>
+                <a href="#home" className="btn-secondary text-sm justify-center">
+                  ← Back to Home
+                </a>
+              </div>
+            </div>
+          </PageWrapper>
+        )
+      }
+
+      // ── 404 Not Found for unrecognized routes ──────────────────────
       return (
-        <main id="main-content" tabIndex={-1} className="animate-fadeIn outline-none">
-          <Hero onLogin={openLogin} />
-          <ProcessStrip />
-          <FinalCTA onLogin={openLogin} />
-        </main>
+        <Suspense fallback={<LoadingFallback />}>
+          <NotFoundPage onNavigateHome={() => { window.location.hash = '#home'; }} onLogin={openLogin} />
+        </Suspense>
       )
     }
 
@@ -255,12 +300,20 @@ function AppContent() {
     }
 
     // ── Fallback ───────────────────────────────────────────────────────
+    if (activeSection === 'home' || activeSection === '') {
+      return (
+        <main id="main-content" tabIndex={-1} className="animate-fadeIn outline-none">
+          <Hero onLogin={openLogin} />
+          <ProcessStrip />
+          <FinalCTA onLogin={openLogin} />
+        </main>
+      )
+    }
+
     return (
-      <main id="main-content" tabIndex={-1} className="animate-fadeIn outline-none">
-        <Hero onLogin={openLogin} />
-        <ProcessStrip />
-        <FinalCTA onLogin={openLogin} />
-      </main>
+      <Suspense fallback={<LoadingFallback />}>
+        <NotFoundPage onNavigateHome={() => { window.location.hash = '#home'; }} onLogin={openLogin} />
+      </Suspense>
     )
   }
 

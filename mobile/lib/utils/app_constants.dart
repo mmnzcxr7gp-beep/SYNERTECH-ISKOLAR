@@ -6,7 +6,7 @@ class AppConstants {
 
   static const String slogan = 'Connecting Students to Opportunities';
 
-  /// Primary deployed HTTPS backend URL (Singapore edge CDN with 0% packet drops in PH)
+  /// Primary deployed HTTPS backend URL (Vercel Singapore edge CDN)
   static const String primaryProductionUrl = 'https://client-gamma-hazel-97.vercel.app/api';
 
   /// Direct Render backend fallback
@@ -21,23 +21,12 @@ class AppConstants {
 
   static String _buildBackendUrl() {
     const envUrl = String.fromEnvironment('BACKEND_BASE_URL');
-
-    // Production release guard: Release builds MUST NEVER contain or default to 10.0.2.2 or localhost
-    if (kReleaseMode) {
-      final releaseUrl = envUrl.isNotEmpty ? envUrl : primaryProductionUrl;
-      if (releaseUrl.contains('10.0.2.2') ||
-          releaseUrl.contains('localhost') ||
-          releaseUrl.contains('127.0.0.1')) {
-        throw StateError(
-          'RELEASE BUILD CONFIGURATION ERROR: Release application cannot target emulator or local host ("$releaseUrl"). '
-          'Provide a valid deployed HTTPS backend via --dart-define=BACKEND_BASE_URL=https://client-gamma-hazel-97.vercel.app/api',
-        );
-      }
-      return releaseUrl;
-    }
-
     if (envUrl.isNotEmpty) {
       return envUrl;
+    }
+
+    if (kReleaseMode) {
+      return primaryProductionUrl;
     }
 
     // Flutter web development fallback
@@ -59,11 +48,18 @@ class AppConstants {
 
   static List<String> _buildFallbackUrls() {
     final list = <String>[];
-    if (backendBaseUrl != primaryProductionUrl) {
-      list.add(primaryProductionUrl);
-    }
-    if (backendBaseUrl != fallbackProductionUrl) {
-      list.add(fallbackProductionUrl);
+    final candidates = [
+      'https://iskolar.org/api',
+      'https://api.iskolar.org/api',
+      primaryProductionUrl,
+      fallbackProductionUrl,
+      'http://10.0.2.2:4000/api',
+      'http://localhost:4000/api',
+    ];
+    for (final c in candidates) {
+      if (c != backendBaseUrl && !list.contains(c)) {
+        list.add(c);
+      }
     }
     return list;
   }

@@ -44,14 +44,14 @@ export default function Download() {
 
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight" style={{ color: 'var(--text-heading)' }}>
               Student Access via <br />
-              <span className="gradient-text">ISKOLAR Mobile</span>
+              <span className="text-[#305BFE]">ISKOLAR Mobile</span>
             </h2>
 
             <p className="text-base sm:text-lg leading-relaxed font-normal" style={{ color: 'var(--text-secondary)' }}>
               Students apply and track scholarship grants exclusively through the official ISKOLAR mobile application. Search programs, scan verification documents, and get real-time status updates on Android and iOS.
             </p>
 
-            <div className="pt-2 flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto">
+            <div className="pt-2 flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto items-stretch sm:items-center">
               <ShinyButton
                 id="download-apk-btn"
                 as="a"
@@ -63,16 +63,20 @@ export default function Download() {
               >
                 Download Android APK
               </ShinyButton>
-              <ShinyButton
-                variant="secondary"
-                size="lg"
-                icon={<AppleIcon className="w-5 h-5" />}
-                onClick={() => alert('ISKOLAR iOS TestFlight client registration will open soon for university beta testers.')}
-                className="w-full sm:w-auto text-center justify-center"
+              <button
+                type="button"
+                disabled
+                aria-disabled="true"
+                className="btn-secondary w-full sm:w-auto text-center justify-center opacity-60 cursor-not-allowed inline-flex items-center gap-2 py-3 px-5 text-xs sm:text-sm font-semibold rounded-xl"
+                title="iOS client will be released via Apple TestFlight upon institutional rollout"
               >
-                iOS TestFlight Beta
-              </ShinyButton>
+                <AppleIcon className="w-4 h-4" />
+                <span>iOS TestFlight (Coming Soon)</span>
+              </button>
             </div>
+            <p className="text-xs text-[var(--color-text-muted)] italic">
+              Note: Android APK is available for direct verified download. iOS release is currently pending university test group certification.
+            </p>
           </div>
 
           {/* Right Column: Capabilities Card */}

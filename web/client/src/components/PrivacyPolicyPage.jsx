@@ -27,6 +27,11 @@ export default function PrivacyPolicyPage() {
   if (loading) return <div className="p-8 text-center text-slate-400">Loading Privacy Policy...</div>
   if (error) return <div className="p-8 text-center text-rose-300">{error}</div>
 
+  const policyData = policy?.policy || policy || {}
+  const sections = Array.isArray(policyData.sections) ? policyData.sections : []
+  const title = policyData.title || 'ISKOLAR Privacy Policy'
+  const lastUpdated = policyData.lastUpdated || '2026'
+
   return (
     <div className="w-full space-y-6">
       {/* Top Header */}
@@ -34,28 +39,32 @@ export default function PrivacyPolicyPage() {
         <span
           className="inline-flex items-center gap-2 rounded-full px-3.5 py-1 text-xs font-extrabold uppercase tracking-wider border mb-2"
           style={{
-            backgroundColor: 'rgba(255, 109, 41, 0.10)',
-            color: 'var(--primary)',
-            borderColor: 'rgba(255, 109, 41, 0.25)'
+            backgroundColor: 'rgba(48, 91, 254, 0.10)',
+            color: '#305BFE',
+            borderColor: 'rgba(48, 91, 254, 0.25)'
           }}
         >
           Compliance & Legal
         </span>
         <h1 className="text-2xl sm:text-3xl font-black tracking-tight" style={{ color: 'var(--text-heading)' }}>
-          {policy.title}
+          {title}
         </h1>
         <p className="mt-1 text-xs sm:text-sm font-normal" style={{ color: 'var(--text-secondary)' }}>
-          Last Updated: {policy.lastUpdated}
+          Last Updated: {lastUpdated}
         </p>
       </div>
 
       <div className="rounded-2xl border p-6 space-y-6" style={{ backgroundColor: 'var(--color-bg-elevated)', borderColor: 'var(--border)' }}>
-        {policy.sections.map((section, index) => (
-          <div key={index} className="space-y-2">
-            <h3 className="text-base font-bold" style={{ color: 'var(--text-heading)' }}>{section.heading}</h3>
-            <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-line" style={{ color: 'var(--text-secondary)' }}>{section.content}</p>
-          </div>
-        ))}
+        {sections.length === 0 ? (
+          <p className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>No privacy policy content available.</p>
+        ) : (
+          sections.map((section, index) => (
+            <div key={index} className="space-y-2">
+              <h3 className="text-base font-bold" style={{ color: 'var(--text-heading)' }}>{section.heading}</h3>
+              <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-line" style={{ color: 'var(--text-secondary)' }}>{section.content}</p>
+            </div>
+          ))
+        )}
       </div>
     </div>
   )

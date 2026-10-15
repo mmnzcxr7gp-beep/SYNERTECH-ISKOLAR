@@ -125,6 +125,17 @@ class _SplashScreenState extends State<SplashScreen>
           if (!mounted) return;
           _navigateTo(const OnboardingScreen());
         } else {
+          // If offline or remote service unreachable, but we have a valid savedSession,
+          // proceed gracefully into the student dashboard with cached profile!
+          if (savedSession.user.role.toLowerCase() == 'student') {
+            if (!mounted) return;
+            _navigateTo(StudentDashboardScreen(
+              user: savedSession.user,
+              token: savedSession.token,
+            ));
+            return;
+          }
+
           // Network connection error / service unreachable -> show Retry button
           if (!mounted) return;
           setState(() {
@@ -326,12 +337,32 @@ class _SplashScreenState extends State<SplashScreen>
                                   ),
                                 ),
                                 const SizedBox(height: 14),
-                                SizedBox(
-                                  width: 140,
-                                  child: PrimaryButton(
-                                    text: 'Retry',
-                                    onPressed: _initialize,
-                                  ),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    SizedBox(
+                                      width: 120,
+                                      child: PrimaryButton(
+                                        text: 'Retry',
+                                        onPressed: _initialize,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    TextButton(
+                                      onPressed: () async {
+                                        await AuthService.logout();
+                                        if (mounted) _navigateTo(const OnboardingScreen());
+                                      },
+                                      child: Text(
+                                        'Sign In Again',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: isDark ? AppColors.darkPrimary : AppColors.actionBlue,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),

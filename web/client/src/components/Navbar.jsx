@@ -41,9 +41,9 @@ export default function Navbar({ currentUser, activeSection, onLogin, onLogout }
     { href: '#home', label: 'Home', id: 'home' },
     { href: '#scholarships', label: 'Scholarships', id: 'scholarships' },
     { href: '#how-it-works', label: 'How It Works', id: 'how-it-works' },
-    { href: '#eligibility', label: 'Eligibility', id: 'eligibility' },
-    { href: '#safety', label: 'About & Trust', id: 'safety' },
-    { href: '#download', label: 'Mobile App', id: 'download' },
+    { href: '#safety', label: 'Security & Privacy', id: 'safety' },
+    { href: '#provider-info', label: 'Provider Information', id: 'provider-info' },
+    { href: '#download', label: 'Download Student App', id: 'download' },
   ]
 
   const handleNavClick = (e, linkId) => {
@@ -131,21 +131,23 @@ export default function Navbar({ currentUser, activeSection, onLogin, onLogout }
                 Log Out
               </button>
             ) : (
-              <>
+              <div className="flex items-center gap-2">
+                <a
+                  href="#provider-info"
+                  className="hidden md:inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium border text-[var(--color-text-secondary)] hover:text-[var(--color-text-heading)] hover:bg-[var(--color-bg-panel)] transition"
+                  style={{ borderColor: 'var(--color-border)' }}
+                >
+                  Register Organization
+                </a>
                 <button
                   onClick={onLogin}
                   type="button"
-                  className="btn-secondary py-1.5 sm:py-2 px-2.5 sm:px-3.5 text-xs font-bold cursor-pointer inline-flex items-center"
+                  className="btn-action py-1.5 sm:py-2 px-3 sm:px-4 text-xs font-bold cursor-pointer inline-flex items-center"
                 >
-                  Sign In
+                  <span className="hidden sm:inline">Provider / Admin Sign In</span>
+                  <span className="sm:hidden">Sign In</span>
                 </button>
-                <a
-                  href="#download"
-                  className="hidden sm:inline-flex btn-primary py-2 px-3.5 text-xs font-bold"
-                >
-                  Get Started
-                </a>
-              </>
+              </div>
             )}
 
             {/* Mobile Hamburger Button */}
@@ -209,49 +211,107 @@ export default function Navbar({ currentUser, activeSection, onLogin, onLogout }
                 </button>
               </div>
 
-              {/* Mobile Navigation Links */}
-              <nav className="mt-6 space-y-1.5" aria-label="Mobile Drawer Navigation">
-                {navLinks.map((link) => {
-                  const isActive = activeSection === link.id || (link.id === 'safety' && (activeSection === 'about' || activeSection === 'about-trust'))
-                  return (
-                    <a
-                      key={link.id}
-                      href={link.href}
-                      onClick={(e) => {
-                        setMobileMenuOpen(false)
-                        handleNavClick(e, link.id)
-                      }}
-                      className="block px-4 py-2.5 rounded-lg text-sm font-semibold transition hover:bg-[var(--color-bg-panel)]"
-                      style={{
-                        color: isActive ? 'var(--color-brand-primary)' : 'var(--color-text-primary)',
-                        backgroundColor: isActive ? 'var(--color-brand-subtle)' : 'transparent',
-                      }}
-                    >
-                      {link.label}
-                    </a>
-                  )
-                })}
+              {/* Mobile Grouped Navigation Links */}
+              <nav className="mt-6 space-y-4" aria-label="Mobile Drawer Navigation">
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] px-3 mb-1">
+                    Opportunity Discovery
+                  </div>
+                  <div className="space-y-1">
+                    {[
+                      { href: '#home', label: 'Home', id: 'home' },
+                      { href: '#scholarships', label: 'Browse Scholarships', id: 'scholarships' },
+                      { href: '#how-it-works', label: 'How It Works', id: 'how-it-works' },
+                    ].map((link) => {
+                      const isActive = activeSection === link.id
+                      return (
+                        <a
+                          key={link.id}
+                          href={link.href}
+                          onClick={(e) => {
+                            setMobileMenuOpen(false)
+                            handleNavClick(e, link.id)
+                          }}
+                          className="block px-3 py-2 rounded-lg text-sm font-semibold transition hover:bg-[var(--color-bg-panel)]"
+                          style={{
+                            color: isActive ? 'var(--color-brand-primary)' : 'var(--color-text-primary)',
+                            backgroundColor: isActive ? 'var(--color-brand-subtle)' : 'transparent',
+                          }}
+                        >
+                          {link.label}
+                        </a>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] px-3 mb-1">
+                    Institutional Governance
+                  </div>
+                  <div className="space-y-1">
+                    {[
+                      { href: '#safety', label: 'Security & Privacy', id: 'safety' },
+                      { href: '#provider-info', label: 'Provider Information', id: 'provider-info' },
+                    ].map((link) => {
+                      const isActive = activeSection === link.id || (link.id === 'safety' && (activeSection === 'about' || activeSection === 'about-trust'))
+                      return (
+                        <a
+                          key={link.id}
+                          href={link.href}
+                          onClick={(e) => {
+                            setMobileMenuOpen(false)
+                            handleNavClick(e, link.id)
+                          }}
+                          className="block px-3 py-2 rounded-lg text-sm font-semibold transition hover:bg-[var(--color-bg-panel)]"
+                          style={{
+                            color: isActive ? 'var(--color-brand-primary)' : 'var(--color-text-primary)',
+                            backgroundColor: isActive ? 'var(--color-brand-subtle)' : 'transparent',
+                          }}
+                        >
+                          {link.label}
+                        </a>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] px-3 mb-1">
+                    Student Mobile Client
+                  </div>
+                  <a
+                    href="#download"
+                    onClick={(e) => {
+                      setMobileMenuOpen(false)
+                      handleNavClick(e, 'download')
+                    }}
+                    className="block px-3 py-2 rounded-lg text-sm font-semibold transition text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20"
+                  >
+                    Download Student App
+                  </a>
+                </div>
               </nav>
             </div>
 
             {/* Bottom Actions inside drawer */}
-            <div className="pt-6 border-t space-y-3" style={{ borderColor: 'var(--color-border)' }}>
+            <div className="pt-6 border-t space-y-2.5" style={{ borderColor: 'var(--color-border)' }}>
               <button
                 type="button"
                 onClick={() => {
                   setMobileMenuOpen(false)
                   onLogin()
                 }}
-                className="w-full btn-secondary py-2.5 px-4 text-xs font-bold text-center justify-center flex items-center shadow-sm cursor-pointer"
+                className="w-full btn-action py-2.5 px-4 text-xs font-bold text-center justify-center flex items-center shadow-sm cursor-pointer"
               >
-                Sign In to Workspace
+                Sign In to Portal
               </button>
               <a
-                href="#download"
+                href="#provider-info"
                 onClick={() => setMobileMenuOpen(false)}
-                className="w-full btn-primary py-2.5 px-4 text-xs font-bold text-center justify-center flex items-center shadow-sm"
+                className="w-full btn-secondary py-2.5 px-4 text-xs font-bold text-center justify-center flex items-center"
               >
-                Get Mobile App
+                Register Organization
               </a>
             </div>
           </div>

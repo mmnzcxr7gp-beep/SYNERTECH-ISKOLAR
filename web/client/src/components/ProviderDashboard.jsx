@@ -26,6 +26,9 @@ import {
   HistoryIcon,
   BellIcon,
   ChevronDownIcon,
+  ChevronRightIcon,
+  ArrowRightIcon,
+  EditIcon,
   RefreshIcon,
   XIcon,
   ExternalLinkIcon
@@ -44,30 +47,91 @@ import AdminAccountDetailModal from './AdminAccountDetailModal'
 import AccountActionsMenu from './AccountActionsMenu'
 import { API_BASE_URL } from '../config/api'
 
-// Provider Navigation Matrix
-const providerNavItems = [
-  { label: 'Dashboard Overview', icon: <SparklesIcon className="w-4 h-4" />, route: 'providers' },
-  { label: 'My Scholarships', icon: <DocumentIcon className="w-4 h-4" />, route: 'providers/scholarships' },
-  { label: 'Applicant Pipeline', icon: <GraduationCapIcon className="w-4 h-4" />, route: 'providers/applicants' },
-  { label: 'Document & OCR Verification', icon: <ShieldIcon className="w-4 h-4" />, route: 'providers/verification' },
-  { label: 'Interview & Exam Schedules', icon: <CalendarIcon className="w-4 h-4" />, route: 'providers/scheduling' },
-  { label: 'Analytics & Reports', icon: <ChartIcon className="w-4 h-4" />, route: 'providers/reports' },
-  { label: 'Organization & Settings', icon: <BuildingIcon className="w-4 h-4" />, route: 'providers/settings' },
+// Purpose-Grouped Provider Navigation
+const providerNavGroups = [
+  {
+    title: 'Overview',
+    items: [
+      { label: 'Desk Overview', icon: <SparklesIcon className="w-4 h-4" />, route: 'providers' },
+    ],
+  },
+  {
+    title: 'Programs',
+    items: [
+      { label: 'My Scholarships', icon: <DocumentIcon className="w-4 h-4" />, route: 'providers/scholarships' },
+      { label: 'Create Scholarship', icon: <EditIcon className="w-4 h-4" />, route: 'providers/create' },
+    ],
+  },
+  {
+    title: 'Applications',
+    items: [
+      { label: 'Applicant Pipeline', icon: <GraduationCapIcon className="w-4 h-4" />, route: 'providers/applicants' },
+    ],
+  },
+  {
+    title: 'Evaluations',
+    items: [
+      { label: 'Document & OCR Checks', icon: <ShieldIcon className="w-4 h-4" />, route: 'providers/verification' },
+      { label: 'Interview & Exam Scheduling', icon: <CalendarIcon className="w-4 h-4" />, route: 'providers/scheduling' },
+    ],
+  },
+  {
+    title: 'Reports',
+    items: [
+      { label: 'Analytics & Ledger', icon: <ChartIcon className="w-4 h-4" />, route: 'providers/reports' },
+    ],
+  },
+  {
+    title: 'Organization & Security',
+    items: [
+      { label: 'Profile & Settings', icon: <BuildingIcon className="w-4 h-4" />, route: 'providers/settings' },
+      { label: 'Data Privacy Policy', icon: <LockIcon className="w-4 h-4" />, route: 'providers/privacy' },
+    ],
+  },
 ]
 
-// Administrator Navigation Matrix
-const adminNavItems = [
-  { label: 'Admin Overview', icon: <SparklesIcon className="w-4 h-4" />, route: 'admin' },
-  { label: 'Provider Approvals', icon: <ShieldIcon className="w-4 h-4" />, route: 'admin/approvals' },
-  { label: 'Users & Students Oversight', icon: <UsersIcon className="w-4 h-4" />, route: 'admin/students' },
-  { label: 'All System Scholarships', icon: <DocumentIcon className="w-4 h-4" />, route: 'admin/scholarships' },
-  { label: 'Applications Oversight', icon: <GraduationCapIcon className="w-4 h-4" />, route: 'admin/applicants' },
-  { label: 'Document Verification', icon: <ShieldIcon className="w-4 h-4" />, route: 'admin/verification' },
-  { label: 'Interview Schedules', icon: <CalendarIcon className="w-4 h-4" />, route: 'admin/scheduling' },
-  { label: 'Audit Logs', icon: <HistoryIcon className="w-4 h-4" />, route: 'admin/audit' },
-  { label: 'System Reports', icon: <ChartIcon className="w-4 h-4" />, route: 'admin/reports' },
-  { label: 'System Settings & Health', icon: <LockIcon className="w-4 h-4" />, route: 'admin/settings' },
+// Purpose-Grouped Administrator Navigation
+const adminNavGroups = [
+  {
+    title: 'Overview',
+    items: [
+      { label: 'Admin Desk Overview', icon: <SparklesIcon className="w-4 h-4" />, route: 'admin' },
+    ],
+  },
+  {
+    title: 'Governance',
+    items: [
+      { label: 'Provider Approvals', icon: <ShieldIcon className="w-4 h-4" />, route: 'admin/approvals' },
+      { label: 'Users & Student Oversight', icon: <UsersIcon className="w-4 h-4" />, route: 'admin/students' },
+    ],
+  },
+  {
+    title: 'Platform Records',
+    items: [
+      { label: 'All System Scholarships', icon: <DocumentIcon className="w-4 h-4" />, route: 'admin/scholarships' },
+      { label: 'Applications Oversight', icon: <GraduationCapIcon className="w-4 h-4" />, route: 'admin/applicants' },
+    ],
+  },
+  {
+    title: 'Monitoring',
+    items: [
+      { label: 'Audit Logs', icon: <HistoryIcon className="w-4 h-4" />, route: 'admin/audit' },
+      { label: 'Document Verification', icon: <ShieldIcon className="w-4 h-4" />, route: 'admin/verification' },
+      { label: 'Interview Schedules', icon: <CalendarIcon className="w-4 h-4" />, route: 'admin/scheduling' },
+    ],
+  },
+  {
+    title: 'Reports & Settings',
+    items: [
+      { label: 'System Reports', icon: <ChartIcon className="w-4 h-4" />, route: 'admin/reports' },
+      { label: 'System Health & Settings', icon: <LockIcon className="w-4 h-4" />, route: 'admin/settings' },
+    ],
+  },
 ]
+
+// Flattened lookup for breadcrumbs
+const providerNavItems = providerNavGroups.flatMap((g) => g.items)
+const adminNavItems = adminNavGroups.flatMap((g) => g.items)
 
 // -------------------------------------------------------------
 // Admin Sub-Views: Provider Approvals, Students, and Audit Logs
@@ -137,9 +201,9 @@ function AdminProviderApprovalsView({ token }) {
         <span
           className="inline-flex items-center gap-2 rounded-full px-3.5 py-1 text-xs font-extrabold uppercase tracking-wider border mb-2"
           style={{
-            backgroundColor: 'rgba(255, 109, 41, 0.10)',
-            color: 'var(--primary)',
-            borderColor: 'rgba(255, 109, 41, 0.25)'
+            backgroundColor: 'rgba(48, 91, 254, 0.10)',
+            color: '#305BFE',
+            borderColor: 'rgba(48, 91, 254, 0.25)'
           }}
         >
           Administrator Control
@@ -376,9 +440,9 @@ function AdminStudentsOversightView({ token }) {
         <span
           className="inline-flex items-center gap-2 rounded-full px-3.5 py-1 text-xs font-extrabold uppercase tracking-wider border mb-2"
           style={{
-            backgroundColor: 'rgba(255, 109, 41, 0.10)',
-            color: 'var(--primary)',
-            borderColor: 'rgba(255, 109, 41, 0.25)'
+            backgroundColor: 'rgba(48, 91, 254, 0.10)',
+            color: '#305BFE',
+            borderColor: 'rgba(48, 91, 254, 0.25)'
           }}
         >
           Administrator Control
@@ -599,9 +663,9 @@ function AdminAuditLogsView({ token }) {
         <span
           className="inline-flex items-center gap-2 rounded-full px-3.5 py-1 text-xs font-extrabold uppercase tracking-wider border mb-2"
           style={{
-            backgroundColor: 'rgba(255, 109, 41, 0.10)',
-            color: 'var(--primary)',
-            borderColor: 'rgba(255, 109, 41, 0.25)'
+            backgroundColor: 'rgba(48, 91, 254, 0.10)',
+            color: '#305BFE',
+            borderColor: 'rgba(48, 91, 254, 0.25)'
           }}
         >
           Administrator Control
@@ -1129,31 +1193,38 @@ export default function ProviderDashboard({ onLogout }) {
           </div>
         </div>
 
-        {/* Navigation Items */}
-        <nav className="flex-1 px-3 py-4 space-y-1" aria-label="Portal Navigation">
-          {navItems.map((item) => {
-            const isActive = activeRoute === item.route
-            return (
-              <button
-                key={item.route}
-                onClick={() => {
-                  window.location.hash = `#${item.route}`
-                  setMobileMenuOpen(false)
-                }}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition text-left text-xs font-bold cursor-pointer ${
-                  isActive
-                    ? 'bg-gradient-to-r from-[#305BFE] to-[#4F96FF] text-white shadow-md'
-                    : 'hover:bg-[var(--color-surface-panel)]'
-                }`}
-                style={{
-                  color: isActive ? '#FFFFFF' : 'var(--text-secondary)'
-                }}
-              >
-                <span>{item.icon}</span>
-                <span className="truncate">{item.label}</span>
-              </button>
-            )
-          })}
+        {/* Purpose-Grouped Navigation Items */}
+        <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto" aria-label="Portal Navigation">
+          {(isAdmin ? adminNavGroups : providerNavGroups).map((group) => (
+            <div key={group.title} className="space-y-1">
+              <div className="px-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted,#8F9CAE)]">
+                {group.title}
+              </div>
+              <div className="space-y-0.5">
+                {group.items.map((item) => {
+                  const isActive = activeRoute === item.route
+                  return (
+                    <button
+                      key={item.route}
+                      type="button"
+                      onClick={() => {
+                        window.location.hash = `#${item.route}`
+                        setMobileMenuOpen(false)
+                      }}
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl transition text-left text-xs font-semibold cursor-pointer ${
+                        isActive
+                          ? 'bg-[#305BFE] text-white shadow-sm'
+                          : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-panel)] hover:text-[var(--color-text-heading)]'
+                      }`}
+                    >
+                      <span className={isActive ? 'text-white' : 'text-[#305BFE]'}>{item.icon}</span>
+                      <span className="truncate">{item.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         {/* Sidebar Footer Controls */}
@@ -1346,167 +1417,587 @@ export default function ProviderDashboard({ onLogout }) {
                 </div>
               </div>
 
-              {/* 4 Bento KPI Cards */}
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                {isAdmin ? (
-                  // Administrator KPIs
-                  [
-                    {
-                      title: 'Pending Provider Approvals',
-                      value: adminOverview?.counts?.pendingProviderApprovals ?? 0,
-                      icon: <ShieldIcon className="w-5 h-5 text-amber-500" />,
-                      accent: '#F59E0B',
-                      subtitle: 'Sponsors Awaiting Review',
-                      link: '#admin/approvals'
-                    },
-                    {
-                      title: 'Active Providers',
-                      value: adminOverview?.counts?.users ? Math.max(1, Math.round(adminOverview.counts.users * 0.3)) : 1,
-                      icon: <BuildingIcon className="w-5 h-5 text-emerald-500" />,
-                      accent: '#10B981',
-                      subtitle: 'Accredited Sponsors',
-                      link: '#admin/approvals'
-                    },
-                    {
-                      title: 'Active Scholarships',
-                      value: adminOverview?.counts?.openScholarships ?? dashboard?.openScholarshipsCount ?? 0,
-                      icon: <DocumentIcon className="w-5 h-5 text-[#305BFE]" />,
-                      accent: '#305BFE',
-                      subtitle: 'Published Grant Programs',
-                      link: '#admin/scholarships'
-                    },
-                    {
-                      title: 'Applications Under Oversight',
-                      value: adminOverview?.counts?.applications ?? dashboard?.applicationsCount ?? 0,
-                      icon: <GraduationCapIcon className="w-5 h-5 text-sky-500" />,
-                      accent: '#3B82F6',
-                      subtitle: 'Total Candidate Submissions',
-                      link: '#admin/applicants'
-                    },
-                  ].map((item) => (
-                    <SpotlightCard
-                      key={item.title}
-                      className="p-5 flex flex-col justify-between cursor-pointer hover:border-[#305BFE] transition"
-                      onClick={() => { if (item.link) window.location.hash = item.link }}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                          {item.title}
-                        </span>
-                        {item.icon}
-                      </div>
-                      <div className="my-3">
-                        <div className="text-3xl font-black tracking-tight" style={{ color: 'var(--text-heading)' }}>
-                          {item.value}
-                        </div>
-                        <div className="text-xs font-semibold mt-1" style={{ color: item.accent }}>
-                          {item.subtitle}
-                        </div>
-                      </div>
-                    </SpotlightCard>
-                  ))
-                ) : (
-                  // Provider KPIs
-                  [
-                    {
-                      title: 'Total Applications',
-                      value: dashboard?.applicationsCount ?? 0,
-                      icon: <DocumentIcon className="w-5 h-5 text-[#305BFE]" />,
-                      accent: '#305BFE',
-                      subtitle: 'All Program Submissions',
-                      link: '#providers/applicants'
-                    },
-                    {
-                      title: 'Applications Needing Action',
-                      value: dashboard?.applicationStatusCounts?.pending ?? 0,
-                      icon: <AlertTriangleIcon className="w-5 h-5 text-amber-500" />,
-                      accent: '#F59E0B',
-                      subtitle: 'Pending Evaluation or Docs',
-                      link: '#providers/applicants'
-                    },
-                    {
-                      title: 'Approved Scholars',
-                      value: dashboard?.applicationStatusCounts?.approved ?? 0,
-                      icon: <CheckCircleIcon className="w-5 h-5 text-emerald-500" />,
-                      accent: '#10B981',
-                      subtitle: 'Confirmed Scholarship Awards',
-                      link: '#providers/applicants'
-                    },
-                    {
-                      title: 'Active Grant Programs',
-                      value: dashboard?.openScholarshipsCount ?? dashboard?.totalScholarships ?? 0,
-                      icon: <BoltIcon className="w-5 h-5 text-sky-500" />,
-                      accent: '#3B82F6',
-                      subtitle: 'Accepting Submissions',
-                      link: '#providers/scholarships'
-                    },
-                  ].map((item) => (
-                    <SpotlightCard
-                      key={item.title}
-                      className="p-5 flex flex-col justify-between cursor-pointer hover:border-[var(--primary)] transition"
-                      onClick={() => { if (item.link) window.location.hash = item.link }}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                          {item.title}
-                        </span>
-                        {item.icon}
-                      </div>
-                      <div className="my-3">
-                        <div className="text-3xl font-black tracking-tight" style={{ color: 'var(--text-heading)' }}>
-                          {item.value}
-                        </div>
-                        <div className="text-xs font-semibold mt-1" style={{ color: item.accent }}>
-                          {item.subtitle}
-                        </div>
-                      </div>
-                    </SpotlightCard>
-                  ))
-                )}
-              </div>
-
+              {/* Dashboard Error Alert if any */}
               {dashboardError && (
                 <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs font-bold text-rose-400">
                   {dashboardError}
                 </div>
               )}
 
-              {/* Rapid Actions Bar */}
-              <SpotlightCard className="p-6">
-                <h3 className="text-sm font-extrabold uppercase tracking-wider mb-4" style={{ color: 'var(--text-heading)' }}>
-                  Rapid Navigation & Controls
-                </h3>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  <button
-                    onClick={() => { window.location.hash = isAdmin ? '#admin/create' : '#providers/create' }}
-                    className="btn-secondary p-3.5 text-xs font-extrabold text-center hover:border-[var(--primary)] transition flex items-center justify-center gap-2 cursor-pointer"
+              {/* Prioritized Workspace Content (Provider or Admin) */}
+              {isAdmin ? (
+                // ADMINISTRATOR DESK WORKSPACE
+                <div className="space-y-8">
+                  {/* 1. Pending Provider Approvals Queue */}
+                  {(adminOverview?.counts?.pendingProviderApprovals || 0) > 0 ? (
+                    <div
+                      className="p-6 rounded-2xl border flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+                      style={{
+                        backgroundColor: 'rgba(245, 158, 11, 0.06)',
+                        borderColor: 'rgba(245, 158, 11, 0.35)',
+                      }}
+                    >
+                      <div className="space-y-1">
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                          <AlertTriangleIcon className="w-3.5 h-3.5" />
+                          Governance Action Required
+                        </div>
+                        <h2 className="text-lg font-black tracking-tight" style={{ color: 'var(--text-heading)' }}>
+                          {adminOverview.counts.pendingProviderApprovals} Sponsor Organization{adminOverview.counts.pendingProviderApprovals > 1 ? 's' : ''} Awaiting Review
+                        </h2>
+                        <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                          Provider organizations have submitted registration credentials and require verification of legal standing and eligibility before publishing scholarship grants.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => { window.location.hash = '#admin/approvals' }}
+                        className="btn-primary shrink-0 px-4 py-2.5 text-xs font-bold flex items-center gap-2 cursor-pointer"
+                      >
+                        <span>Review Provider Registrations</span>
+                        <ArrowRightIcon className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      className="p-5 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+                      style={{
+                        backgroundColor: 'var(--color-bg-elevated)',
+                        borderColor: 'var(--border)',
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                          <CheckCircleIcon className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold" style={{ color: 'var(--text-heading)' }}>
+                            Provider Accreditation Queue Clear
+                          </h3>
+                          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                            All active scholarship providers have undergone identity and accreditation review.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => { window.location.hash = '#admin/approvals' }}
+                        className="text-xs font-bold text-[#305BFE] hover:underline cursor-pointer"
+                      >
+                        Manage Accredited Sponsors →
+                      </button>
+                    </div>
+                  )}
+
+                  {/* 2. Platform Activity & Recent Candidate Submissions Under Oversight */}
+                  <div
+                    className="rounded-2xl border overflow-hidden"
+                    style={{ backgroundColor: 'var(--color-bg-elevated)', borderColor: 'var(--border)' }}
                   >
-                    <SparklesIcon className="w-4 h-4 text-[#305BFE]" />
-                    <span>Create Scholarship</span>
-                  </button>
-                  <button
-                    onClick={() => { window.location.hash = isAdmin ? '#admin/applicants' : '#providers/applicants' }}
-                    className="btn-secondary p-3.5 text-xs font-extrabold text-center hover:border-[var(--primary)] transition flex items-center justify-center gap-2 cursor-pointer"
+                    <div className="p-5 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
+                      <div>
+                        <h3 className="text-sm font-black uppercase tracking-wider" style={{ color: 'var(--text-heading)' }}>
+                          Candidate Applications Under Oversight
+                        </h3>
+                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                          Live student submissions across all accredited scholarship programs
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => { window.location.hash = '#admin/applicants' }}
+                        className="text-xs font-bold text-[#305BFE] hover:underline cursor-pointer"
+                      >
+                        View Full Pipeline →
+                      </button>
+                    </div>
+
+                    {adminOverview?.recentApplications && adminOverview.recentApplications.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse text-xs">
+                          <thead>
+                            <tr className="border-b" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--color-surface-panel)' }}>
+                              <th className="py-3 px-4 font-extrabold uppercase tracking-wider text-[10px]" style={{ color: 'var(--text-muted)' }}>Applicant</th>
+                              <th className="py-3 px-4 font-extrabold uppercase tracking-wider text-[10px]" style={{ color: 'var(--text-muted)' }}>Scholarship Program</th>
+                              <th className="py-3 px-4 font-extrabold uppercase tracking-wider text-[10px]" style={{ color: 'var(--text-muted)' }}>Applied Date</th>
+                              <th className="py-3 px-4 font-extrabold uppercase tracking-wider text-[10px]" style={{ color: 'var(--text-muted)' }}>Status</th>
+                              <th className="py-3 px-4 font-extrabold uppercase tracking-wider text-[10px] text-right" style={{ color: 'var(--text-muted)' }}>Action</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
+                            {adminOverview.recentApplications.slice(0, 6).map((app) => (
+                              <tr key={app.id || app.applied_at} className="hover:bg-[var(--color-surface-panel)] transition">
+                                <td className="py-3 px-4">
+                                  <div className="font-bold" style={{ color: 'var(--text-heading)' }}>
+                                    {app.student?.name || 'Applicant'}
+                                  </div>
+                                  <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                                    {app.student?.email || '—'}
+                                  </div>
+                                </td>
+                                <td className="py-3 px-4 font-medium" style={{ color: 'var(--text-secondary)' }}>
+                                  {app.scholarship?.title || 'Scholarship'}
+                                </td>
+                                <td className="py-3 px-4 tabular-nums" style={{ color: 'var(--text-muted)' }}>
+                                  {app.applied_at ? new Date(app.applied_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}
+                                </td>
+                                <td className="py-3 px-4">
+                                  <span
+                                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
+                                      app.status === 'approved'
+                                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                                        : app.status === 'rejected'
+                                        ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
+                                        : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                                    }`}
+                                  >
+                                    {app.status || 'pending'}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-4 text-right">
+                                  <button
+                                    onClick={() => { window.location.hash = '#admin/applicants' }}
+                                    className="text-xs font-bold text-[#305BFE] hover:underline cursor-pointer"
+                                  >
+                                    Inspect Dossier
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="p-8 text-center text-xs" style={{ color: 'var(--text-muted)' }}>
+                        No candidate applications recorded yet.
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 3. Platform Governance & Operational Controls */}
+                  <div
+                    className="p-6 rounded-2xl border"
+                    style={{ backgroundColor: 'var(--color-bg-elevated)', borderColor: 'var(--border)' }}
                   >
-                    <GraduationCapIcon className="w-4 h-4 text-[#4F96FF]" />
-                    <span>Review Candidates</span>
-                  </button>
-                  <button
-                    onClick={() => { window.location.hash = isAdmin ? '#admin/verification' : '#providers/verification' }}
-                    className="btn-secondary p-3.5 text-xs font-extrabold text-center hover:border-[var(--primary)] transition flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <ShieldIcon className="w-4 h-4 text-emerald-500" />
-                    <span>Document OCR Checks</span>
-                  </button>
-                  <button
-                    onClick={() => { window.location.hash = isAdmin ? '#admin/reports' : '#providers/reports' }}
-                    className="btn-secondary p-3.5 text-xs font-extrabold text-center hover:border-[var(--primary)] transition flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <ChartIcon className="w-4 h-4 text-sky-500" />
-                    <span>View Analytics</span>
-                  </button>
+                    <h3 className="text-sm font-black uppercase tracking-wider mb-4" style={{ color: 'var(--text-heading)' }}>
+                      Governance & Operational Controls
+                    </h3>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                      <button
+                        onClick={() => { window.location.hash = '#admin/approvals' }}
+                        className="p-4 rounded-xl border text-left transition hover:border-[#305BFE] hover:bg-[var(--color-surface-panel)] cursor-pointer group"
+                        style={{ backgroundColor: 'var(--color-surface-panel)', borderColor: 'var(--border)' }}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <ShieldIcon className="w-5 h-5 text-amber-500" />
+                          <ChevronRightIcon className="w-4 h-4 opacity-50 group-hover:translate-x-0.5 transition" />
+                        </div>
+                        <div className="font-extrabold text-xs" style={{ color: 'var(--text-heading)' }}>Provider Accreditation</div>
+                        <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>Review sponsor legal status</div>
+                      </button>
+
+                      <button
+                        onClick={() => { window.location.hash = '#admin/students' }}
+                        className="p-4 rounded-xl border text-left transition hover:border-[#305BFE] hover:bg-[var(--color-surface-panel)] cursor-pointer group"
+                        style={{ backgroundColor: 'var(--color-surface-panel)', borderColor: 'var(--border)' }}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <UsersIcon className="w-5 h-5 text-[#305BFE]" />
+                          <ChevronRightIcon className="w-4 h-4 opacity-50 group-hover:translate-x-0.5 transition" />
+                        </div>
+                        <div className="font-extrabold text-xs" style={{ color: 'var(--text-heading)' }}>User Oversight</div>
+                        <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>Manage student and provider accounts</div>
+                      </button>
+
+                      <button
+                        onClick={() => { window.location.hash = '#admin/audit' }}
+                        className="p-4 rounded-xl border text-left transition hover:border-[#305BFE] hover:bg-[var(--color-surface-panel)] cursor-pointer group"
+                        style={{ backgroundColor: 'var(--color-surface-panel)', borderColor: 'var(--border)' }}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <HistoryIcon className="w-5 h-5 text-emerald-500" />
+                          <ChevronRightIcon className="w-4 h-4 opacity-50 group-hover:translate-x-0.5 transition" />
+                        </div>
+                        <div className="font-extrabold text-xs" style={{ color: 'var(--text-heading)' }}>Audit Ledger</div>
+                        <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>Security and role activity logs</div>
+                      </button>
+
+                      <button
+                        onClick={() => { window.location.hash = '#admin/settings' }}
+                        className="p-4 rounded-xl border text-left transition hover:border-[#305BFE] hover:bg-[var(--color-surface-panel)] cursor-pointer group"
+                        style={{ backgroundColor: 'var(--color-surface-panel)', borderColor: 'var(--border)' }}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <LockIcon className="w-5 h-5 text-sky-500" />
+                          <ChevronRightIcon className="w-4 h-4 opacity-50 group-hover:translate-x-0.5 transition" />
+                        </div>
+                        <div className="font-extrabold text-xs" style={{ color: 'var(--text-heading)' }}>System Health & Config</div>
+                        <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>Server status and security rules</div>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 4. Supporting Institutional Metrics */}
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    {[
+                      {
+                        title: 'Accredited Providers',
+                        value: adminOverview?.counts?.users ? Math.max(1, Math.round(adminOverview.counts.users * 0.3)) : '—',
+                        subtitle: 'Verified Grant Sponsors',
+                        icon: <BuildingIcon className="w-4 h-4 text-[#305BFE]" />
+                      },
+                      {
+                        title: 'Published Scholarships',
+                        value: adminOverview?.counts?.openScholarships ?? dashboard?.openScholarshipsCount ?? '—',
+                        subtitle: 'Active Grant Programs',
+                        icon: <DocumentIcon className="w-4 h-4 text-emerald-500" />
+                      },
+                      {
+                        title: 'Applications Under Oversight',
+                        value: adminOverview?.counts?.applications ?? dashboard?.applicationsCount ?? '—',
+                        subtitle: 'Total Candidate Dossiers',
+                        icon: <GraduationCapIcon className="w-4 h-4 text-sky-500" />
+                      },
+                      {
+                        title: 'Documents On Record',
+                        value: adminOverview?.counts?.documents ?? '—',
+                        subtitle: 'Encrypted Cloud Storage',
+                        icon: <ShieldIcon className="w-4 h-4 text-amber-500" />
+                      },
+                    ].map((m) => (
+                      <div
+                        key={m.title}
+                        className="p-4 rounded-2xl border"
+                        style={{ backgroundColor: 'var(--color-bg-elevated)', borderColor: 'var(--border)' }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-extrabold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                            {m.title}
+                          </span>
+                          {m.icon}
+                        </div>
+                        <div className="text-2xl font-black tracking-tight mt-2 tabular-nums" style={{ color: 'var(--text-heading)' }}>
+                          {m.value}
+                        </div>
+                        <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                          {m.subtitle}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </SpotlightCard>
+              ) : (
+                // PROVIDER DESK WORKSPACE
+                <div className="space-y-8">
+                  {/* 1. Actionable Review Queue (Work Requiring Attention) */}
+                  {(dashboard?.applicationStatusCounts?.pending || 0) > 0 ? (
+                    <div
+                      className="p-6 rounded-2xl border flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+                      style={{
+                        backgroundColor: 'rgba(48, 91, 254, 0.05)',
+                        borderColor: 'rgba(48, 91, 254, 0.3)',
+                      }}
+                    >
+                      <div className="space-y-1">
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-[#305BFE]/15 text-[#305BFE] border border-[#305BFE]/25">
+                          <AlertTriangleIcon className="w-3.5 h-3.5" />
+                          Review Queue Action Needed
+                        </div>
+                        <h2 className="text-lg font-black tracking-tight" style={{ color: 'var(--text-heading)' }}>
+                          {dashboard.applicationStatusCounts.pending} Candidate Application{dashboard.applicationStatusCounts.pending > 1 ? 's' : ''} Awaiting Desk Review
+                        </h2>
+                        <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                          Candidate dossiers have been submitted and require eligibility assessment, OCR document verification, or stage advancement.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2.5 shrink-0">
+                        <button
+                          onClick={() => { window.location.hash = '#providers/applicants' }}
+                          className="btn-primary px-4 py-2 text-xs font-bold flex items-center gap-2 cursor-pointer"
+                        >
+                          <span>Open Review Queue</span>
+                          <ArrowRightIcon className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => { window.location.hash = '#providers/verification' }}
+                          className="btn-secondary px-3.5 py-2 text-xs font-bold cursor-pointer"
+                        >
+                          Document Checks
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      className="p-5 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+                      style={{
+                        backgroundColor: 'var(--color-bg-elevated)',
+                        borderColor: 'var(--border)',
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                          <CheckCircleIcon className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold" style={{ color: 'var(--text-heading)' }}>
+                            Review Queue Is Clear
+                          </h3>
+                          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                            No pending candidate submissions or unverified student documents currently require your attention.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => { window.location.hash = '#providers/applicants' }}
+                        className="text-xs font-bold text-[#305BFE] hover:underline cursor-pointer"
+                      >
+                        Browse All Applicants →
+                      </button>
+                    </div>
+                  )}
+
+                  {/* 2. Program Intake & Quota Breakdown */}
+                  <div
+                    className="rounded-2xl border overflow-hidden"
+                    style={{ backgroundColor: 'var(--color-bg-elevated)', borderColor: 'var(--border)' }}
+                  >
+                    <div className="p-5 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
+                      <div>
+                        <h3 className="text-sm font-black uppercase tracking-wider" style={{ color: 'var(--text-heading)' }}>
+                          Active Program Intake & Capacity
+                        </h3>
+                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                          Real-time submission pipeline and scholar confirmation by grant program
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => { window.location.hash = '#providers/scholarships' }}
+                        className="text-xs font-bold text-[#305BFE] hover:underline cursor-pointer"
+                      >
+                        All Programs ({dashboard?.totalScholarships ?? 0}) →
+                      </button>
+                    </div>
+
+                    {dashboard?.topPrograms && dashboard.topPrograms.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse text-xs">
+                          <thead>
+                            <tr className="border-b" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--color-surface-panel)' }}>
+                              <th className="py-3 px-4 font-extrabold uppercase tracking-wider text-[10px]" style={{ color: 'var(--text-muted)' }}>Grant Program</th>
+                              <th className="py-3 px-4 font-extrabold uppercase tracking-wider text-[10px]" style={{ color: 'var(--text-muted)' }}>Status</th>
+                              <th className="py-3 px-4 font-extrabold uppercase tracking-wider text-[10px] text-center" style={{ color: 'var(--text-muted)' }}>Submissions</th>
+                              <th className="py-3 px-4 font-extrabold uppercase tracking-wider text-[10px] text-center" style={{ color: 'var(--text-muted)' }}>In Review</th>
+                              <th className="py-3 px-4 font-extrabold uppercase tracking-wider text-[10px] text-center" style={{ color: 'var(--text-muted)' }}>Awarded</th>
+                              <th className="py-3 px-4 font-extrabold uppercase tracking-wider text-[10px] text-right" style={{ color: 'var(--text-muted)' }}>Action</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
+                            {dashboard.topPrograms.map((prog) => (
+                              <tr key={prog.id} className="hover:bg-[var(--color-surface-panel)] transition">
+                                <td className="py-3 px-4">
+                                  <div className="font-bold" style={{ color: 'var(--text-heading)' }}>
+                                    {prog.title}
+                                  </div>
+                                </td>
+                                <td className="py-3 px-4">
+                                  <span
+                                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
+                                      prog.status === 'open'
+                                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                                        : 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border border-slate-500/20'
+                                    }`}
+                                  >
+                                    {prog.status || 'open'}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-4 text-center tabular-nums font-semibold" style={{ color: 'var(--text-primary)' }}>
+                                  {prog.applicants}
+                                </td>
+                                <td className="py-3 px-4 text-center tabular-nums font-semibold text-amber-500">
+                                  {prog.pending}
+                                </td>
+                                <td className="py-3 px-4 text-center tabular-nums font-semibold text-emerald-500">
+                                  {prog.approved}
+                                </td>
+                                <td className="py-3 px-4 text-right">
+                                  <button
+                                    onClick={() => { window.location.hash = `#providers/applicants` }}
+                                    className="text-xs font-bold text-[#305BFE] hover:underline cursor-pointer"
+                                  >
+                                    View Applicants
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="p-8 text-center text-xs space-y-3" style={{ color: 'var(--text-muted)' }}>
+                        <p>No active scholarship programs created yet.</p>
+                        <button
+                          onClick={() => { window.location.hash = '#providers/create' }}
+                          className="btn-primary px-4 py-2 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <span>+ Create First Scholarship</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 3. Monthly Intake Breakdown & Desk Operations */}
+                  <div className="grid gap-6 lg:grid-cols-2">
+                    {/* Monthly Submissions */}
+                    <div
+                      className="p-5 rounded-2xl border"
+                      style={{ backgroundColor: 'var(--color-bg-elevated)', borderColor: 'var(--border)' }}
+                    >
+                      <h3 className="text-sm font-black uppercase tracking-wider mb-1" style={{ color: 'var(--text-heading)' }}>
+                        Submission Volume (Past 6 Months)
+                      </h3>
+                      <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
+                        Candidate application influx over time
+                      </p>
+
+                      {dashboard?.monthlyApplications && dashboard.monthlyApplications.length > 0 ? (
+                        <div className="space-y-2.5">
+                          {dashboard.monthlyApplications.map((m) => {
+                            const maxVal = Math.max(...dashboard.monthlyApplications.map((x) => x.count), 1)
+                            const pct = Math.round((m.count / maxVal) * 100)
+                            return (
+                              <div key={m.label} className="space-y-1">
+                                <div className="flex justify-between text-xs font-semibold">
+                                  <span style={{ color: 'var(--text-secondary)' }}>{m.label}</span>
+                                  <span className="tabular-nums" style={{ color: 'var(--text-heading)' }}>{m.count} applicants</span>
+                                </div>
+                                <div className="h-2 w-full rounded-full bg-slate-200/50 dark:bg-slate-800 overflow-hidden">
+                                  <div
+                                    className="h-full rounded-full bg-[#305BFE] transition-all duration-300"
+                                    style={{ width: `${Math.max(pct, m.count > 0 ? 6 : 0)}%` }}
+                                  />
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>No monthly trends available.</p>
+                      )}
+                    </div>
+
+                    {/* Operational Review Actions */}
+                    <div
+                      className="p-5 rounded-2xl border flex flex-col justify-between"
+                      style={{ backgroundColor: 'var(--color-bg-elevated)', borderColor: 'var(--border)' }}
+                    >
+                      <div>
+                        <h3 className="text-sm font-black uppercase tracking-wider mb-1" style={{ color: 'var(--text-heading)' }}>
+                          Desk Operations & Workflows
+                        </h3>
+                        <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
+                          Essential verification and evaluation shortcuts
+                        </p>
+                        <div className="grid gap-2.5 sm:grid-cols-2">
+                          <button
+                            onClick={() => { window.location.hash = '#providers/verification' }}
+                            className="p-3 rounded-xl border text-left hover:border-[#305BFE] hover:bg-[var(--color-surface-panel)] transition cursor-pointer"
+                            style={{ backgroundColor: 'var(--color-surface-panel)', borderColor: 'var(--border)' }}
+                          >
+                            <ShieldIcon className="w-4 h-4 text-emerald-500 mb-1" />
+                            <div className="font-bold text-xs" style={{ color: 'var(--text-heading)' }}>OCR Document Checks</div>
+                            <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Verify student credentials</div>
+                          </button>
+
+                          <button
+                            onClick={() => { window.location.hash = '#providers/scheduling' }}
+                            className="p-3 rounded-xl border text-left hover:border-[#305BFE] hover:bg-[var(--color-surface-panel)] transition cursor-pointer"
+                            style={{ backgroundColor: 'var(--color-surface-panel)', borderColor: 'var(--border)' }}
+                          >
+                            <CalendarIcon className="w-4 h-4 text-sky-500 mb-1" />
+                            <div className="font-bold text-xs" style={{ color: 'var(--text-heading)' }}>Evaluation Schedules</div>
+                            <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Interviews & examinations</div>
+                          </button>
+
+                          <button
+                            onClick={() => { window.location.hash = '#providers/reports' }}
+                            className="p-3 rounded-xl border text-left hover:border-[#305BFE] hover:bg-[var(--color-surface-panel)] transition cursor-pointer"
+                            style={{ backgroundColor: 'var(--color-surface-panel)', borderColor: 'var(--border)' }}
+                          >
+                            <ChartIcon className="w-4 h-4 text-indigo-500 mb-1" />
+                            <div className="font-bold text-xs" style={{ color: 'var(--text-heading)' }}>Disbursement Ledger</div>
+                            <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Audit & funding analytics</div>
+                          </button>
+
+                          <button
+                            onClick={() => { window.location.hash = '#providers/create' }}
+                            className="p-3 rounded-xl border text-left hover:border-[#305BFE] hover:bg-[var(--color-surface-panel)] transition cursor-pointer"
+                            style={{ backgroundColor: 'var(--color-surface-panel)', borderColor: 'var(--border)' }}
+                          >
+                            <SparklesIcon className="w-4 h-4 text-[#305BFE] mb-1" />
+                            <div className="font-bold text-xs" style={{ color: 'var(--text-heading)' }}>Post New Grant</div>
+                            <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Publish program criteria</div>
+                          </button>
+                        </div>
+                      </div>
+
+                      {dashboard?.funding?.remainingAllocation !== undefined && dashboard.funding.remainingAllocation > 0 && (
+                        <div className="mt-4 pt-3 border-t flex items-center justify-between text-xs" style={{ borderColor: 'var(--border)' }}>
+                          <span style={{ color: 'var(--text-muted)' }}>Remaining Fund Allocation:</span>
+                          <span className="font-black text-[#305BFE] tabular-nums">
+                            ₱{Number(dashboard.funding.remainingAllocation).toLocaleString()}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 4. Supporting Operational Metrics */}
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    {[
+                      {
+                        title: 'Total Applications',
+                        value: dashboard?.applicationsCount ?? 0,
+                        subtitle: 'All Program Submissions',
+                        icon: <DocumentIcon className="w-4 h-4 text-[#305BFE]" />
+                      },
+                      {
+                        title: 'Confirmed Scholars',
+                        value: dashboard?.applicationStatusCounts?.approved ?? 0,
+                        subtitle: 'Awarded Scholarships',
+                        icon: <CheckCircleIcon className="w-4 h-4 text-emerald-500" />
+                      },
+                      {
+                        title: 'Decision Rate',
+                        value: `${dashboard?.approvalRate ?? 0}%`,
+                        subtitle: 'Evaluated Submissions',
+                        icon: <ChartIcon className="w-4 h-4 text-sky-500" />
+                      },
+                      {
+                        title: 'Avg. Processing Age',
+                        value: `${dashboard?.averageApplicationAgeDays ?? 0}d`,
+                        subtitle: 'Days from Submission',
+                        icon: <ClockIcon className="w-4 h-4 text-amber-500" />
+                      },
+                    ].map((m) => (
+                      <div
+                        key={m.title}
+                        className="p-4 rounded-2xl border"
+                        style={{ backgroundColor: 'var(--color-bg-elevated)', borderColor: 'var(--border)' }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-extrabold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                            {m.title}
+                          </span>
+                          {m.icon}
+                        </div>
+                        <div className="text-2xl font-black tracking-tight mt-2 tabular-nums" style={{ color: 'var(--text-heading)' }}>
+                          {m.value}
+                        </div>
+                        <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                          {m.subtitle}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

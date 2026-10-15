@@ -182,9 +182,9 @@ export default function SchedulingPage({ token, user }) {
           <span
             className="inline-flex items-center gap-2 rounded-full px-3.5 py-1 text-xs font-extrabold uppercase tracking-wider border mb-2"
             style={{
-              backgroundColor: 'rgba(255, 109, 41, 0.10)',
-              color: 'var(--primary)',
-              borderColor: 'rgba(255, 109, 41, 0.25)'
+              backgroundColor: 'rgba(48, 91, 254, 0.10)',
+              color: '#305BFE',
+              borderColor: 'rgba(48, 91, 254, 0.25)'
             }}
           >
             Coordination & Assessment
@@ -394,9 +394,9 @@ export default function SchedulingPage({ token, user }) {
                       <span
                         className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border"
                         style={{
-                          backgroundColor: 'rgba(255, 109, 41, 0.12)',
-                          color: 'var(--primary)',
-                          borderColor: 'rgba(255, 109, 41, 0.25)'
+                          backgroundColor: 'rgba(48, 91, 254, 0.10)',
+                          color: '#305BFE',
+                          borderColor: 'rgba(48, 91, 254, 0.25)'
                         }}
                       >
                         {s.type}

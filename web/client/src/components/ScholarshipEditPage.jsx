@@ -206,9 +206,9 @@ export default function ScholarshipEditPage({ token, scholarshipId, onUpdated })
           <span
             className="inline-flex items-center gap-2 rounded-full px-3.5 py-1 text-xs font-extrabold uppercase tracking-wider border mb-2"
             style={{
-              backgroundColor: 'rgba(255, 109, 41, 0.10)',
-              color: 'var(--primary)',
-              borderColor: 'rgba(255, 109, 41, 0.25)'
+              backgroundColor: 'rgba(48, 91, 254, 0.10)',
+              color: '#305BFE',
+              borderColor: 'rgba(48, 91, 254, 0.25)'
             }}
           >
             Edit Opportunity

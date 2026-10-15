@@ -6,7 +6,7 @@ services:
     buildCommand: npm install --omit=dev
     startCommand: node server.js
     healthCheckPath: /api/health/readiness
-    plan: standard
+    plan: free
     region: singapore
     autoDeploy: true
     envVars:
@@ -45,6 +45,6 @@ services:
       - key: EMAIL_FROM
         sync: false
       - key: CORS_ORIGINS
-        value: "https://iskolar.vercel.app,https://iskolar.ph,https://iskolar.pages.dev,https://client-gamma-hazel-97.vercel.app"
+        value: "https://iskolar.org,https://www.iskolar.org,https://iskolar.vercel.app,https://iskolar.ph,https://iskolar.pages.dev,https://client-gamma-hazel-97.vercel.app"
       - key: ALLOW_TEST_OVERRIDE
         value: "false"
