@@ -63,8 +63,8 @@ export default function StudentRedirectNotice({ user, onLogout }) {
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <a
-            href="/downloads/iskolar-student.apk"
-            download="iskolar-student.apk"
+            href="/downloads/synertech_iskolar.apk"
+            download="synertech_iskolar.apk"
             className="btn-action w-full sm:w-auto text-center justify-center flex items-center gap-2"
           >
             <PhoneIcon className="w-4 h-4" />

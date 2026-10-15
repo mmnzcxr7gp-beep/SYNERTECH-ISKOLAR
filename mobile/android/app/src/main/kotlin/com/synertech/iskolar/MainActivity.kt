@@ -1,4 +1,4 @@
-package com.example.iskolar_mobile
+package com.synertech.iskolar
 
 import io.flutter.embedding.android.FlutterActivity
 

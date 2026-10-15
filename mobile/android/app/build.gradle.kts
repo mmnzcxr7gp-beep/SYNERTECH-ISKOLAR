@@ -10,7 +10,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.iskolar_mobile"
+    namespace = "com.synertech.iskolar"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -24,7 +24,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.iskolar_mobile"
+        applicationId = "com.synertech.iskolar"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

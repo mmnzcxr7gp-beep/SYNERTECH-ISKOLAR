@@ -55,13 +55,13 @@ export default function Download() {
               <ShinyButton
                 id="download-apk-btn"
                 as="a"
-                href="/downloads/iskolar-student.apk"
-                download="iskolar-student.apk"
+                href="/downloads/synertech_iskolar.apk"
+                download="synertech_iskolar.apk"
                 size="lg"
                 icon={<AndroidIcon className="w-5 h-5 text-white" />}
                 className="w-full sm:w-auto text-center justify-center"
               >
-                Download Android APK
+                Download Android APK (synertech_iskolar.apk)
               </ShinyButton>
               <button
                 type="button"
