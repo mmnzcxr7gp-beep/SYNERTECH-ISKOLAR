@@ -14,7 +14,7 @@ import {
   CheckIcon
 } from './Icons'
 
-export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLogin }) {
+export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLogin, initialMode = 'login' }) {
   // Focus containment & accessibility refs
   const modalRef = useRef(null)
   const previousFocusRef = useRef(null)
@@ -72,7 +72,13 @@ export default function LoginModal({ open, onClose, onLoginSuccess, onProviderLo
   }, [open, onClose])
 
   // Mode: 'login' | 'register'
-  const [mode, setMode] = useState('login')
+  const [mode, setMode] = useState(initialMode || 'login')
+
+  useEffect(() => {
+    if (open && initialMode) {
+      setMode(initialMode)
+    }
+  }, [open, initialMode])
 
   // Selected Role for Login: 'provider' | 'admin'
   const [selectedRole, setSelectedRole] = useState('provider')

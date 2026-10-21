@@ -3,7 +3,7 @@ import { useTheme } from './ThemeContext'
 import IskolarLogo from './IskolarLogo'
 import { SunIcon, MoonIcon } from './Icons'
 
-export default function Navbar({ currentUser, activeSection, onLogin, onLogout }) {
+export default function Navbar({ currentUser, activeSection, onLogin, onLogout, onRegister }) {
   const { theme, toggleTheme } = useTheme()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const mobileMenuRef = useRef(null)
@@ -132,15 +132,16 @@ export default function Navbar({ currentUser, activeSection, onLogin, onLogout }
               </button>
             ) : (
               <div className="flex items-center gap-2">
-                <a
-                  href="#provider-info"
-                  className="hidden md:inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium border text-[var(--color-text-secondary)] hover:text-[var(--color-text-heading)] hover:bg-[var(--color-bg-panel)] transition"
+                <button
+                  type="button"
+                  onClick={() => (onRegister ? onRegister() : onLogin('register'))}
+                  className="hidden md:inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium border text-[var(--color-text-secondary)] hover:text-[var(--color-text-heading)] hover:bg-[var(--color-bg-panel)] transition cursor-pointer"
                   style={{ borderColor: 'var(--color-border)' }}
                 >
                   Register Organization
-                </a>
+                </button>
                 <button
-                  onClick={onLogin}
+                  onClick={() => onLogin('login')}
                   type="button"
                   className="btn-action py-1.5 sm:py-2 px-3 sm:px-4 text-xs font-bold cursor-pointer inline-flex items-center"
                 >

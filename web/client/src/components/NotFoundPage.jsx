@@ -1,6 +1,43 @@
 import React from 'react'
 
 export default function NotFoundPage({ onNavigateHome, onLogin }) {
+  const handleHomeClick = (e) => {
+    e.preventDefault()
+    if (typeof window !== 'undefined') {
+      if (window.location.pathname && window.location.pathname !== '/' && window.location.pathname !== '/index.html') {
+        window.history.pushState(null, '', '/#home')
+      } else {
+        window.location.hash = '#home'
+      }
+      window.dispatchEvent(new Event('hashchange'))
+    }
+    if (onNavigateHome) onNavigateHome()
+  }
+
+  const handleBrowseClick = (e) => {
+    e.preventDefault()
+    if (typeof window !== 'undefined') {
+      if (window.location.pathname && window.location.pathname !== '/' && window.location.pathname !== '/index.html') {
+        window.history.pushState(null, '', '/#scholarships')
+      } else {
+        window.location.hash = '#scholarships'
+      }
+      window.dispatchEvent(new Event('hashchange'))
+    }
+  }
+
+  const handleHelpClick = (e) => {
+    e.preventDefault()
+    if (typeof window !== 'undefined') {
+      if (window.location.pathname && window.location.pathname !== '/' && window.location.pathname !== '/index.html') {
+        window.history.pushState(null, '', '/#help')
+      } else {
+        window.location.hash = '#help'
+      }
+      window.dispatchEvent(new Event('hashchange'))
+    }
+  }
+
   return (
     <main
       id="main-content"
@@ -35,16 +72,24 @@ export default function NotFoundPage({ onNavigateHome, onLogin }) {
         <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
           <a
             href="#home"
-            onClick={onNavigateHome}
-            className="btn-action w-full sm:w-auto text-center justify-center text-sm"
+            onClick={handleHomeClick}
+            className="btn-action w-full sm:w-auto text-center justify-center text-sm cursor-pointer"
           >
             ← Return to Home
           </a>
           <a
             href="#scholarships"
-            className="btn-secondary w-full sm:w-auto text-center justify-center text-sm"
+            onClick={handleBrowseClick}
+            className="btn-secondary w-full sm:w-auto text-center justify-center text-sm cursor-pointer"
           >
             Browse Scholarships
+          </a>
+          <a
+            href="#help"
+            onClick={handleHelpClick}
+            className="btn-secondary w-full sm:w-auto text-center justify-center text-sm cursor-pointer"
+          >
+            Help & FAQs
           </a>
         </div>
       </div>

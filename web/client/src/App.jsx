@@ -18,6 +18,9 @@ const ProviderDashboard = lazy(() => import('./components/ProviderDashboard'))
 const ProviderGuide = lazy(() => import('./components/ProviderGuide'))
 const StudentRedirectNotice = lazy(() => import('./components/StudentRedirectNotice'))
 const PrivacyPolicyPage = lazy(() => import('./components/PrivacyPolicyPage'))
+const TermsPage = lazy(() => import('./components/TermsPage'))
+const AccessibilityPage = lazy(() => import('./components/AccessibilityPage'))
+const HelpFaqPage = lazy(() => import('./components/HelpFaqPage'))
 const NotFoundPage = lazy(() => import('./components/NotFoundPage'))
 
 const LoadingFallback = () => (
@@ -26,8 +29,31 @@ const LoadingFallback = () => (
   </div>
 )
 
+/**
+ * Robust Route Resolver: Inspects both hash (#) and pathname (/)
+ * Supports clean pathnames (/terms, /scholarships) and hash shortcuts (#help, #accessibility)
+ */
+function resolveRoute() {
+  if (typeof window === 'undefined') return 'home'
+
+  // 1. Check hash first (e.g. #scholarships, #terms, #/help)
+  const hashRaw = (window.location.hash || '').replace(/^#[/]?/, '').trim().toLowerCase()
+  if (hashRaw) {
+    return hashRaw.split('?')[0].replace(/\/+$/, '')
+  }
+
+  // 2. Fall back to pathname (e.g. /scholarships, /terms, /accessibility)
+  const pathRaw = (window.location.pathname || '').replace(/^\/+|\/+$/g, '').toLowerCase()
+  if (pathRaw && pathRaw !== 'index.html') {
+    return pathRaw.split('?')[0]
+  }
+
+  return 'home'
+}
+
 function AppContent() {
   const [showLogin, setShowLogin] = useState(false)
+  const [loginInitialMode, setLoginInitialMode] = useState('login')
   
   // Current logged in user object: { token, id, email, name, role }
   const [currentUser, setCurrentUser] = useState(() => {
@@ -42,24 +68,38 @@ function AppContent() {
     return null
   })
 
-  // Hash-based navigation section
-  const [activeSection, setActiveSection] = useState(() => {
-    const hash = (window.location.hash || '').replace('#', '').toLowerCase()
-    return hash || 'home'
-  })
+  // Dynamic route resolution supporting both hash (#) and pathname (/)
+  const [activeSection, setActiveSection] = useState(resolveRoute)
 
   useEffect(() => {
-    const handleHashChange = () => {
-      const hash = (window.location.hash || '').replace('#', '').toLowerCase()
-      setActiveSection(hash || 'home')
-      // Smooth scroll to top on page change
+    const handleRouteChange = () => {
+      const target = resolveRoute()
+      setActiveSection(target)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }
-    window.addEventListener('hashchange', handleHashChange)
-    return () => window.removeEventListener('hashchange', handleHashChange)
+    window.addEventListener('hashchange', handleRouteChange)
+    window.addEventListener('popstate', handleRouteChange)
+    return () => {
+      window.removeEventListener('hashchange', handleRouteChange)
+      window.removeEventListener('popstate', handleRouteChange)
+    }
   }, [])
 
-  const openLogin = () => setShowLogin(true)
+  const openLogin = (mode = 'login') => {
+    setLoginInitialMode(mode === 'register' ? 'register' : 'login')
+    setShowLogin(true)
+  }
+
+  // Intercept direct navigation to #login / #register route aliases
+  useEffect(() => {
+    if (activeSection === 'login' || activeSection === 'signin' || activeSection === 'sign-in') {
+      openLogin('login')
+      setActiveSection('home')
+    } else if (activeSection === 'register' || activeSection === 'signup' || activeSection === 'sign-up') {
+      openLogin('register')
+      setActiveSection('home')
+    }
+  }, [activeSection])
 
   const handleLoginSuccess = (userData) => {
     setCurrentUser(userData)
@@ -80,11 +120,9 @@ function AppContent() {
 
   // Dynamic View Renderer based on User Role and Hash Route
   const renderMainContent = () => {
-
-
     // ── Unauthenticated (Public) Routes ────────────────────────────────
     if (!currentUser) {
-      if (activeSection === 'provider-info') {
+      if (activeSection === 'provider-info' || activeSection === 'provider-guide' || activeSection === 'onboarding' || activeSection === 'partner') {
         return (
           <main id="main-content" tabIndex={-1} className="max-w-7xl mx-auto px-4 md:px-8 py-8 animate-fadeIn outline-none">
             <div className="modular-card p-8 md:p-12 mb-8">
@@ -93,10 +131,10 @@ function AppContent() {
                   <h1 className="page-heading">Become a Scholarship Provider</h1>
                   <p className="body-text text-sm mt-1">Partner with ISKOLAR to publish scholarship grants and streamline applicant selection.</p>
                 </div>
-                <a href="#home" className="btn-secondary text-xs font-bold py-1.5 px-3">← Back to Home</a>
+                <a href="#home" className="btn-secondary text-xs font-bold py-1.5 px-3 cursor-pointer">← Back to Home</a>
               </div>
               <Suspense fallback={<LoadingFallback />}>
-                <ProviderGuide onLogin={openLogin} />
+                <ProviderGuide onLogin={() => openLogin('login')} onRegister={() => openLogin('register')} />
               </Suspense>
             </div>
           </main>
@@ -104,7 +142,7 @@ function AppContent() {
       }
 
       // ── Scholarships Page ──────────────────────────────────────────
-      if (activeSection === 'scholarships') {
+      if (activeSection === 'scholarships' || activeSection === 'grants' || activeSection === 'directory') {
         return (
           <PageWrapper
             title="Scholarships"
@@ -112,13 +150,13 @@ function AppContent() {
             badge="Grant Directory"
             accentColor="#305BFE"
           >
-            <ScholarshipPreview onSelectScholarship={openLogin} />
+            <ScholarshipPreview onSelectScholarship={() => openLogin('login')} />
             <section className="py-10 border-t" style={{ borderColor: 'var(--color-border)' }}>
               <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <p className="body-text text-sm">Ready to apply? Download the ISKOLAR mobile app.</p>
                 <div className="flex gap-3 shrink-0">
                   <a href="#download" className="btn-action text-sm">Get the App →</a>
-                  <button type="button" onClick={openLogin} className="btn-secondary text-sm">Sign In</button>
+                  <button type="button" onClick={() => openLogin('login')} className="btn-secondary text-sm cursor-pointer">Sign In</button>
                 </div>
               </div>
             </section>
@@ -127,7 +165,7 @@ function AppContent() {
       }
 
       // ── How It Works Page ──────────────────────────────────────────
-      if (activeSection === 'how-it-works') {
+      if (activeSection === 'how-it-works' || activeSection === 'process') {
         return (
           <PageWrapper
             title="How It Works"
@@ -141,7 +179,7 @@ function AppContent() {
                 <p className="body-text text-sm">Ready to get started? Browse open scholarships now.</p>
                 <div className="flex gap-3 shrink-0">
                   <a href="#scholarships" className="btn-action text-sm">Browse Scholarships →</a>
-                  <button type="button" onClick={openLogin} className="btn-secondary text-sm">Sign In</button>
+                  <button type="button" onClick={() => openLogin('login')} className="btn-secondary text-sm cursor-pointer">Sign In</button>
                 </div>
               </div>
             </section>
@@ -150,7 +188,7 @@ function AppContent() {
       }
 
       // ── Eligibility Page ───────────────────────────────────────────
-      if (activeSection === 'eligibility') {
+      if (activeSection === 'eligibility' || activeSection === 'features' || activeSection === 'criteria') {
         return (
           <PageWrapper
             title="Eligibility & Features"
@@ -164,7 +202,7 @@ function AppContent() {
                 <p className="body-text text-sm">Find scholarships that match your qualifications.</p>
                 <div className="flex gap-3 shrink-0">
                   <a href="#scholarships" className="btn-action text-sm">Browse Scholarships →</a>
-                  <button type="button" onClick={openLogin} className="btn-secondary text-sm">Sign In</button>
+                  <button type="button" onClick={() => openLogin('login')} className="btn-secondary text-sm cursor-pointer">Sign In</button>
                 </div>
               </div>
             </section>
@@ -173,7 +211,7 @@ function AppContent() {
       }
 
       // ── About & Trust Page ─────────────────────────────────────────
-      if (activeSection === 'safety' || activeSection === 'about' || activeSection === 'about-trust') {
+      if (activeSection === 'safety' || activeSection === 'about' || activeSection === 'about-trust' || activeSection === 'security' || activeSection === 'data-protection') {
         return (
           <PageWrapper
             title="About & Trust"
@@ -186,7 +224,7 @@ function AppContent() {
               <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <p className="body-text text-sm">Ready to join a trusted scholarship platform?</p>
                 <div className="flex gap-3 shrink-0">
-                  <button type="button" onClick={openLogin} className="btn-action text-sm">Sign In to ISKOLAR →</button>
+                  <button type="button" onClick={() => openLogin('login')} className="btn-action text-sm cursor-pointer">Sign In to ISKOLAR →</button>
                   <a href="#download" className="btn-secondary text-sm">Get the App</a>
                 </div>
               </div>
@@ -196,7 +234,7 @@ function AppContent() {
       }
 
       // ── Mobile App / Download Page ─────────────────────────────────
-      if (activeSection === 'download') {
+      if (activeSection === 'download' || activeSection === 'mobile' || activeSection === 'app' || activeSection === 'student-app') {
         return (
           <PageWrapper
             title="ISKOLAR Mobile App"
@@ -209,7 +247,7 @@ function AppContent() {
               <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <p className="body-text text-sm">Are you a scholarship provider? Sign in to the web portal.</p>
                 <div className="flex gap-3 shrink-0">
-                  <button type="button" onClick={openLogin} className="btn-action text-sm">Provider Sign In →</button>
+                  <button type="button" onClick={() => openLogin('login')} className="btn-action text-sm cursor-pointer">Provider Sign In →</button>
                   <a href="#scholarships" className="btn-secondary text-sm">Browse Scholarships</a>
                 </div>
               </div>
@@ -219,7 +257,7 @@ function AppContent() {
       }
 
       // ── Privacy Policy Page ─────────────────────────────────────────
-      if (activeSection === 'privacy' || activeSection === 'privacy-policy') {
+      if (activeSection === 'privacy' || activeSection === 'privacy-policy' || activeSection === 'data-privacy') {
         return (
           <PageWrapper
             title="Privacy Policy"
@@ -236,13 +274,67 @@ function AppContent() {
         )
       }
 
+      // ── Terms of Service Page ───────────────────────────────────────
+      if (activeSection === 'terms' || activeSection === 'terms-of-service' || activeSection === 'terms-of-use' || activeSection === 'tos') {
+        return (
+          <PageWrapper
+            title="Terms of Service"
+            subtitle="Platform governance, applicant responsibilities, and provider compliance standards for ISKOLAR."
+            badge="Legal Agreement"
+            accentColor="#305BFE"
+          >
+            <div className="max-w-4xl mx-auto px-4 md:px-8 py-8">
+              <Suspense fallback={<LoadingFallback />}>
+                <TermsPage />
+              </Suspense>
+            </div>
+          </PageWrapper>
+        )
+      }
+
+      // ── Accessibility Statement Page ────────────────────────────────
+      if (activeSection === 'accessibility' || activeSection === 'accessibility-statement' || activeSection === 'a11y') {
+        return (
+          <PageWrapper
+            title="Accessibility Statement"
+            subtitle="Committed to barrier-free digital access for all Filipino students, reviewers, and institutions."
+            badge="Inclusion & Standards"
+            accentColor="#10B981"
+          >
+            <div className="max-w-4xl mx-auto px-4 md:px-8 py-8">
+              <Suspense fallback={<LoadingFallback />}>
+                <AccessibilityPage />
+              </Suspense>
+            </div>
+          </PageWrapper>
+        )
+      }
+
+      // ── Help Center & FAQs Page ─────────────────────────────────────
+      if (activeSection === 'help' || activeSection === 'faq' || activeSection === 'faqs' || activeSection === 'help-center' || activeSection === 'support' || activeSection === 'contact') {
+        return (
+          <PageWrapper
+            title="Help Center & FAQs"
+            subtitle="Clear answers for student applicants, verified scholarship providers, and institutional partners."
+            badge="Knowledge Base"
+            accentColor="#6366F1"
+          >
+            <div className="max-w-5xl mx-auto px-4 md:px-8 py-8">
+              <Suspense fallback={<LoadingFallback />}>
+                <HelpFaqPage onContactSupport={() => { window.location.href = 'mailto:iskolar.official@gmail.com' }} />
+              </Suspense>
+            </div>
+          </PageWrapper>
+        )
+      }
+
       // ── Home / Default Landing (short, focused) ────────────────────
       if (activeSection === 'home' || activeSection === '') {
         return (
           <main id="main-content" tabIndex={-1} className="animate-fadeIn outline-none">
-            <Hero onLogin={openLogin} />
+            <Hero onLogin={() => openLogin('login')} />
             <ProcessStrip />
-            <FinalCTA onLogin={openLogin} />
+            <FinalCTA onLogin={() => openLogin('login')} />
           </main>
         )
       }
@@ -261,10 +353,10 @@ function AppContent() {
                 Please authenticate using your verified organization credentials to access this dashboard.
               </p>
               <div className="flex flex-col sm:flex-row justify-center gap-3">
-                <button type="button" onClick={openLogin} className="btn-action text-sm justify-center">
+                <button type="button" onClick={() => openLogin('login')} className="btn-action text-sm justify-center cursor-pointer">
                   Sign In to Portal →
                 </button>
-                <a href="#home" className="btn-secondary text-sm justify-center">
+                <a href="#home" className="btn-secondary text-sm justify-center cursor-pointer">
                   ← Back to Home
                 </a>
               </div>
@@ -276,7 +368,7 @@ function AppContent() {
       // ── 404 Not Found for unrecognized routes ──────────────────────
       return (
         <Suspense fallback={<LoadingFallback />}>
-          <NotFoundPage onNavigateHome={() => { window.location.hash = '#home'; }} onLogin={openLogin} />
+          <NotFoundPage onNavigateHome={() => { window.location.hash = '#home'; }} onLogin={() => openLogin('login')} />
         </Suspense>
       )
     }
@@ -303,16 +395,16 @@ function AppContent() {
     if (activeSection === 'home' || activeSection === '') {
       return (
         <main id="main-content" tabIndex={-1} className="animate-fadeIn outline-none">
-          <Hero onLogin={openLogin} />
+          <Hero onLogin={() => openLogin('login')} />
           <ProcessStrip />
-          <FinalCTA onLogin={openLogin} />
+          <FinalCTA onLogin={() => openLogin('login')} />
         </main>
       )
     }
 
     return (
       <Suspense fallback={<LoadingFallback />}>
-        <NotFoundPage onNavigateHome={() => { window.location.hash = '#home'; }} onLogin={openLogin} />
+        <NotFoundPage onNavigateHome={() => { window.location.hash = '#home'; }} onLogin={() => openLogin('login')} />
       </Suspense>
     )
   }
@@ -330,7 +422,8 @@ function AppContent() {
         <Navbar
           currentUser={currentUser}
           activeSection={activeSection}
-          onLogin={openLogin}
+          onLogin={(mode) => openLogin(mode || 'login')}
+          onRegister={() => openLogin('register')}
           onLogout={handleLogout}
         />
       )}
@@ -356,6 +449,7 @@ function AppContent() {
           <Suspense fallback={null}>
             <LoginModal
               open={showLogin}
+              initialMode={loginInitialMode}
               onClose={() => setShowLogin(false)}
               onLoginSuccess={handleLoginSuccess}
               onProviderLogin={() => {

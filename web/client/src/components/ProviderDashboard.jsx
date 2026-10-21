@@ -899,7 +899,8 @@ export default function ProviderDashboard({ onLogout }) {
 
   const [route, setRoute] = useState(() => {
     if (typeof window === 'undefined') return 'providers'
-    return window.location.hash.replace('#', '') || 'providers'
+    const cleanHash = window.location.hash.replace(/^#[/]?/, '').trim().toLowerCase()
+    return cleanHash || 'providers'
   })
   const [token, setToken] = useState(() => {
     if (typeof window === 'undefined') return null
@@ -910,7 +911,8 @@ export default function ProviderDashboard({ onLogout }) {
 
   useEffect(() => {
     const handleHashChange = () => {
-      setRoute(window.location.hash.replace('#', '') || 'providers')
+      const cleanHash = window.location.hash.replace(/^#[/]?/, '').trim().toLowerCase()
+      setRoute(cleanHash || 'providers')
     }
 
     window.addEventListener('hashchange', handleHashChange)
@@ -1103,10 +1105,19 @@ export default function ProviderDashboard({ onLogout }) {
   const defaultRoute = isAdmin ? 'admin' : 'providers'
   const navItems = isAdmin ? adminNavItems : providerNavItems
 
-  let activeRoute = routeMap[route] !== undefined ? route : defaultRoute
+  // Normalize route and fallback if unprefixed (e.g. #scholarships -> #providers/scholarships or #admin/scholarships)
+  let resolvedRoute = route
+  if (routeMap[resolvedRoute] === undefined) {
+    const candidate = `${isAdmin ? 'admin' : 'providers'}/${route}`
+    if (routeMap[candidate] !== undefined) {
+      resolvedRoute = candidate
+    }
+  }
+
+  let activeRoute = routeMap[resolvedRoute] !== undefined ? resolvedRoute : defaultRoute
   let pageProps = {}
-  const editMatch = route.match(/^(?:providers|admin)\/edit\/(.+)$/)
-  if (routeMap[route] === undefined && editMatch) {
+  const editMatch = resolvedRoute.match(/^(?:providers|admin)\/edit\/(.+)$/)
+  if (routeMap[resolvedRoute] === undefined && editMatch) {
     activeRoute = isAdmin ? 'admin/edit' : 'providers/edit'
     pageProps = {
       token,
