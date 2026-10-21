@@ -37,7 +37,7 @@ export function resolveApiBaseUrl() {
     if (rawApiUrl && !rawApiUrl.includes('localhost') && !rawApiUrl.includes('127.0.0.1')) {
       return rawApiUrl.replace(/\/+$/, '');
     }
-    return 'https://iskolar-api.onrender.com';
+    return 'https://iskolar-api-0xr6.onrender.com';
   }
 
   if (rawApiUrl && !rawApiUrl.includes('jeyem26-iskolar-capstone')) {
