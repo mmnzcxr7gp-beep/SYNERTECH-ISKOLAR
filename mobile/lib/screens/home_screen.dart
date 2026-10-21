@@ -534,7 +534,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           _buildServiceCard(
                             icon: Icons.document_scanner_rounded,
                             accentColor: AppColors.actionBlue,
-                            title: 'Automated OCR Verification',
+                            title: 'Automated OCR Extraction',
                             subtitle: 'Smart extraction of Student ID & Grades',
                             status: 'ONLINE',
                           ),

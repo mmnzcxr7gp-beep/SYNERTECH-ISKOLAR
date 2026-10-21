@@ -23,15 +23,34 @@ const getScholarshipRankings = (req, res, next) => {
       (application) => String(application.scholarship_id || application.scholarshipId) === String(scholarshipId)
     );
 
+    const compareApplications = (a, b) => {
+      const scoreA = Number(a.score || a.weightedScore || 0);
+      const scoreB = Number(b.score || b.weightedScore || 0);
+      if (scoreB !== scoreA) return scoreB - scoreA;
+
+      const gpaA = Number(a.gpa ?? a.studentProfile?.gpa ?? 0);
+      const gpaB = Number(b.gpa ?? b.studentProfile?.gpa ?? 0);
+      if (gpaA > 0 && gpaB > 0) {
+        if (gpaA <= 5.0 && gpaB <= 5.0) {
+          // Philippine 1.0-5.0 scale: lower GWA is academically better
+          if (gpaA !== gpaB) return gpaA - gpaB;
+        } else if (gpaB !== gpaA) {
+          // Percentage scale: higher percentage is better
+          return gpaB - gpaA;
+        }
+      }
+
+      // Deterministic tertiary tie-breaker: earlier submission date
+      const dateA = new Date(a.applied_at || a.createdAt || 0).getTime();
+      const dateB = new Date(b.applied_at || b.createdAt || 0).getTime();
+      if (dateA !== dateB) return dateA - dateB;
+
+      // Deterministic quaternary tie-breaker: stable ID order
+      return String(a.id || a._id || '').localeCompare(String(b.id || b._id || ''));
+    };
+
     const rankings = apps
-      .sort((a, b) => {
-        const scoreA = Number(a.score || a.weightedScore || 0);
-        const scoreB = Number(b.score || b.weightedScore || 0);
-        if (scoreB !== scoreA) return scoreB - scoreA;
-        const gpaA = Number(a.gpa || 0);
-        const gpaB = Number(b.gpa || 0);
-        return gpaB - gpaA;
-      })
+      .sort(compareApplications)
       .map((application, idx) => {
         const student = (db.data.users || []).find((user) => String(user.id) === String(application.student_id || application.studentId)) || {};
         const profile = (db.data.student_profiles || []).find((item) => String(item.user_id) === String(application.student_id || application.studentId)) || {};
@@ -76,14 +95,29 @@ const recalculateRankings = async (req, res, next) => {
       (application) => String(application.scholarship_id || application.scholarshipId) === String(scholarshipId)
     );
 
-    apps.sort((a, b) => {
+    const compareApplications = (a, b) => {
       const scoreA = Number(a.score || a.weightedScore || 0);
       const scoreB = Number(b.score || b.weightedScore || 0);
       if (scoreB !== scoreA) return scoreB - scoreA;
-      const gpaA = Number(a.gpa || 0);
-      const gpaB = Number(b.gpa || 0);
-      return gpaB - gpaA;
-    });
+
+      const gpaA = Number(a.gpa ?? a.studentProfile?.gpa ?? 0);
+      const gpaB = Number(b.gpa ?? b.studentProfile?.gpa ?? 0);
+      if (gpaA > 0 && gpaB > 0) {
+        if (gpaA <= 5.0 && gpaB <= 5.0) {
+          if (gpaA !== gpaB) return gpaA - gpaB;
+        } else if (gpaB !== gpaA) {
+          return gpaB - gpaA;
+        }
+      }
+
+      const dateA = new Date(a.applied_at || a.createdAt || 0).getTime();
+      const dateB = new Date(b.applied_at || b.createdAt || 0).getTime();
+      if (dateA !== dateB) return dateA - dateB;
+
+      return String(a.id || a._id || '').localeCompare(String(b.id || b._id || ''));
+    };
+
+    apps.sort(compareApplications);
 
     apps.forEach((app, index) => {
       app.rank = index + 1;

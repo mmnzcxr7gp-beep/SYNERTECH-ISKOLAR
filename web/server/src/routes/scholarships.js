@@ -3,7 +3,7 @@ const { body } = require('express-validator');
 const { authMiddleware, optionalAuthMiddleware } = require('../middleware/authMiddleware');
 const { roleMiddleware } = require('../middleware/roleMiddleware');
 const sponsorVerification = require('../middleware/sponsorVerification');
-const { createScholarship, getScholarships, browseScholarships, getScholarshipById, updateScholarship, deleteScholarship, getScholarshipApplications } = require('../controllers/scholarshipController');
+const { createScholarship, getScholarships, browseScholarships, getScholarshipById, updateScholarship, reviseScholarshipCriteria, deleteScholarship, getScholarshipApplications } = require('../controllers/scholarshipController');
 
 const router = express.Router();
 
@@ -20,6 +20,7 @@ router.post(
 );
 
 router.put('/:id', authMiddleware, roleMiddleware(['sponsor', 'provider', 'admin']), sponsorVerification, updateScholarship);
+router.post('/:id/criteria-revision', authMiddleware, roleMiddleware(['sponsor', 'provider', 'admin']), sponsorVerification, reviseScholarshipCriteria);
 router.delete('/:id', authMiddleware, roleMiddleware(['sponsor', 'provider', 'admin']), sponsorVerification, deleteScholarship);
 
 module.exports = router;

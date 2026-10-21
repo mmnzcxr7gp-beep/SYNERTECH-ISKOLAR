@@ -230,13 +230,20 @@ export default function ScholarshipsPage({ token, user }) {
                 >
                   <div className="space-y-3.5">
                     <div className="flex items-center justify-between">
-                      <span className={`px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
-                        isOpen
-                          ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30'
-                          : 'bg-[var(--color-surface-panel)] text-[var(--text-muted)] border border-[var(--border)]'
-                      }`}>
-                        {item.status || 'open'}
-                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
+                          isOpen
+                            ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30'
+                            : 'bg-[var(--color-surface-panel)] text-[var(--text-muted)] border border-[var(--border)]'
+                        }`}>
+                          {item.status || 'open'}
+                        </span>
+                        {(item.isCriteriaLocked || appCount > 0) && (
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-amber-500/15 text-amber-500 border border-amber-500/30 flex items-center gap-1" title="Eligibility criteria locked after applicant submission">
+                            <span>🔒</span> v{item.criteriaVersion || 1}
+                          </span>
+                        )}
+                      </div>
                       <span className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
                         Slots: <strong style={{ color: 'var(--text-heading)' }}>{item.totalSlots || item.slots || 10}</strong>
                       </span>

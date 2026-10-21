@@ -12,11 +12,11 @@ const fieldPatterns = {
     /(?:first\s*name|given\s*name)\s*[:\-]?\s*(.+)/i,
   ],
   idNumber: [
-    /(?:student\s*(?:no|number|#))\b\s*[:\-]?\s*([\w\-]+)/i,
-    /(?:id\s*(?:no|number|#))\b\s*[:\-]?\s*([\w\-]+)/i,
-    /(?:lrn\s*(?:no|number|#)?)\b\s*[:\-]?\s*([\w\-]+)/i,
-    /(?:license\s*no|card\s*no)\b\s*[:\-]?\s*([\w\-]+)/i,
-    /(?:CRN|TIN|SSS|GSIS|PhilHealth)\b\s*[:\-]?\s*([\d\-]+)/i,
+    /(?:student\s*(?:no|number|#))\b\s*[:\-\~\s]*\s*([\w\-]+)/i,
+    /(?:id\s*(?:no|number|#))\b\s*[:\-\~\s]*\s*([\w\-]+)/i,
+    /(?:lrn\s*(?:no|number|#)?)\b\s*[:\-\~\s]*\s*([\w\-]+)/i,
+    /(?:license\s*no|card\s*no)\b\s*[:\-\~\s]*\s*([\w\-]+)/i,
+    /(?:CRN|TIN|SSS|GSIS|PhilHealth)\b\s*[:\-\~\s]*\s*([\d\-]+)/i,
   ],
   dateOfBirth: [
     /(?:date\s*of\s*birth|birthday|born|DOB)\s*[:\-]?\s*(\d{4}[\-\/\.]\d{1,2}[\-\/\.]\d{1,2})/i,
@@ -82,69 +82,145 @@ const detectDocumentType = (text) => {
   return 'unknown';
 };
 
+/**
+ * Helper to safely extract text from either image (Tesseract OCR) or PDF
+ */
+async function extractTextFromBuffer(fileBuffer, mimeType = '', originalName = '') {
+  if (!fileBuffer || !Buffer.isBuffer(fileBuffer) || fileBuffer.length === 0) {
+    return { rawText: '', confidence: 0, format: 'empty', error: 'Empty file buffer' };
+  }
+
+  // Check if PDF
+  const isPdf =
+    fileBuffer.subarray(0, 5).toString('utf8').startsWith('%PDF') ||
+    mimeType === 'application/pdf' ||
+    (originalName && originalName.toLowerCase().endsWith('.pdf'));
+
+  if (isPdf) {
+    try {
+      const { PDFParse } = require('pdf-parse');
+      const parser = new PDFParse(new Uint8Array(fileBuffer));
+      const pdfResult = await parser.getText();
+      const rawPdfText = typeof pdfResult === 'string' ? pdfResult : (pdfResult?.text || '');
+      // Remove page delimiters (e.g. "-- 1 of 1 --") to inspect real document content
+      const cleanPdfText = rawPdfText.replace(/--\s*\d+\s*of\s*\d+\s*--/gi, '').trim();
+      if (cleanPdfText && cleanPdfText.length > 20) {
+        return {
+          rawText: cleanPdfText,
+          confidence: 88,
+          format: 'pdf_text',
+          isScannedPdf: false,
+        };
+      }
+    } catch (_) {}
+
+    // Scanned / Image-only PDF (No extractable text stream)
+    return {
+      rawText: '',
+      confidence: 0,
+      format: 'pdf_scanned_image_only',
+      isScannedPdf: true,
+      error: 'SCANNED_PDF_NOT_DIRECTLY_SUPPORTED',
+      notice: 'Scanned image-only PDF detected. Pure raster image PDFs do not contain an embedded text stream and cannot be processed by the optical text extraction engine without native desktop rasterizer libraries. Please upload this credential as a high-resolution image file (PNG, JPG, JPEG) or an official digital PDF with selectable text.',
+    };
+  }
+
+  // Pre-validate image buffer to prevent unhandled worker errors on corrupt files
+  if (fileBuffer.length < 200) {
+    return {
+      rawText: '',
+      confidence: 0,
+      format: 'image_unreadable_or_corrupt',
+      error: 'IMAGE_CORRUPTED_OR_TOO_SMALL',
+    };
+  }
+
+  // Image Optical Character Recognition via Tesseract.js
+  try {
+    const taskQueue = require('../utils/taskQueue');
+    const Tesseract = require('tesseract.js');
+
+    const { promise } = taskQueue.enqueue(
+      'ocr',
+      () =>
+        Tesseract.recognize(fileBuffer, 'eng', {
+          logger: (m) => {
+            if (m.status === 'recognizing text') {
+              console.log(`OCR Progress: ${Math.round(m.progress * 100)}%`);
+            }
+          },
+        }).catch((err) => {
+          console.warn('Tesseract worker error caught:', err?.message);
+          return { data: { text: '', confidence: 0 } };
+        }),
+      { timeout: 30000 }
+    );
+
+    const result = await promise;
+    if (result && result.data) {
+      return {
+        rawText: result.data.text || '',
+        confidence: Math.round(result.data.confidence || 0),
+        format: 'image_ocr',
+      };
+    }
+  } catch (ocrError) {
+    console.error('Tesseract.js OCR execution notice:', ocrError?.message);
+    return {
+      rawText: '',
+      confidence: 0,
+      format: 'image_ocr_error',
+      error: ocrError?.message,
+    };
+  }
+
+  return { rawText: '', confidence: 0, format: 'unknown' };
+}
+
 /* ================= OCR EXTRACT ================= */
 const extractFromDocument = async (req, res, next) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ message: 'No document image uploaded' });
+      return res.status(400).json({ message: 'No document file uploaded' });
     }
 
     const fileBuffer = req.file.buffer || (req.file.path && fs.existsSync(req.file.path) ? fs.readFileSync(req.file.path) : null);
     const filePath = req.file.path;
-    const ocrInput = fileBuffer || filePath;
+    const originalName = req.file.originalname || 'document.png';
+    const mimeType = req.file.mimetype || 'image/png';
 
-    let rawText = '';
-    let confidence = 0;
-
-    try {
-      // Route OCR through concurrency-limited task queue (MAX_CONCURRENCY) with 30s timeout
-      const taskQueue = require('../utils/taskQueue');
-      const Tesseract = require('tesseract.js');
-
-      const { promise } = taskQueue.enqueue(
-        'ocr',
-        () =>
-          Tesseract.recognize(ocrInput, 'eng', {
-            logger: (m) => {
-              if (m.status === 'recognizing text') {
-                console.log(`OCR Progress: ${Math.round(m.progress * 100)}%`);
-              }
-            },
-          }),
-        { timeout: 30000 }
-      );
-
-      const result = await promise;
-      if (!result || !result.data) {
-        throw new Error('OCR processing timed out or failed to parse image');
-      }
-
-      rawText = result.data.text;
-      confidence = result.data.confidence;
-    } catch (ocrError) {
-      console.error('Tesseract.js OCR failed:', ocrError?.message);
-      // Fallback: return empty results so the user can still manually enter data
-      return res.json({
-        rawText: '',
-        extractedFields: {},
-        documentType: 'unknown',
-        confidence: 0,
-        message: ocrError?.message?.includes('timed out')
-          ? 'OCR processing timed out. Please try a smaller or clearer image, or enter information manually.'
-          : 'OCR processing failed. Please enter information manually.',
-        filePath: `/uploads/${path.basename(filePath || 'document.png')}`,
+    // Cross-Account Duplicate Document & Credential Check (Panel Revision 1)
+    const currentUserId = req.user && req.user.id;
+    if (fileBuffer && currentUserId) {
+      const { validateUploadUniqueness } = require('../utils/duplicateDetectionService');
+      const uniqueness = await validateUploadUniqueness({
+        buffer: fileBuffer,
+        currentUserId,
+        documentType: req.body?.documentType || 'DOCUMENT',
       });
+      if (!uniqueness.allowed) {
+        return res.status(409).json({
+          error: 'DUPLICATE_DOCUMENT_ACROSS_ACCOUNTS',
+          message: uniqueness.message,
+        });
+      }
     }
 
-    const fallbackService = require('../utils/manualReviewFallbackService');
-    const documentType = detectDocumentType(rawText);
-    const roundedConfidence = Math.round(confidence);
+    // Extract text from buffer (safe for both images and PDFs)
+    const { rawText, confidence, format, error: ocrErrorMsg, notice: pdfNotice } = await extractTextFromBuffer(
+      fileBuffer,
+      mimeType,
+      originalName
+    );
 
-    // Evidence-based extraction — each field carries source proof
+    const roundedConfidence = Math.round(confidence);
+    const documentType = detectDocumentType(rawText);
+
+    // Evidence-based field extraction
     const { fields: extractedFields, evidence: extractionEvidence } = extractFieldsWithEvidence(rawText);
 
-    // Document correctness basis — structural markers + authenticity scoring
-    const documentBasis = authenticityService.assessDocumentAuthenticity({
+    // Document Extraction & Administrative Verification Assessment (Panel Revision 2)
+    const extractionVerification = authenticityService.assessDocumentExtractionAndVerification({
       rawText,
       confidence: roundedConfidence,
       documentType,
@@ -152,34 +228,56 @@ const extractFromDocument = async (req, res, next) => {
       evidence: extractionEvidence,
     });
 
+    const fallbackService = require('../utils/manualReviewFallbackService');
     const fallbackCheck = fallbackService.checkOcrFallbackNeeded({
       rawText,
       confidence: roundedConfidence,
       extractedFields,
       documentType,
-      ocrError: null,
+      ocrError: ocrErrorMsg || null,
     });
 
-    const studentNotice = fallbackCheck.needsFallback
-      ? fallbackCheck.studentNotice
-      : null;
+    const studentNotice = fallbackCheck.needsFallback ? fallbackCheck.studentNotice : null;
+
+    // Check for missing key fields
+    const missingFields = [];
+    if (!extractedFields.fullName) missingFields.push('fullName');
+    if (!extractedFields.idNumber) missingFields.push('idNumber');
+
+    // Message describing extraction state and administrator authority
+    let message = 'Document text processed successfully. Please review and confirm the extracted values before submitting.';
+    if (pdfNotice) {
+      message = pdfNotice;
+    } else if (ocrErrorMsg) {
+      message = 'OCR processing encountered an issue with this image. The document has been saved for manual administrative verification. You may enter details manually.';
+    } else if (!extractionVerification.isExtractionUsable) {
+      message = 'Notice: The document text could not be fully recognized or does not clearly match ' +
+        (extractionVerification.structuralMarkers.documentTypeLabel || 'expected document criteria') +
+        '. An administrator will review this document manually.';
+    } else if (fallbackCheck.needsFallback) {
+      message = 'Administrative Verification Required: The system could not automatically extract all required fields with high confidence. An authorized scholarship provider will review the uploaded document manually.';
+    }
 
     return res.json({
       rawText,
       extractedFields,
+      missingFields,
       documentType,
       confidence: roundedConfidence,
-      reviewStatus: fallbackCheck.reviewStatus,
+      format,
+      isScannedPdf: Boolean(format === 'pdf_scanned_image_only'),
+      ocrNotice: pdfNotice || ocrErrorMsg || null,
+      extractionStatus: roundedConfidence >= 70 ? 'SUCCESS' : (roundedConfidence > 0 ? 'PARTIAL' : 'NEEDS_MANUAL_REVIEW'),
+      supportedFormats: ['image/png', 'image/jpeg', 'image/webp', 'application/pdf (text-based)'],
+      reviewStatus: 'PENDING_ADMIN_VERIFICATION',
+      administrativeVerificationNotice: 'OCR extraction is an administrative aid. Final document authenticity and eligibility are verified manually by authorized scholarship evaluators.',
       fallbackTriggered: fallbackCheck.needsFallback,
       manualReviewReason: fallbackCheck.primaryReasonText,
       studentNotice,
-      documentBasis,
-      message: !documentBasis.isCorrectPaper
-        ? 'Warning: The uploaded image does not appear to be a valid ' + (documentBasis.structuralMarkers.documentTypeLabel || 'document') + '. Please upload a clear photo of the correct document.'
-        : fallbackCheck.needsFallback
-        ? 'Manual Review Required: The system could not confidently verify all information in this document. An authorized scholarship provider will review it manually.'
-        : 'Document processed successfully. Please review and confirm the extracted information.',
-      filePath: `/uploads/${path.basename(filePath || 'document.png')}`,
+      extractionVerification,
+      documentBasis: extractionVerification,
+      message,
+      filePath: `/uploads/${path.basename(filePath || originalName || 'document.png')}`,
     });
   } catch (err) {
     next(err);
@@ -336,8 +434,9 @@ const verifyDocumentData = async (req, res, next) => {
       if (docRecord) {
         docRecord.verificationFlag = verificationFlag;
         docRecord.verificationFlags = flags;
-        docRecord.verifiedAt = new Date().toISOString();
-        docRecord.verifiedBy = 'ocr_auto';
+        docRecord.consistencyCheckedAt = new Date().toISOString();
+        // Preserves human administrative review authority: OCR does not auto-verify documents
+        docRecord.verificationStatus = 'PENDING_ADMIN_VERIFICATION';
       }
       try {
         if (typeof db.write === 'function') await db.write();
@@ -453,7 +552,42 @@ const updateDocumentStatus = async (req, res, next) => {
 /* ================= CONFIRM OCR EXTRACTION ================= */
 const confirmOcrExtraction = async (req, res, next) => {
   try {
-    const { documentId, extractedFields, userCorrections, rawText } = req.body;
+    const { documentId, extractedFields = {}, userCorrections = {}, rawText } = req.body;
+    const confirmedFields = { ...extractedFields, ...userCorrections };
+    const currentUserId = req.user && req.user.id;
+
+    // Cross-Account Duplicate Credential Identifier Check (Panel Revision 1)
+    const confirmedIdNumber = confirmedFields.idNumber || confirmedFields.studentNumber || confirmedFields.lrn;
+    const confirmedInstitution = confirmedFields.institution || confirmedFields.schoolName || confirmedFields.university || '';
+    if (confirmedIdNumber && currentUserId) {
+      const { checkDuplicateCredentialIdentifier } = require('../utils/duplicateDetectionService');
+      const dupCheck = await checkDuplicateCredentialIdentifier({
+        identifier: confirmedIdNumber,
+        identifierType: confirmedFields.lrn ? 'LRN' : 'Student ID',
+        institution: confirmedInstitution,
+        currentUserId,
+      });
+
+      if (dupCheck.isDuplicate) {
+        return res.status(409).json({
+          error: 'DUPLICATE_CREDENTIAL_IDENTIFIER_ACROSS_ACCOUNTS',
+          message: dupCheck.reason,
+        });
+      }
+    }
+
+    const { db } = require('../config/db');
+    if (documentId && Array.isArray(db.data?.documents)) {
+      const doc = db.data.documents.find((d) => String(d.id) === String(documentId));
+      if (doc) {
+        doc.extractedFields = confirmedFields;
+        doc.studentConfirmationStatus = 'CONFIRMED';
+        doc.manualReviewStatus = 'PENDING';
+        doc.verificationStatus = 'PENDING_HUMAN_REVIEW';
+        await db.write();
+      }
+    }
+
     const OcrExtraction = require('../models/OcrExtraction');
     const mongoose = require('mongoose');
 
@@ -465,16 +599,17 @@ const confirmOcrExtraction = async (req, res, next) => {
         rawText: rawText || '',
         extractedFields: extractedFields || {},
         userCorrections: userCorrections || {},
-        confirmedBy: req.user && req.user.id,
+        confirmedBy: currentUserId,
         confirmedAt: new Date(),
       });
     }
 
     return res.json({
-      message: 'OCR extraction confirmed',
+      message: 'Document extraction values confirmed by applicant. Ready for administrative verification.',
       status: 'CONFIRMED',
       extraction: extractionRecord,
-      confirmedFields: { ...extractedFields, ...userCorrections },
+      confirmedFields,
+      verificationStatus: 'PENDING_HUMAN_REVIEW',
     });
   } catch (err) {
     next(err);
@@ -513,25 +648,18 @@ const scanDocumentById = async (req, res, next) => {
       }
     }
 
-    // If we have a readable file buffer and haven't scanned yet, run Tesseract OCR
+    // If we have a readable file buffer and haven't scanned yet, run extraction safely
     let ocrActuallyRan = false;
     if (fileBuffer && (!rawText || Object.keys(extractedFields).length === 0)) {
-      try {
-        const taskQueue = require('../utils/taskQueue');
-        const Tesseract = require('tesseract.js');
-        const { promise } = taskQueue.enqueue(
-          'ocr',
-          () => Tesseract.recognize(fileBuffer, 'eng'),
-          { timeout: 30000 }
-        );
-        const result = await promise;
-        if (result && result.data) {
-          rawText = result.data.text || '';
-          confidence = Math.round(result.data.confidence || 0);
-          ocrActuallyRan = true;
-        }
-      } catch (ocrErr) {
-        console.warn('[scanDocumentById] Tesseract recognition fallback:', ocrErr.message);
+      const extRes = await extractTextFromBuffer(
+        fileBuffer,
+        doc.mime_type || doc.mimeType,
+        doc.filename || doc.originalname
+      );
+      if (extRes.rawText) {
+        rawText = extRes.rawText;
+        confidence = extRes.confidence;
+        ocrActuallyRan = true;
       }
     }
 
@@ -617,6 +745,7 @@ const scanDocumentById = async (req, res, next) => {
 };
 
 module.exports = {
+  extractTextFromBuffer,
   extractFields,
   extractFieldsWithEvidence,
   detectDocumentType,

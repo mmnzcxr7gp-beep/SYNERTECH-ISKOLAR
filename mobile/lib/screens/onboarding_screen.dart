@@ -411,7 +411,7 @@ class OnboardingScreen extends StatelessWidget {
                                 child: _buildBentoCard(
                                   icon: Icons.document_scanner_rounded,
                                   accentColor: const Color(0xFF0284C7),
-                                  title: 'OCR Verification',
+                                  title: 'OCR Extraction',
                                   subtitle: 'Fast ID extraction',
                                   cardColor: cardColor,
                                   cardBorder: cardBorder,

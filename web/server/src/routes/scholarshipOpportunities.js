@@ -6,6 +6,7 @@ const { roleMiddleware } = require('../middleware/roleMiddleware');
 const {
   createScholarship: createOpportunity,
   updateScholarship: updateOpportunity,
+  reviseScholarshipCriteria: reviseOpportunity,
   deleteScholarship: deleteOpportunity,
   getProviderScholarships: getProviderOpportunities,
   browseScholarships: browseOpportunities,
@@ -74,6 +75,17 @@ router.put(
   authMiddleware,
   roleMiddleware(['provider', 'sponsor', 'admin']),
   updateOpportunity
+);
+
+/**
+ * POST /api/scholarship-opportunities/:id/criteria-revision
+ * Controlled, auditable criteria revision
+ */
+router.post(
+  '/:id/criteria-revision',
+  authMiddleware,
+  roleMiddleware(['provider', 'sponsor', 'admin']),
+  reviseOpportunity
 );
 
 /**

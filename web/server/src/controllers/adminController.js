@@ -471,6 +471,12 @@ const editScholarshipContent = async (req, res, next) => {
       return res.status(404).json({ message: 'Target scholarship not found' });
     }
 
+    // Panel Revision 4: Check if eligibility requirements are locked due to submitted applications
+    if (eligibilityRequirements !== undefined) {
+      const { assertCriteriaNotLocked } = require('../utils/criteriaLockService');
+      await assertCriteriaNotLocked(id);
+    }
+
     const currentVersion = scholarship.version || 1;
     const nextVersion = currentVersion + 1;
     const originalAuthorId = scholarship.sponsor_id ?? scholarship.provider_id ?? scholarship.providerId;
@@ -594,6 +600,14 @@ const editScholarshipContent = async (req, res, next) => {
       scholarship,
     });
   } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({
+        error: error.code || 'CRITERIA_LOCKED',
+        message: error.message,
+        isCriteriaLocked: error.isCriteriaLocked || false,
+        applicationsCount: error.applicationsCount || 0,
+      });
+    }
     next(error);
   }
 };

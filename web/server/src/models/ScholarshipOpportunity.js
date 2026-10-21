@@ -55,6 +55,36 @@ const scholarshipOpportunitySchema = new mongoose.Schema(
       default: 'Draft',
       index: true,
     },
+    // Criteria Locking & Auditable Revision (Panel Revision 4)
+    criteriaVersion: {
+      type: Number,
+      default: 1,
+    },
+    isCriteriaLocked: {
+      type: Boolean,
+      default: false,
+    },
+    criteriaLockedAt: {
+      type: Date,
+      default: null,
+    },
+    criteriaHistory: [
+      {
+        version: { type: Number, required: true },
+        criteria: { type: mongoose.Schema.Types.Mixed },
+        requirements: [{ type: String }],
+        eligibilityRequirements: { type: String },
+        modifiedBy: { type: mongoose.Schema.Types.Mixed, required: true },
+        editorRole: { type: String, required: true },
+        editReason: { type: String, required: true },
+        affectedApplicationsAction: {
+          type: String,
+          enum: ['PRESERVE_EXISTING_VERSION', 'RE_EVALUATE_WITH_AUDIT'],
+          default: 'PRESERVE_EXISTING_VERSION',
+        },
+        modifiedAt: { type: Date, default: Date.now },
+      },
+    ],
     allowance: {
       type: mongoose.Schema.Types.Decimal128,
       default: 0,

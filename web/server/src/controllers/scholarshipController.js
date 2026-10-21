@@ -175,6 +175,14 @@ const updateScholarship = async (req, res, next) => {
     }
 
     const fields = req.body;
+
+    // Panel Revision 4: Check if eligibility criteria or requirements are being edited
+    const isAttemptingCriteriaEdit = fields.criteria !== undefined || fields.requirements !== undefined;
+    if (isAttemptingCriteriaEdit) {
+      const { assertCriteriaNotLocked } = require('../utils/criteriaLockService');
+      await assertCriteriaNotLocked(targetIdStr);
+    }
+
     scholarship.title = fields.title ?? scholarship.title;
     scholarship.description = fields.description ?? scholarship.description;
     scholarship.slots = fields.slots ?? scholarship.slots;
@@ -204,6 +212,66 @@ const updateScholarship = async (req, res, next) => {
 
     return res.json({ scholarship: { ...scholarship, criteria: JSON.parse(scholarship.criteria_json || '{}') } });
   } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({
+        error: error.code || 'CRITERIA_LOCKED',
+        message: error.message,
+        isCriteriaLocked: error.isCriteriaLocked || false,
+        applicationsCount: error.applicationsCount || 0,
+      });
+    }
+    next(error);
+  }
+};
+
+/**
+ * Controlled, auditable criteria revision for locked scholarships (Panel Revision 4)
+ * POST /api/scholarships/:id/criteria-revision
+ */
+const reviseScholarshipCriteria = async (req, res, next) => {
+  try {
+    const targetIdStr = String(req.params.id);
+    const scholarship = db.data.scholarships.find((item) => String(item.id) === targetIdStr);
+    if (!scholarship) {
+      return res.status(404).json({ message: 'Scholarship not found' });
+    }
+
+    if (isSponsorRole(req.user.role) && !isOwnedBy(scholarship, req.user.id)) {
+      return res.status(403).json({ message: 'Not allowed to modify this scholarship' });
+    }
+
+    const {
+      reason,
+      justification,
+      criteria,
+      updatedCriteria,
+      requirements,
+      eligibilityRequirements,
+      affectedApplicationsAction = 'PRESERVE_EXISTING_VERSION',
+    } = req.body;
+
+    const { executeAuditedCriteriaRevision } = require('../utils/criteriaLockService');
+    const result = await executeAuditedCriteriaRevision({
+      scholarshipId: targetIdStr,
+      actor: req.user,
+      editReason: reason || justification,
+      newCriteria: criteria || updatedCriteria,
+      newRequirements: requirements,
+      eligibilityRequirements,
+      affectedApplicationsAction,
+      ip: req.ip || req.headers['x-forwarded-for'] || '',
+      userAgent: req.headers['user-agent'] || '',
+    });
+
+    cacheService.invalidatePattern('scholarships:');
+    return res.json(result);
+  } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({
+        error: error.code || 'REVISION_FAILED',
+        message: error.message,
+      });
+    }
     next(error);
   }
 };
@@ -495,6 +563,7 @@ module.exports = {
   getScholarshipDetails,
   createScholarship,
   updateScholarship,
+  reviseScholarshipCriteria,
   deleteScholarship,
   getProviderScholarships,
   getScholarshipApplications,

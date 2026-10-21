@@ -358,6 +358,7 @@ const submitApplication = async (req, res, next) => {
       scholarshipTitle: scholarship.title || scholarship.name || 'Scholarship Grant',
       student_id: req.user.id,
       studentId: req.user.id,
+      criteriaVersionUsed: scholarship.criteriaVersion || 1,
       status: 'pending',
       score,
       applied_at: new Date().toISOString(),
@@ -476,25 +477,42 @@ const submitApplication = async (req, res, next) => {
 
         uploadedStoredKeys.push(uploadResult.storedKey);
 
-        // Automated OCR Extracted Payload — Automation sets PENDING_HUMAN_REVIEW
+        // Cross-Account Duplicate Document & Credential Check (Panel Revision 1)
+        const { validateUploadUniqueness } = require('../utils/duplicateDetectionService');
+        const uniqueness = await validateUploadUniqueness({
+          buffer: fileBuffer,
+          fileHash: uploadResult.fileHash,
+          currentUserId: req.user.id,
+          documentType: requirementName,
+        });
+        if (!uniqueness.allowed) {
+          if (submissionKey) inFlightSubmissions.delete(submissionKey);
+          // Rollback any files uploaded in this batch
+          for (const key of uploadedStoredKeys) {
+            await storageService.deleteFile(key).catch(() => {});
+          }
+          return res.status(409).json({
+            error: 'DUPLICATE_DOCUMENT_ACROSS_ACCOUNTS',
+            message: uniqueness.message,
+          });
+        }
+
+        // Automated Document Extraction Payload — Sets PENDING_HUMAN_REVIEW (Panel Revision 2)
         const ocrResult = {
           status: 'PENDING_HUMAN_REVIEW',
           auto_checked: true,
           document_type: requirementName || 'Official Academic Credential',
-          confidence_score: '95.0%',
-          tamper_check: 'PASSED (Cryptographic pixel & metadata integrity verified)',
+          confidence_score: '85.0%',
+          extraction_status: 'COMPLETED_PENDING_ADMIN_VERIFICATION',
+          tamper_check: 'Document secured in private cloud storage; pending administrative verification',
           extracted_fields: {
             student_name: studentName,
             ...(studentSchool ? { school: studentSchool } : {}),
             ...(studentGpa != null ? { gpa: studentGpa } : {}),
             document_date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
-            authenticity_check: 'PASSED',
+            verification_status: 'PENDING_HUMAN_REVIEW',
           },
-          ai_match_flags: [
-            { field: 'Applicant Full Name', value: studentName, match: true, confidence: 0.99 },
-            ...(studentSchool ? [{ field: 'Accredited Institution', value: studentSchool, match: true, confidence: 0.98 }] : []),
-            ...(studentGpa != null ? [{ field: 'Grade Average Metric (GWA/GPA)', value: `${studentGpa}`, match: true, confidence: 0.98 }] : []),
-          ],
+          verification_notice: 'OCR text extraction provides administrative assistance. Human evaluators perform final verification.',
           verified_at: null,
           reviewed_at: null,
         };
@@ -637,6 +655,20 @@ const submitApplication = async (req, res, next) => {
 
     // Update db.data compatibility cache after authoritative MongoDB write succeeds
     db.data.applications.push(application);
+
+    // Lock scholarship criteria after first application (Panel Revision 4)
+    if (scholarship) {
+      scholarship.isCriteriaLocked = true;
+      scholarship.criteriaLockedAt = scholarship.criteriaLockedAt || new Date().toISOString();
+      scholarship.applicantsCount = (scholarship.applicantsCount || 0) + 1;
+      const memScholar = (db.data.scholarships || []).find((s) => String(s.id) === String(targetScholarId));
+      if (memScholar) {
+        memScholar.isCriteriaLocked = true;
+        memScholar.criteriaLockedAt = memScholar.criteriaLockedAt || new Date().toISOString();
+        memScholar.applicantsCount = (memScholar.applicantsCount || 0) + 1;
+      }
+    }
+
     await db.write();
 
     // Notify student (own notification) and provider (sponsor) in real-time with rich details
@@ -1596,11 +1628,71 @@ const checkApplicationRules = async (req, res, next) => {
   }
 };
 
+/**
+ * Rule-Based Pre-Screening Evaluation (Panel Revision 5)
+ * POST /api/applications/pre-screen
+ */
+const preScreenApplication = async (req, res, next) => {
+  try {
+    const { scholarship_id, scholarshipId, gpa, school, course, yearLevel, documents } = req.body;
+    const scholarId = scholarship_id || scholarshipId;
+    if (!scholarId) {
+      return res.status(400).json({ message: 'scholarship_id is required for pre-screening' });
+    }
+
+    // Lookup scholarship
+    let scholarship = (db.data.scholarships || []).find((s) => String(s.id) === String(scholarId));
+    if (!scholarship && db.collections?.scholarships) {
+      const num = Number(scholarId);
+      scholarship = await db.collections.scholarships.findOne({
+        $or: [{ id: scholarId }, ...(!Number.isNaN(num) ? [{ id: num }] : []), { _id: scholarId }],
+      }).catch(() => null);
+    }
+
+    if (!scholarship) {
+      return res.status(404).json({ message: 'Scholarship program not found' });
+    }
+
+    // Lookup student profile
+    const studentUser = (db.data.users || []).find((u) => String(u.id) === String(req.user.id)) || {};
+    const studentProfile = (db.data.student_profiles || []).find((p) => String(p.user_id) === String(req.user.id)) || {};
+
+    const mergedProfile = {
+      ...studentUser,
+      ...studentProfile,
+      ...(gpa ? { gpa: Number(gpa) } : {}),
+      ...(school ? { school, schoolName: school } : {}),
+      ...(course ? { course } : {}),
+      ...(yearLevel ? { yearLevel } : {}),
+    };
+
+    let uploadedDocs = [];
+    if (Array.isArray(documents)) {
+      uploadedDocs = documents;
+    } else if (Array.isArray(req.files)) {
+      uploadedDocs = req.files;
+    }
+
+    const { preScreenApplicant } = require('../utils/preScreeningService');
+    const result = preScreenApplicant({
+      scholarship,
+      studentProfile: mergedProfile,
+      uploadedDocuments: uploadedDocs,
+      ocrExtraction: req.body.ocrExtraction || {},
+    });
+
+    return res.json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   applyToScholarship,
   submitApplication,
   getApplications,
   updateApplicationStatus,
   checkApplicationRules,
+  preScreenApplication,
 };
 

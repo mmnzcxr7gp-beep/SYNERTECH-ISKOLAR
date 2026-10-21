@@ -118,6 +118,10 @@ const scholarshipApplicationSchema = new mongoose.Schema(
       type: Number,
       default: null,
     },
+    criteriaVersionUsed: {
+      type: Number,
+      default: 1,
+    },
     preScreeningResults: [
       {
         ruleId: String,
@@ -198,6 +202,10 @@ const scholarshipApplicationSchema = new mongoose.Schema(
       acknowledgedByStudent: { type: Boolean, default: false },
       acknowledgedAt: Date,
     },
+    fileHash: { type: String, default: '', index: true },
+    sha256Hash: { type: String, default: '', index: true },
+    credentialIdentifier: { type: String, default: '', index: true },
+    documentMetadata: { type: mongoose.Schema.Types.Mixed },
   },
   {
     timestamps: true,

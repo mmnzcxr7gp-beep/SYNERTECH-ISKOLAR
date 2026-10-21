@@ -127,6 +127,26 @@ class ScholarshipService {
     return response;
   }
 
+  /// Rule-Based Pre-Screening Evaluation before final submission
+  static Future<Map<String, dynamic>> preScreenApplication(
+    String token,
+    dynamic scholarshipId, {
+    Map<String, dynamic>? files,
+    double? gpa,
+  }) async {
+    final body = <String, dynamic>{
+      'scholarship_id': scholarshipId.toString(),
+      if (gpa != null) 'gpa': gpa,
+      if (files != null) 'documents': files,
+    };
+    final response = await ApiService.post(
+      '/applications/pre-screen',
+      token: token,
+      body: body,
+    );
+    return response;
+  }
+
   /// Browse open scholarship opportunities and scholarships.
   static Future<List<dynamic>> browseOpportunities({
     String? type,

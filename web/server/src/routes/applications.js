@@ -7,6 +7,7 @@ const {
   getApplications,
   updateApplicationStatus,
   checkApplicationRules,
+  preScreenApplication,
 } = require('../controllers/applicationController');
 const { db } = require('../config/db');
 const sponsorVerification = require('../middleware/sponsorVerification');
@@ -38,6 +39,13 @@ router.post(
   roleMiddleware(['student']),
   upload.any(),
   require('../controllers/applicationController').submitApplication
+);
+
+router.post(
+  '/pre-screen',
+  authMiddleware,
+  upload.any(),
+  preScreenApplication
 );
 
 router.post(

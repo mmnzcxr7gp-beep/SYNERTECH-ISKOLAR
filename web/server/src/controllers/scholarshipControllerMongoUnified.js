@@ -228,6 +228,13 @@ const updateScholarship = async (req, res, next) => {
       requirements,
     } = req.body;
 
+    // Panel Revision 4: Check if eligibility criteria or requirements are being edited
+    const isAttemptingCriteriaEdit = requirements !== undefined || eligibilityRequirements !== undefined;
+    if (isAttemptingCriteriaEdit) {
+      const { assertCriteriaNotLocked } = require('../utils/criteriaLockService');
+      await assertCriteriaNotLocked(id);
+    }
+
     const scholarship = await findMongoScholarshipById(id);
     if (!scholarship) {
       const legacyScholarship = legacyScholarshipById(id);
@@ -297,6 +304,14 @@ const updateScholarship = async (req, res, next) => {
       scholarship,
     });
   } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({
+        error: error.code || 'CRITERIA_LOCKED',
+        message: error.message,
+        isCriteriaLocked: error.isCriteriaLocked || false,
+        applicationsCount: error.applicationsCount || 0,
+      });
+    }
     next(error);
   }
 };

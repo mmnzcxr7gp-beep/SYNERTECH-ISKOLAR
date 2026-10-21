@@ -34,6 +34,13 @@ export default function ScholarshipEditPage({ token, scholarshipId, onUpdated })
   const [loading, setLoading] = useState(true)
   const [posting, setPosting] = useState(false)
   const [formMessage, setFormMessage] = useState('')
+  const [isCriteriaLocked, setIsCriteriaLocked] = useState(false)
+  const [criteriaVersion, setCriteriaVersion] = useState(1)
+  const [criteriaLockedAt, setCriteriaLockedAt] = useState(null)
+  const [revisionModalOpen, setRevisionModalOpen] = useState(false)
+  const [revisionReason, setRevisionReason] = useState('')
+  const [affectedHandling, setAffectedHandling] = useState('preserve_prior_version')
+  const [revisionSubmitting, setRevisionSubmitting] = useState(false)
   const [toast, setToast] = useState(null)
   const [confirmCloseOpen, setConfirmCloseOpen] = useState(false)
 
@@ -88,6 +95,9 @@ export default function ScholarshipEditPage({ token, scholarshipId, onUpdated })
         setStatus(deriveStatusValue(scholarship.status))
         setSelectedRequirements(requirementNames)
         setCustomRequirements([])
+        setIsCriteriaLocked(Boolean(scholarship.isCriteriaLocked))
+        setCriteriaVersion(scholarship.criteriaVersion || 1)
+        setCriteriaLockedAt(scholarship.criteriaLockedAt || null)
       } catch (err) {
         console.error(err)
         setFormMessage('Network error while loading scholarship.')
@@ -100,6 +110,50 @@ export default function ScholarshipEditPage({ token, scholarshipId, onUpdated })
       loadScholarship()
     }
   }, [scholarshipId, token])
+
+  const handleAuditedRevision = async (e) => {
+    e.preventDefault()
+    if (!revisionReason.trim()) {
+      showToast('Please state a valid reason for revising locked criteria.', 'error')
+      return
+    }
+
+    setRevisionSubmitting(true)
+    try {
+      const res = await fetch(`/api/scholarships/${scholarshipId}/criteria-revision`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          reason: revisionReason.trim(),
+          handlingPolicy: affectedHandling,
+          updatedEligibility: eligibilityRequirements.trim(),
+          updatedRequirements: allRequirements
+            .map((req) => ({ requirementName: req, isRequired: true }))
+            .filter((req) => Boolean(req.requirementName)),
+        }),
+      })
+
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        showToast(body.message || 'Criteria revision failed.', 'error')
+        return
+      }
+
+      showToast(`Criteria revised to version ${body.criteriaVersion || (criteriaVersion + 1)}.`, 'success')
+      setCriteriaVersion(body.criteriaVersion || (criteriaVersion + 1))
+      setRevisionModalOpen(false)
+      setRevisionReason('')
+      if (typeof onUpdated === 'function') onUpdated()
+    } catch (err) {
+      console.error(err)
+      showToast('Network error while saving criteria revision.', 'error')
+    } finally {
+      setRevisionSubmitting(false)
+    }
+  }
 
   const allRequirements = [
     ...selectedRequirements,
@@ -239,8 +293,38 @@ export default function ScholarshipEditPage({ token, scholarshipId, onUpdated })
             </div>
           </div>
 
-          <div className="mt-8 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-            <form onSubmit={handleSave} className="space-y-6">
+      {isCriteriaLocked && (
+        <div
+          className="rounded-2xl border p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+          style={{
+            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+            borderColor: 'rgba(245, 158, 11, 0.3)',
+            color: '#F59E0B'
+          }}
+        >
+          <div className="flex items-start gap-3">
+            <span className="text-xl">🔒</span>
+            <div>
+              <div className="text-xs font-bold uppercase tracking-wider text-amber-500">
+                Criteria Locked (Version {criteriaVersion})
+              </div>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                Applications have been submitted for this opportunity. Eligibility instructions and requirements are locked to protect applicant evaluation integrity.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setRevisionModalOpen(true)}
+            className="btn-primary whitespace-nowrap px-4 py-2 text-xs font-bold self-start sm:self-center cursor-pointer"
+          >
+            Request Audited Revision
+          </button>
+        </div>
+      )}
+
+      <div className="mt-8 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
+        <form onSubmit={handleSave} className="space-y-6">
               <div
                 className="rounded-3xl border p-6 space-y-5"
                 style={{
@@ -338,12 +422,22 @@ export default function ScholarshipEditPage({ token, scholarshipId, onUpdated })
                     />
                   </div>
                   <div>
-                    <label htmlFor="edit-eligibility" className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Eligibility Instructions</label>
+                    <div className="flex items-center justify-between">
+                      <label htmlFor="edit-eligibility" className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+                        Eligibility Instructions
+                      </label>
+                      {isCriteriaLocked && (
+                        <span className="text-[10px] font-bold text-amber-500 uppercase tracking-wider">
+                          🔒 Locked (v{criteriaVersion})
+                        </span>
+                      )}
+                    </div>
                     <textarea
                       id="edit-eligibility"
                       value={eligibilityRequirements}
                       onChange={(e) => setEligibilityRequirements(e.target.value)}
-                      className="input-field mt-2 min-h-[100px] w-full p-3 text-sm focus:outline-none"
+                      disabled={isCriteriaLocked}
+                      className={`input-field mt-2 min-h-[100px] w-full p-3 text-sm focus:outline-none ${isCriteriaLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
                       style={{
                         backgroundColor: 'var(--bg-input)',
                         borderColor: 'var(--border)',
@@ -351,6 +445,11 @@ export default function ScholarshipEditPage({ token, scholarshipId, onUpdated })
                       }}
                       placeholder="Who can apply"
                     />
+                    {isCriteriaLocked && (
+                      <p className="mt-1 text-[11px] text-amber-500/80">
+                        Criteria locked after first submission. Use &quot;Request Audited Revision&quot; above to modify parameters.
+                      </p>
+                    )}
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
@@ -568,6 +667,102 @@ export default function ScholarshipEditPage({ token, scholarshipId, onUpdated })
               </div>
             </aside>
           </div>
+
+      {/* Controlled Criteria Revision Modal */}
+      {revisionModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div
+            className="w-full max-w-lg rounded-3xl border p-6 shadow-2xl space-y-4"
+            style={{
+              backgroundColor: 'var(--bg-panel)',
+              borderColor: 'var(--border)'
+            }}
+          >
+            <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: 'var(--border)' }}>
+              <div>
+                <h3 className="text-base font-bold" style={{ color: 'var(--text-heading)' }}>
+                  Controlled Criteria Revision
+                </h3>
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  Currently on Version {criteriaVersion}. A new version will be created with an audit trail.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRevisionModalOpen(false)}
+                className="text-gray-400 hover:text-gray-200 text-lg font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleAuditedRevision} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+                  Revision Reason <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  required
+                  value={revisionReason}
+                  onChange={(e) => setRevisionReason(e.target.value)}
+                  placeholder="Explain why criteria are being modified after application submission (e.g. sponsor guideline update, extended qualification scope)..."
+                  className="input-field mt-1.5 w-full p-3 text-xs min-h-[80px]"
+                  style={{
+                    backgroundColor: 'var(--bg-input)',
+                    borderColor: 'var(--border)',
+                    color: 'var(--text-primary)'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+                  Handling of Existing Applications
+                </label>
+                <select
+                  value={affectedHandling}
+                  onChange={(e) => setAffectedHandling(e.target.value)}
+                  className="input-field mt-1.5 w-full p-2.5 text-xs"
+                  style={{
+                    backgroundColor: 'var(--bg-input)',
+                    borderColor: 'var(--border)',
+                    color: 'var(--text-primary)'
+                  }}
+                >
+                  <option value="preserve_prior_version">
+                    Preserve Prior Version for Existing Applicants (Grandfathering - No retroactive rejection)
+                  </option>
+                  <option value="notify_affected_applicants">
+                    Notify Existing Applicants of Updated Requirements
+                  </option>
+                  <option value="re_evaluate_with_notice">
+                    Re-evaluate Prior Submissions with Audit Log Note
+                  </option>
+                </select>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-3 border-t" style={{ borderColor: 'var(--border)' }}>
+                <button
+                  type="button"
+                  disabled={revisionSubmitting}
+                  onClick={() => setRevisionModalOpen(false)}
+                  className="btn-secondary px-4 py-2 text-xs font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={revisionSubmitting}
+                  className="btn-primary px-5 py-2 text-xs font-bold"
+                >
+                  {revisionSubmitting ? 'Recording Revision…' : `Promote to v${criteriaVersion + 1}`}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       <ConfirmationDialog
         open={confirmCloseOpen}
         title="Close Scholarship"

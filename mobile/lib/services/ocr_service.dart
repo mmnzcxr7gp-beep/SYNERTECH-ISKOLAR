@@ -31,13 +31,18 @@ class OcrResult {
     );
   }
 
-  /// Whether the document was identified as a correct/genuine paper
+  /// Whether the document was identified as a matching document type for extraction
   bool get isCorrectPaper => documentBasis?['isCorrectPaper'] == true;
 
-  /// Authenticity score 0-100
-  int get authenticityScore => (documentBasis?['authenticityScore'] as num?)?.toInt() ?? 0;
+  /// Extraction quality score 0-100 (OCR clarity and marker presence)
+  int get extractionQualityScore =>
+      ((documentBasis?['extractionQualityScore'] ?? documentBasis?['authenticityScore']) as num?)?.toInt() ?? 0;
 
-  /// Verdict: GENUINE_DOCUMENT, LIKELY_GENUINE, UNCERTAIN, NOT_A_VALID_DOCUMENT
+  /// Backward-compatible alias
+  int get authenticityScore => extractionQualityScore;
+
+  /// Verdict: EXTRACTION_HIGH_QUALITY, EXTRACTION_ACCEPTABLE, EXTRACTION_UNCERTAIN, EXTRACTION_INSUFFICIENT
+  /// (also supports legacy: GENUINE_DOCUMENT, LIKELY_GENUINE, UNCERTAIN, NOT_A_VALID_DOCUMENT)
   String get verdict => documentBasis?['verdict'] as String? ?? 'UNKNOWN';
 
   /// Structural markers that were found

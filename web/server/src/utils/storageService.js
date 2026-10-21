@@ -437,8 +437,10 @@ class StorageService {
     documentId = 'doc',
     version = 1,
     studentId,
+    userId,
     providerId,
     customKey,
+    skipDuplicateCheck = false,
   }) {
     // 1. Strict File Validation
     const validation = validateFile(buffer, originalName, mimeType);
@@ -447,6 +449,30 @@ class StorageService {
       err.code = validation.code || 'FILE_SIGNATURE_INVALID';
       err.statusCode = validation.code === 'FILE_TOO_LARGE' ? 413 : 400;
       throw err;
+    }
+
+    // 1b. Cross-Account Duplicate Document Detection (Panel Revision 1)
+    const effectiveUserId = studentId || userId;
+    if (effectiveUserId && !skipDuplicateCheck) {
+      try {
+        const { validateUploadUniqueness } = require('./duplicateDetectionService');
+        const uniqueness = await validateUploadUniqueness({
+          buffer,
+          fileHash: validation.hash,
+          currentUserId: effectiveUserId,
+          documentType: documentId,
+        });
+        if (!uniqueness.allowed) {
+          const err = new Error(uniqueness.message);
+          err.code = uniqueness.code || 'DUPLICATE_DOCUMENT_ACROSS_ACCOUNTS';
+          err.statusCode = uniqueness.statusCode || 409;
+          throw err;
+        }
+      } catch (dupErr) {
+        if (dupErr.statusCode === 409) throw dupErr;
+        // Non-blocking for unexpected lookup errors
+        console.warn('[StorageService] Duplicate check notice:', dupErr.message);
+      }
     }
 
     // 2. Generate Safe Object Key (applications/{applicationId}/documents/{documentId}/v{version}/{uuid}.{ext})

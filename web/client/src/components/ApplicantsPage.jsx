@@ -939,36 +939,36 @@ export default function ApplicantsPage({ token }) {
                           </span>
                           <div className="flex items-center gap-1.5 flex-wrap justify-end">
                             {(() => {
-                              const basis = doc.documentBasis || doc.document_basis || doc.ocr_result?.documentBasis || doc.ocr_result?.document_basis;
+                              const basis = doc.documentBasis || doc.document_basis || doc.ocr_result?.documentBasis || doc.ocr_result?.document_basis || doc.extractionVerification;
                               if (!basis) return null;
-                              const score = basis.authenticityScore ?? 0;
-                              const verdict = basis.verdict;
+                              const score = basis.extractionQualityScore ?? basis.authenticityScore ?? 0;
+                              const verdict = basis.extractionVerdict || basis.verdict;
 
-                              if (verdict === 'GENUINE_DOCUMENT') {
+                              if (verdict === 'EXTRACTION_HIGH_CONFIDENCE' || verdict === 'GENUINE_DOCUMENT') {
                                 return (
-                                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30" title={`Authenticity score: ${score}%. Structural markers verified.`}>
-                                    🛡️ Genuine ({score}%)
+                                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30" title={`Extraction quality: ${score}%. Structural markers matched. Awaiting human administrator verification.`}>
+                                    📄 OCR High Quality ({score}%) • Pending Admin Verification
                                   </span>
                                 );
                               }
-                              if (verdict === 'LIKELY_GENUINE') {
+                              if (verdict === 'EXTRACTION_MEDIUM_CONFIDENCE' || verdict === 'LIKELY_GENUINE') {
                                 return (
-                                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-teal-500/15 text-teal-600 dark:text-teal-400 border border-teal-500/30" title={`Authenticity score: ${score}%. Likely genuine document.`}>
-                                    🛡️ Likely Genuine ({score}%)
+                                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-teal-500/15 text-teal-600 dark:text-teal-400 border border-teal-500/30" title={`Extraction quality: ${score}%. Partial structural match. Awaiting human administrator verification.`}>
+                                    📄 OCR Medium Quality ({score}%) • Pending Admin Verification
                                   </span>
                                 );
                               }
-                              if (verdict === 'UNCERTAIN') {
+                              if (verdict === 'UNCERTAIN_EXTRACTION' || verdict === 'UNCERTAIN') {
                                 return (
-                                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30" title={`Authenticity score: ${score}%. Manual verification advised.`}>
-                                    ⚠️ Uncertain Paper ({score}%)
+                                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30" title={`Extraction quality: ${score}%. Low text confidence or missing markers. Manual administrative inspection required.`}>
+                                    ⚠️ OCR Uncertain ({score}%) • Manual Review Required
                                   </span>
                                 );
                               }
-                              if (verdict === 'NOT_A_VALID_DOCUMENT' || basis.isCorrectPaper === false) {
+                              if (verdict === 'UNREADABLE_OR_INVALID_FORMAT' || verdict === 'NOT_A_VALID_DOCUMENT' || basis.isCorrectPaper === false || basis.isExtractionUsable === false) {
                                 return (
-                                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30" title={`Authenticity score: ${score}%. Document failed structural marker validation.`}>
-                                    ✕ Invalid Paper ({score}%)
+                                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30" title={`Extraction quality: ${score}%. Unreadable text or missing expected headers. Manual inspection required.`}>
+                                    ⚠️ Unreadable Text ({score}%) • Manual Review Required
                                   </span>
                                 );
                               }

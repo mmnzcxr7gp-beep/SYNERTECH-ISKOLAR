@@ -79,12 +79,16 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
 
   Color _verdictColor(String verdict) {
     switch (verdict) {
+      case 'EXTRACTION_HIGH_QUALITY':
       case 'GENUINE_DOCUMENT':
         return AppColors.success;
+      case 'EXTRACTION_ACCEPTABLE':
       case 'LIKELY_GENUINE':
         return const Color(0xFF0EA5E9);
+      case 'EXTRACTION_UNCERTAIN':
       case 'UNCERTAIN':
         return AppColors.warning;
+      case 'EXTRACTION_INSUFFICIENT':
       case 'NOT_A_VALID_DOCUMENT':
         return AppColors.error;
       default:
@@ -94,27 +98,35 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
 
   String _verdictLabel(String verdict) {
     switch (verdict) {
+      case 'EXTRACTION_HIGH_QUALITY':
       case 'GENUINE_DOCUMENT':
-        return '✓ Genuine Document';
+        return '✓ Extraction Complete';
+      case 'EXTRACTION_ACCEPTABLE':
       case 'LIKELY_GENUINE':
-        return '◎ Likely Genuine';
+        return '◎ Extraction Acceptable';
+      case 'EXTRACTION_UNCERTAIN':
       case 'UNCERTAIN':
-        return '⚠ Uncertain';
+        return '⚠ Review Advised';
+      case 'EXTRACTION_INSUFFICIENT':
       case 'NOT_A_VALID_DOCUMENT':
-        return '✕ Not a Valid Document';
+        return '✕ Manual Entry Needed';
       default:
-        return '? Unknown';
+        return '? Quality Review';
     }
   }
 
   IconData _verdictIcon(String verdict) {
     switch (verdict) {
+      case 'EXTRACTION_HIGH_QUALITY':
       case 'GENUINE_DOCUMENT':
         return Icons.verified_rounded;
+      case 'EXTRACTION_ACCEPTABLE':
       case 'LIKELY_GENUINE':
         return Icons.check_circle_outline_rounded;
+      case 'EXTRACTION_UNCERTAIN':
       case 'UNCERTAIN':
         return Icons.help_outline_rounded;
+      case 'EXTRACTION_INSUFFICIENT':
       case 'NOT_A_VALID_DOCUMENT':
         return Icons.dangerous_rounded;
       default:
@@ -222,7 +234,7 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              'Document Correctness Basis',
+                              'Document Extraction Quality',
                               style: GoogleFonts.poppins(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
@@ -248,13 +260,22 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 10),
+                      Text(
+                        'OCR extracts text for applicant review. Final document authenticity review is conducted manually by program administrators.',
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w400,
+                          color: isDark ? AppColors.darkTextSecondary : AppColors.secondaryText,
+                        ),
+                      ),
                       const SizedBox(height: 14),
 
-                      // Authenticity score bar
+                      // Extraction Quality score bar
                       Row(
                         children: [
                           Text(
-                            'Authenticity Score',
+                            'Extraction Quality Score',
                             style: GoogleFonts.poppins(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,

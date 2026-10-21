@@ -76,6 +76,380 @@ class _ApplicationUploadScreenState extends State<ApplicationUploadScreen> {
     }
   }
 
+  bool _isPreScreening = false;
+
+  Future<void> _runPreScreenCheck({bool isDirectSubmit = false}) async {
+    final missingCount = widget.requirements.length - _uploadedFiles.length;
+    if (missingCount > 0 && widget.requirements.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please attach all $missingCount remaining required document(s) before pre-screening.'),
+          backgroundColor: AppColors.warning,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isPreScreening = true);
+
+    try {
+      final double? gpa = double.tryParse(_gpaController.text.trim());
+      final res = await ScholarshipService.preScreenApplication(
+        widget.token,
+        widget.scholarshipId,
+        files: _uploadedFiles,
+        gpa: gpa,
+      );
+
+      if (!mounted) return;
+
+      final status = res['preScreeningStatus'] ?? (res['isEligible'] == true ? 'ELIGIBLE' : 'UNQUALIFIED');
+      final canProceed = res['canProceedWithSubmission'] == true || status == 'ELIGIBLE' || status == 'ELIGIBLE_WITH_MANUAL_REVIEW';
+
+      if (isDirectSubmit && canProceed) {
+        // Direct proceed if pre-screen passes
+        await _upload();
+      } else {
+        _showPreScreenModal(res);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Pre-screening check error: ${e.toString()}'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isPreScreening = false);
+    }
+  }
+
+  void _showPreScreenModal(Map<String, dynamic> res) {
+    final status = res['preScreeningStatus'] ?? 'INCOMPLETE';
+    final isEligible = status == 'ELIGIBLE' || status == 'ELIGIBLE_WITH_MANUAL_REVIEW';
+    final title = res['advisoryTitle'] ?? (isEligible ? 'Eligibility Pre-Screen Passed' : 'Pre-Screening Advisory');
+    final message = res['advisoryMessage'] ?? '';
+    final unmetList = (res['unmetCriteriaReasons'] as List<dynamic>?) ?? [];
+    final incompleteList = (res['incompleteReasons'] as List<dynamic>?) ?? [];
+    final corrections = (res['actionableCorrections'] as List<dynamic>?) ?? [];
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    Color badgeColor = AppColors.warning;
+    Color badgeBg = AppColors.warning.withValues(alpha: 0.15);
+    IconData badgeIcon = Icons.info_outline_rounded;
+    String badgeText = 'INCOMPLETE REQUIREMENTS';
+
+    if (status == 'UNQUALIFIED') {
+      badgeColor = AppColors.error;
+      badgeBg = AppColors.error.withValues(alpha: 0.15);
+      badgeIcon = Icons.cancel_outlined;
+      badgeText = 'CRITERIA UNMET';
+    } else if (isEligible) {
+      badgeColor = const Color(0xFF10B981);
+      badgeBg = const Color(0xFF10B981).withValues(alpha: 0.15);
+      badgeIcon = Icons.check_circle_outline_rounded;
+      badgeText = status == 'ELIGIBLE_WITH_MANUAL_REVIEW' ? 'QUALIFIED (MANUAL REVIEW)' : 'ELIGIBILITY VERIFIED';
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+        ),
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 30,
+              offset: const Offset(0, -10),
+            ),
+          ],
+        ),
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Status Badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: badgeBg,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: badgeColor.withValues(alpha: 0.4)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(badgeIcon, color: badgeColor, size: 16),
+                    const SizedBox(width: 6),
+                    Text(
+                      badgeText,
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: badgeColor,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              Text(
+                title,
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? AppColors.darkTextPrimary : AppColors.primaryNavy,
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              Text(
+                message,
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  color: isDark ? AppColors.darkTextSecondary : AppColors.secondaryText,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 18),
+
+              // Breakdown of unmet criteria
+              if (unmetList.isNotEmpty) ...[
+                Text(
+                  'UNMET ELIGIBILITY CRITERIA',
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.6,
+                    color: AppColors.error,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ...unmetList.map((item) {
+                  final itm = item is Map ? item : {'title': 'Criterion Unmet', 'details': item.toString()};
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.error.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          itm['title'] ?? 'Eligibility Standard Unmet',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.error,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          itm['details'] ?? '',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: isDark ? AppColors.darkTextPrimary : AppColors.primaryNavy,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+                const SizedBox(height: 12),
+              ],
+
+              // Breakdown of incomplete items
+              if (incompleteList.isNotEmpty) ...[
+                Text(
+                  'MISSING REQUIREMENTS',
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.6,
+                    color: AppColors.warning,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ...incompleteList.map((item) {
+                  final itm = item is Map ? item : {'title': 'Incomplete Item', 'details': item.toString()};
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.warning.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.warning.withValues(alpha: 0.2)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          itm['title'] ?? 'Missing Requirement',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.warning,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          itm['details'] ?? '',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: isDark ? AppColors.darkTextPrimary : AppColors.primaryNavy,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+                const SizedBox(height: 12),
+              ],
+
+              // Actionable guidance
+              if (corrections.isNotEmpty) ...[
+                Text(
+                  'ACTIONABLE GUIDANCE',
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.6,
+                    color: isDark ? AppColors.darkTextSecondary : AppColors.secondaryText,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                ...corrections.map((c) => Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.arrow_right_rounded, color: AppColors.actionBlue, size: 20),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          c.toString(),
+                          style: GoogleFonts.poppins(fontSize: 12, height: 1.4),
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
+                const SizedBox(height: 12),
+              ],
+
+              // Reassurance regarding OCR extraction errors
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.black.withValues(alpha: 0.2) : Colors.grey.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.security_rounded, size: 16, color: AppColors.actionBlue),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Administrative Notice: Document OCR extraction errors do not disqualify candidates. All credentials undergo final verification by authorized scholarship providers.',
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          color: isDark ? AppColors.darkTextSecondary : AppColors.secondaryText,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Action Buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                      ),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      child: Text(
+                        isEligible ? 'Close' : 'Review & Correct',
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: isDark ? AppColors.darkTextPrimary : AppColors.primaryNavy,
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (isEligible) ...[
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF10B981),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 0,
+                        ),
+                        onPressed: () {
+                          Navigator.of(ctx).pop();
+                          _upload();
+                        },
+                        child: Text(
+                          'Submit Application',
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _upload() async {
     final missingCount = widget.requirements.length - _uploadedFiles.length;
     if (missingCount > 0 && widget.requirements.isNotEmpty) {
@@ -314,9 +688,63 @@ class _ApplicationUploadScreenState extends State<ApplicationUploadScreen> {
                         ),
                       ),
 
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 16),
 
-                      // Submit Button
+                      // Check Pre-Screen Eligibility Button (Panel Requirement 2 & 5)
+                      Container(
+                        width: double.infinity,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusInput),
+                          border: Border.all(
+                            color: AppColors.actionBlue.withValues(alpha: 0.5),
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.actionBlue.withValues(alpha: 0.1),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(AppSpacing.radiusInput),
+                            onTap: (_isUploading || _isPreScreening) ? null : () => _runPreScreenCheck(isDirectSubmit: false),
+                            child: Center(
+                              child: _isPreScreening
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(color: AppColors.actionBlue, strokeWidth: 2),
+                                    )
+                                  : Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        const Icon(Icons.rule_rounded, color: AppColors.actionBlue, size: 18),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'CHECK PRE-SCREEN ELIGIBILITY',
+                                          style: GoogleFonts.poppins(
+                                            color: AppColors.actionBlue,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 12.5,
+                                            letterSpacing: 0.6,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      // Submit Button (Triggering Pre-Screen Validation First)
                       Container(
                         width: double.infinity,
                         height: 50,
@@ -335,9 +763,9 @@ class _ApplicationUploadScreenState extends State<ApplicationUploadScreen> {
                           color: Colors.transparent,
                           child: InkWell(
                             borderRadius: BorderRadius.circular(AppSpacing.radiusInput),
-                            onTap: _isUploading ? null : _upload,
+                            onTap: (_isUploading || _isPreScreening) ? null : () => _runPreScreenCheck(isDirectSubmit: true),
                             child: Center(
-                              child: _isUploading
+                              child: (_isUploading || _isPreScreening)
                                   ? const SizedBox(
                                       width: 22,
                                       height: 22,
